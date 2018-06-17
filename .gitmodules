@@ -1,0 +1,15 @@
+[submodule "Libraries/glfw"]
+	path = Libraries/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "Libraries/PPK_ASSERT"]
+	path = Libraries/PPK_ASSERT
+	url = https://github.com/gpakosz/PPK_ASSERT.git
+[submodule "Libraries/templog"]
+	path = Libraries/templog
+	url = https://github.com/aaronmjacobs/templog.git
+[submodule "Libraries/Boxer"]
+	path = Libraries/Boxer
+	url = https://github.com/aaronmjacobs/Boxer.git
+[submodule "Libraries/tinyobjloader"]
+	path = Libraries/tinyobjloader
+	url = https://github.com/syoyo/tinyobjloader.git
