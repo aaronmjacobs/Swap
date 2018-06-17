@@ -20,6 +20,10 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
 set(GLM_INSTALL_ENABLE OFF CACHE INTERNAL "GLM install")
 add_subdirectory("${LIB_DIR}/glm")
 
+# GSL
+add_subdirectory("${LIB_DIR}/GSL")
+target_link_libraries(${PROJECT_NAME} PUBLIC GSL)
+
 # PPK_ASSERT
 set(PPK_DIR "${LIB_DIR}/PPK_ASSERT")
 target_sources(${PROJECT_NAME} PRIVATE "${PPK_DIR}/src/ppk_assert.h" "${PPK_DIR}/src/ppk_assert.cpp")

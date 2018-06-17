@@ -19,3 +19,6 @@
 [submodule "Libraries/stb"]
 	path = Libraries/stb
 	url = https://github.com/nothings/stb.git
+[submodule "Libraries/GSL"]
+	path = Libraries/GSL
+	url = https://github.com/Microsoft/GSL.git
