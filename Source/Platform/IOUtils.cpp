@@ -1,6 +1,6 @@
 #include "Platform/IOUtils.h"
 
-#include "Assert.h"
+#include "Core/Assert.h"
 #include "Platform/OSUtils.h"
 
 #include <fstream>
