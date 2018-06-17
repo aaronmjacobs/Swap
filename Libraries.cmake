@@ -16,6 +16,10 @@ add_subdirectory("${LIB_DIR}/glfw")
 target_compile_definitions(${PROJECT_NAME} PUBLIC GLFW_INCLUDE_NONE)
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
 
+# GLM
+set(GLM_INSTALL_ENABLE OFF CACHE INTERNAL "GLM install")
+add_subdirectory("${LIB_DIR}/glm")
+
 # PPK_ASSERT
 set(PPK_DIR "${LIB_DIR}/PPK_ASSERT")
 target_sources(${PROJECT_NAME} PUBLIC "${PPK_DIR}/src/ppk_assert.h" "${PPK_DIR}/src/ppk_assert.cpp")
