@@ -22,9 +22,36 @@ add_subdirectory("${LIB_DIR}/glm")
 
 # PPK_ASSERT
 set(PPK_DIR "${LIB_DIR}/PPK_ASSERT")
-target_sources(${PROJECT_NAME} PUBLIC "${PPK_DIR}/src/ppk_assert.h" "${PPK_DIR}/src/ppk_assert.cpp")
+target_sources(${PROJECT_NAME} PRIVATE "${PPK_DIR}/src/ppk_assert.h" "${PPK_DIR}/src/ppk_assert.cpp")
 target_include_directories(${PROJECT_NAME} PUBLIC "${PPK_DIR}/src")
 source_group("Libraries\\PPK_ASSERT" "${PPK_DIR}/src")
+
+# stb
+set(STB_DIR "${LIB_DIR}/stb")
+target_sources(${PROJECT_NAME} PRIVATE
+   "${STB_DIR}/stb.h"
+   "${STB_DIR}/stb_c_lexer.h"
+   "${STB_DIR}/stb_connected_components.h"
+   "${STB_DIR}/stb_divide.h"
+   "${STB_DIR}/stb_dxt.h"
+   "${STB_DIR}/stb_easy_font.h"
+   "${STB_DIR}/stb_herringbone_wang_tile.h"
+   "${STB_DIR}/stb_image.h"
+   "${STB_DIR}/stb_image_resize.h"
+   "${STB_DIR}/stb_image_write.h"
+   "${STB_DIR}/stb_leakcheck.h"
+   "${STB_DIR}/stb_perlin.h"
+   "${STB_DIR}/stb_rect_pack.h"
+   "${STB_DIR}/stb_sprintf.h"
+   "${STB_DIR}/stb_textedit.h"
+   "${STB_DIR}/stb_tilemap_editor.h"
+   "${STB_DIR}/stb_truetype.h"
+#  "${STB_DIR}/stb_vorbis.c"
+   "${STB_DIR}/stb_voxel_render.h"
+   "${STB_DIR}/stretchy_buffer.h"
+)
+target_include_directories(${PROJECT_NAME} PUBLIC "${STB_DIR}")
+source_group("Libraries\\stb" "${STB_DIR}")
 
 # templog
 set(TEMPLOG_DIR "${LIB_DIR}/templog")
