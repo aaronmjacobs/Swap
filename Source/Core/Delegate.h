@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <functional>
+#include <utility>
 #include <vector>
 
 class DelegateHandle
@@ -67,7 +68,7 @@ public:
    ReturnType execute(Params... params)
    {
       ASSERT(isBound());
-      return function(params...);
+      return function(std::forward<Params>(params)...);
    }
 
    const DelegateHandle& getHandle() const
@@ -117,7 +118,7 @@ public:
    {
       for (DelegateType& delegate : delegates)
       {
-         delegate.execute(params...);
+         delegate.execute(std::forward<Params>(params)...);
       }
    }
 
@@ -127,7 +128,7 @@ public:
 
       for (std::size_t i = 0; i < delegates.size(); ++i)
       {
-         returnValues[i] = delegates[i].execute(params...);
+         returnValues[i] = delegates[i].execute(std::forward<Params>(params)...);
       }
 
       return returnValues;
