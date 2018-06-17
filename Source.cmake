@@ -1,5 +1,7 @@
 target_sources(${PROJECT_NAME} PUBLIC
    "${SRC_DIR}/Assert.h"
+   "${SRC_DIR}/Delegate.h"
+   "${SRC_DIR}/Delegate.cpp"
    "${SRC_DIR}/Log.h"
    "${SRC_DIR}/Main.cpp"
    "${SRC_DIR}/Pointers.h"
