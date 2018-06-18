@@ -1,4 +1,4 @@
-target_sources(${PROJECT_NAME} PUBLIC
+target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Main.cpp"
 
    "${SRC_DIR}/Core/Assert.h"
@@ -11,6 +11,8 @@ target_sources(${PROJECT_NAME} PUBLIC
    "${SRC_DIR}/Platform/IOUtils.cpp"
    "${SRC_DIR}/Platform/OSUtils.h"
    "${SRC_DIR}/Platform/OSUtils.cpp"
+   "${SRC_DIR}/Platform/Window.h"
+   "${SRC_DIR}/Platform/Window.cpp"
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${SRC_DIR}")
