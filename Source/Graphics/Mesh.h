@@ -18,7 +18,7 @@ private:
    void release();
 
 public:
-   void setData(gsl::span<GLuint> indices, gsl::span<GLfloat> vertices, int dimensionality = 3);
+   void setData(gsl::span<GLuint> indices, gsl::span<GLfloat> vertices, gsl::span<GLfloat> normals = {}, gsl::span<GLfloat> texCoords = {}, int dimensionality = 3);
 
    void bind();
    void draw();
@@ -26,9 +26,11 @@ public:
 private:
    void assertBound() const;
 
-   GLuint vao;
-   GLuint ebo;
-   GLuint vbo;
+   GLuint vertexArrayObject;
+   GLuint elementBufferObject;
+   GLuint positionBufferObject;
+   GLuint normalBufferObject;
+   GLuint texCoordBufferObject;
 
    GLsizei numIndices;
 };
