@@ -83,7 +83,7 @@ DECLARE_UNIFORM_TYPE_BASIC(BoolUniform, GLint, glGetUniformiv, glUniform1i, GL_B
 #undef DECLARE_UNIFORM_TYPE_BASIC
 
 #define DECLARE_UNIFORM_TYPE_VECTOR(class_name, data_type, get_function_name, set_function_name, ...)\
-        DECLARE_UNIFORM_TYPE(class_name, data_type, data_type, get_function_name(program, uniformLocation, glm::value_ptr(data)), set_function_name(getLocation(), 1, glm::value_ptr(data)), __VA_ARGS__)
+        DECLARE_UNIFORM_TYPE(class_name, data_type, const data_type&, get_function_name(program, uniformLocation, glm::value_ptr(data)), set_function_name(getLocation(), 1, glm::value_ptr(data)), __VA_ARGS__)
 
 DECLARE_UNIFORM_TYPE_VECTOR(Float2Uniform, glm::fvec2, glGetUniformfv, glUniform2fv, GL_FLOAT_VEC2)
 DECLARE_UNIFORM_TYPE_VECTOR(Float3Uniform, glm::fvec3, glGetUniformfv, glUniform3fv, GL_FLOAT_VEC3)

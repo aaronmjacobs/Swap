@@ -33,43 +33,23 @@ protected:
    virtual void commitData() = 0;
 
 #define DECLARE_SET_DATA(type) virtual bool setData(type value) { return typeError(#type); }
+#define DECLARE_SET_DATA_REF(type) virtual bool setData(const type& value) { return typeError(#type); }
 
    DECLARE_SET_DATA(GLfloat)
    DECLARE_SET_DATA(GLint)
    DECLARE_SET_DATA(GLuint)
 
-   DECLARE_SET_DATA(glm::fvec2)
-   DECLARE_SET_DATA(glm::fvec3)
-   DECLARE_SET_DATA(glm::fvec4)
+   DECLARE_SET_DATA_REF(glm::fvec2)
+   DECLARE_SET_DATA_REF(glm::fvec3)
+   DECLARE_SET_DATA_REF(glm::fvec4)
 
-   DECLARE_SET_DATA(glm::ivec2)
-   DECLARE_SET_DATA(glm::ivec3)
-   DECLARE_SET_DATA(glm::ivec4)
+   DECLARE_SET_DATA_REF(glm::ivec2)
+   DECLARE_SET_DATA_REF(glm::ivec3)
+   DECLARE_SET_DATA_REF(glm::ivec4)
 
-   DECLARE_SET_DATA(glm::uvec2)
-   DECLARE_SET_DATA(glm::uvec3)
-   DECLARE_SET_DATA(glm::uvec4)
-
-   // OpenGL treats booleans as integers when setting / getting uniform values, so we provide wrapper functions
-   bool setData(bool value)
-   {
-      return setData(static_cast<GLint>(value));
-   }
-   bool setData(glm::bvec2 value)
-   {
-      return setData(glm::ivec2(value.x, value.y));
-   }
-   bool setData(glm::bvec3 value)
-   {
-      return setData(glm::ivec3(value.x, value.y, value.z));
-   }
-   bool setData(glm::bvec4 value)
-   {
-      return setData(glm::ivec4(value.x, value.y, value.z, value.w));
-   }
-
-#undef DECLARE_SET_DATA
-#define DECLARE_SET_DATA_REF(type) virtual bool setData(const type& value) { return typeError(#type); }
+   DECLARE_SET_DATA_REF(glm::uvec2)
+   DECLARE_SET_DATA_REF(glm::uvec3)
+   DECLARE_SET_DATA_REF(glm::uvec4)
 
    DECLARE_SET_DATA_REF(glm::fmat2x2)
    DECLARE_SET_DATA_REF(glm::fmat2x3)
@@ -81,7 +61,26 @@ protected:
    DECLARE_SET_DATA_REF(glm::fmat4x3)
    DECLARE_SET_DATA_REF(glm::fmat4x4)
 
+#undef DECLARE_SET_DATA
 #undef DECLARE_SET_DATA_REF
+
+   // OpenGL treats booleans as integers when setting / getting uniform values, so we provide wrapper functions
+   bool setData(bool value)
+   {
+      return setData(static_cast<GLint>(value));
+   }
+   bool setData(const glm::bvec2& value)
+   {
+      return setData(glm::ivec2(value.x, value.y));
+   }
+   bool setData(const glm::bvec3& value)
+   {
+      return setData(glm::ivec3(value.x, value.y, value.z));
+   }
+   bool setData(const glm::bvec4& value)
+   {
+      return setData(glm::ivec4(value.x, value.y, value.z, value.w));
+   }
 
    virtual const char* getTypeName() const = 0;
 
