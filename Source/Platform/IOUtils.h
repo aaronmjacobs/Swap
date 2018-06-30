@@ -14,4 +14,7 @@ namespace IOUtils
 
    bool ensurePathToFileExists(const std::string& path);
    bool makeAppDataRelativePath(const std::string& appName, const std::string& fileName, std::string& path);
+
+   std::string sanitizePath(std::string path);
+   bool getDirectory(const std::string& path, std::string& directory);
 }

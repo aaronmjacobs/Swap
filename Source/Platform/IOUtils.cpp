@@ -3,6 +3,7 @@
 #include "Core/Assert.h"
 #include "Platform/OSUtils.h"
 
+#include <algorithm>
 #include <fstream>
 
 namespace IOUtils
@@ -106,6 +107,61 @@ namespace IOUtils
       }
 
       path = appDataPath + "/" + fileName;
+      return true;
+   }
+
+   std::string sanitizePath(std::string path)
+   {
+      // Convert all back slashes to forward slashes
+      std::replace(path.begin(), path.end(), '\\', '/');
+
+      // Eliminate trailing slashes
+      while (path.size() > 1 && path[path.size() - 1] == '/')
+      {
+         path.pop_back();
+      }
+
+      // Resolve all ..
+      std::size_t dotsPos;
+      while ((dotsPos = path.find("..")) != std::string::npos)
+      {
+         std::size_t previousSlashPos = path.rfind('/', dotsPos - 2);
+         if (previousSlashPos == std::string::npos)
+         {
+            break;
+         }
+
+         path.erase(previousSlashPos, (dotsPos - previousSlashPos) + 2);
+      }
+
+      return path;
+   }
+
+   bool getDirectory(const std::string& path, std::string& directory)
+   {
+      std::string sanitizedPath = sanitizePath(path);
+
+      size_t pos = sanitizedPath.rfind('/');
+      if (pos == std::string::npos)
+      {
+         return false;
+      }
+
+#ifdef _WIN32
+      bool isRoot = pos == 2;
+#else
+      bool isRoot = pos == 0;
+#endif
+
+      if (isRoot)
+      {
+         directory = sanitizedPath;
+      }
+      else
+      {
+         directory = sanitizedPath.substr(0, pos);
+      }
+
       return true;
    }
 }
