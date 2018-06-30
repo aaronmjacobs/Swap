@@ -33,6 +33,8 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Platform/Window.cpp"
 
    "${SRC_DIR}/Resources/DefaultImageSource.h"
+   "${SRC_DIR}/Resources/ShaderLoader.h"
+   "${SRC_DIR}/Resources/ShaderLoader.cpp"
    "${SRC_DIR}/Resources/TextureLoader.h"
    "${SRC_DIR}/Resources/TextureLoader.cpp"
 )

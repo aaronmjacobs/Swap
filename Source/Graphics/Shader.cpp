@@ -5,52 +5,6 @@
 
 #include <utility>
 
-namespace
-{
-#if SWAP_DEBUG
-   const char* getShaderTypeName(ShaderType type)
-   {
-      switch (type)
-      {
-      case ShaderType::Vertex:
-         return "vertex";
-      case ShaderType::TessellationControl:
-         return "tessellation control";
-      case ShaderType::TessellationEvaluation:
-         return "tessellation evaluation";
-      case ShaderType::Geometry:
-         return "geometry";
-      case ShaderType::Fragment:
-         return "fragment";
-      default:
-         return "invalid";
-      }
-   }
-
-   void logShaderCompileError(GLuint id, ShaderType type)
-   {
-      GLint infoLogLength;
-      glGetShaderiv(id, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-      if (infoLogLength < 1)
-      {
-         return;
-      }
-
-      UPtr<GLchar[]> infoLog = std::make_unique<GLchar[]>(infoLogLength);
-      glGetShaderInfoLog(id, infoLogLength, nullptr, infoLog.get());
-
-      // If the log ends in a newline, nuke it
-      if (infoLogLength >= 2 && infoLog[infoLogLength - 2] == '\n')
-      {
-         infoLog[infoLogLength - 2] = '\0';
-      }
-
-      LOG_WARNING("Failed to compile " << getShaderTypeName(type) << " shader " << id << ":\n" << infoLog.get());
-   }
-#endif // SWAP_DEBUG
-}
-
 Shader::Shader(ShaderType shaderType)
    : id(glCreateShader(static_cast<GLuint>(shaderType)))
    , type(shaderType)
@@ -103,9 +57,55 @@ bool Shader::compile(const char* source)
 #if SWAP_DEBUG
    if (!success)
    {
-      logShaderCompileError(id, type);
+      LOG_WARNING("Failed to compile " << getTypeName() << " shader " << id << ":\n" << getInfoLog());
    }
 #endif // SWAP_DEBUG
 
    return success;
 }
+
+const char* Shader::getTypeName() const
+{
+   switch (type)
+   {
+   case ShaderType::Vertex:
+      return "vertex";
+   case ShaderType::TessellationControl:
+      return "tessellation control";
+   case ShaderType::TessellationEvaluation:
+      return "tessellation evaluation";
+   case ShaderType::Geometry:
+      return "geometry";
+   case ShaderType::Fragment:
+      return "fragment";
+   default:
+      return "invalid";
+   }
+}
+
+#if SWAP_DEBUG
+std::string Shader::getInfoLog() const
+{
+   std::string infoLog;
+
+   GLint infoLogLength;
+   glGetShaderiv(id, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+   if (infoLogLength > 0)
+   {
+      // Allocating a buffer here seems silly, but std::string::data() doesn't return a non-const pointer until C++17
+      UPtr<GLchar[]> rawInfoLog = std::make_unique<GLchar[]>(infoLogLength);
+      glGetShaderInfoLog(id, infoLogLength, nullptr, rawInfoLog.get());
+
+      // If the log ends in a newline, nuke it
+      if (infoLogLength >= 2 && rawInfoLog[infoLogLength - 2] == '\n')
+      {
+         rawInfoLog[infoLogLength - 2] = '\0';
+      }
+
+      infoLog = rawInfoLog.get();
+   }
+
+   return infoLog;
+}
+#endif // SWAP_DEBUG

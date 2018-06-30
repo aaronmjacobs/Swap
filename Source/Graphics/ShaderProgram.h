@@ -1,13 +1,15 @@
 #pragma once
 
 #include "Core/Pointers.h"
-#include "Graphics/Shader.h"
 #include "Graphics/Uniform.h"
 
 #include <glad/glad.h>
-#include <gsl/span>
 
+#include <string>
 #include <unordered_map>
+#include <vector>
+
+class Shader;
 
 class ShaderProgram
 {
@@ -26,7 +28,9 @@ private:
    void release();
 
 public:
-   bool link(gsl::span<Shader> shaders);
+   void attach(const SPtr<Shader>& shader);
+   void detach(const SPtr<Shader>& shader);
+   bool link();
    void commit();
 
    bool hasUniform(const std::string& name) const
@@ -49,7 +53,22 @@ public:
       }
    }
 
+   GLuint getId() const
+   {
+      return id;
+   }
+
+#if SWAP_DEBUG
+   const std::vector<SPtr<Shader>>& getAttachedShaders() const
+   {
+      return shaders;
+   }
+
+   std::string getInfoLog() const;
+#endif // SWAP_DEBUG
+
 private:
    GLuint id;
    UniformMap uniforms;
+   std::vector<SPtr<Shader>> shaders;
 };

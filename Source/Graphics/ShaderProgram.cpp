@@ -2,38 +2,17 @@
 
 #include "Core/Assert.h"
 #include "Core/Log.h"
+#include "Graphics/Shader.h"
 #include "Graphics/UniformTypes.h"
 
+#include <algorithm>
+#include <array>
 #include <cstring>
 #include <sstream>
 #include <utility>
 
 namespace
 {
-#if SWAP_DEBUG
-   void logShaderProgramLinkError(GLuint id)
-   {
-      GLint infoLogLength;
-      glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-      if (infoLogLength < 1)
-      {
-         return;
-      }
-
-      UPtr<GLchar[]> infoLog = std::make_unique<GLchar[]>(infoLogLength);
-      glGetProgramInfoLog(id, infoLogLength, nullptr, infoLog.get());
-
-      // If the log ends in a newline, nuke it
-      if (infoLogLength >= 2 && infoLog[infoLogLength - 2] == '\n')
-      {
-         infoLog[infoLogLength - 2] = '\0';
-      }
-
-      LOG_WARNING("Failed to link shader program " << id << ":\n" << infoLog.get());
-   }
-#endif // SWAP_DEBUG
-
    UPtr<Uniform> createUniform(const std::string& uniformName, const GLint uniformLocation, const GLenum uniformType, const GLuint program)
    {
       switch (uniformType)
@@ -235,16 +214,37 @@ void ShaderProgram::release()
    }
 }
 
-bool ShaderProgram::link(gsl::span<Shader> shaders)
+void ShaderProgram::attach(const SPtr<Shader>& shader)
 {
-   ASSERT(shaders.size() >= 2, "Need at least two shaders to link (was passed %lu)", shaders.size());
+   ASSERT(shader);
+
+   glAttachShader(id, shader->getId());
+   shaders.push_back(shader);
+}
+
+void ShaderProgram::detach(const SPtr<Shader>& shader)
+{
+   ASSERT(shader);
+
+   for (auto it = shaders.begin(); it != shaders.end(); )
+   {
+      if (*it == shader)
+      {
+         glDetachShader(id, shader->getId());
+         it = shaders.erase(it);
+      }
+      else
+      {
+         ++it;
+      }
+   }
+}
+
+bool ShaderProgram::link()
+{
+   ASSERT(shaders.size() >= 2, "Need at least two shaders to link (currently have %lu)", shaders.size());
 
    uniforms.clear();
-
-   for (const Shader& shader : shaders)
-   {
-      glAttachShader(id, shader.getId());
-   }
    glLinkProgram(id);
 
    GLint linkStatus;
@@ -252,13 +252,8 @@ bool ShaderProgram::link(gsl::span<Shader> shaders)
    if (linkStatus != GL_TRUE)
    {
 #if SWAP_DEBUG
-      logShaderProgramLinkError(id);
+      LOG_WARNING("Failed to link shader program " << id << ":\n" << getInfoLog());
 #endif // SWAP_DEBUG
-
-      for (const Shader& shader : shaders)
-      {
-         glDetachShader(id, shader.getId());
-      }
 
       return false;
    }
@@ -277,3 +272,30 @@ void ShaderProgram::commit()
       pair.second->commit();
    }
 }
+
+#if SWAP_DEBUG
+std::string ShaderProgram::getInfoLog() const
+{
+   std::string infoLog;
+
+   GLint infoLogLength;
+   glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+   if (infoLogLength > 0)
+   {
+      // Allocating a buffer here seems silly, but std::string::data() doesn't return a non-const pointer until C++17
+      UPtr<GLchar[]> rawInfoLog = std::make_unique<GLchar[]>(infoLogLength);
+      glGetProgramInfoLog(id, infoLogLength, nullptr, rawInfoLog.get());
+
+      // If the log ends in a newline, nuke it
+      if (infoLogLength >= 2 && rawInfoLog[infoLogLength - 2] == '\n')
+      {
+         rawInfoLog[infoLogLength - 2] = '\0';
+      }
+
+      infoLog = rawInfoLog.get();
+   }
+
+   return infoLog;
+}
+#endif // SWAP_DEBUG

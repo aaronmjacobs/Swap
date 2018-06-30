@@ -2,6 +2,10 @@
 
 #include <glad/glad.h>
 
+#if SWAP_DEBUG
+#  include <string>
+#endif // SWAP_DEBUG
+
 enum class ShaderType : GLuint
 {
    Vertex = GL_VERTEX_SHADER,
@@ -32,6 +36,17 @@ public:
    {
       return id;
    }
+
+   ShaderType getType() const
+   {
+      return type;
+   }
+
+   const char* getTypeName() const;
+
+#if SWAP_DEBUG
+   std::string getInfoLog() const;
+#endif // SWAP_DEBUG
 
 private:
    GLuint id;
