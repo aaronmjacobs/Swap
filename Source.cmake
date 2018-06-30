@@ -4,6 +4,7 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Core/Assert.h"
    "${SRC_DIR}/Core/Delegate.h"
    "${SRC_DIR}/Core/Delegate.cpp"
+   "${SRC_DIR}/Core/Hash.h"
    "${SRC_DIR}/Core/Log.h"
    "${SRC_DIR}/Core/Pointers.h"
 
