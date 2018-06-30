@@ -7,6 +7,10 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Core/Log.h"
    "${SRC_DIR}/Core/Pointers.h"
 
+   "${SRC_DIR}/Graphics/Material.h"
+   "${SRC_DIR}/Graphics/Material.cpp"
+   "${SRC_DIR}/Graphics/MaterialParameter.h"
+   "${SRC_DIR}/Graphics/MaterialParameter.cpp"
    "${SRC_DIR}/Graphics/Mesh.h"
    "${SRC_DIR}/Graphics/Mesh.cpp"
    "${SRC_DIR}/Graphics/Shader.h"
