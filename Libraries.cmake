@@ -1,3 +1,20 @@
+set(BUILD_SHARED_LIBS ON CACHE INTERNAL "Build package with shared libraries.")
+
+# Assimp
+set(ASSIMP_DIR "${LIB_DIR}/assimp")
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE INTERNAL "If the supplementary tools for Assimp are built in addition to the library.")
+set(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "If the test suite for Assimp is built in addition to the library.")
+set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "Disable Assimp's export functionality.")
+add_subdirectory("${ASSIMP_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC assimp)
+get_property(ASSIMP_INCLUDE_DIRS DIRECTORY "${ASSIMP_DIR}" PROPERTY INCLUDE_DIRECTORIES)
+target_include_directories(${PROJECT_NAME} PUBLIC ${ASSIMP_INCLUDE_DIRS})
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:assimp>" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+)
+
+set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "Build package with shared libraries.")
+
 # Boxer
 add_subdirectory("${LIB_DIR}/Boxer")
 target_link_libraries(${PROJECT_NAME} PUBLIC Boxer)
@@ -70,7 +87,3 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 target_include_directories(${PROJECT_NAME} PUBLIC "${TEMPLOG_DIR}")
 source_group("Libraries\\templog" "${TEMPLOG_DIR}")
-
-# tinyobj
-add_subdirectory("${LIB_DIR}/tinyobjloader")
-target_link_libraries(${PROJECT_NAME} PUBLIC tinyobjloader)
