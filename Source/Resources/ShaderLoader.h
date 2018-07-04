@@ -5,7 +5,6 @@
 #include "Graphics/Shader.h"
 
 #include <glad/glad.h>
-#include <gsl/span>
 
 #include <string>
 #include <unordered_map>
@@ -22,9 +21,16 @@ struct ShaderSpecification
 
    bool operator==(const ShaderSpecification& other) const
    {
-      return definitions == other.definitions && path == other.path && type == other.type;
+      return type == other.type && path == other.path && definitions == other.definitions;
    }
 };
+
+using ShaderSourceMap = std::unordered_map<std::string, std::string>;
+using ShaderMap = std::unordered_map<ShaderSpecification, WPtr<Shader>>;
+using ShaderPrograMap = std::unordered_map<std::vector<ShaderSpecification>, WPtr<ShaderProgram>>;
+#if SWAP_DEBUG
+using InverseShaderMap = std::unordered_map<Shader*, ShaderSpecification>;
+#endif // SWAP_DEBUG
 
 // Provide a template specialization to allow using ShaderSpecification as a key in std::unordered_map
 namespace std
@@ -40,16 +46,17 @@ class ShaderLoader
 {
 public:
    SPtr<Shader> loadShader(const ShaderSpecification& specification);
-   SPtr<ShaderProgram> loadShaderProgram(gsl::span<ShaderSpecification> specifications);
+   SPtr<ShaderProgram> loadShaderProgram(std::vector<ShaderSpecification> specifications);
 
    void reloadShaders();
 
 private:
-   std::unordered_map<ShaderSpecification, WPtr<Shader>> shaderMap;
-   std::unordered_map<gsl::span<ShaderSpecification>, WPtr<ShaderProgram>> shaderProgramMap;
+   ShaderSourceMap shaderSourceMap;
+   ShaderMap shaderMap;
+   ShaderPrograMap shaderProgramMap;
 
 #if SWAP_DEBUG
-   std::unordered_map<Shader*, ShaderSpecification> inverseShaderMap;
+   InverseShaderMap inverseShaderMap;
 #endif // SWAP_DEBUG
 
    SPtr<Shader> defaultVertexShader;

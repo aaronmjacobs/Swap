@@ -5,6 +5,7 @@
 #include "Graphics/ShaderProgram.h"
 #include "Platform/IOUtils.h"
 
+#include <algorithm>
 #include <unordered_set>
 
 #if SWAP_DEBUG
@@ -30,7 +31,8 @@ namespace
       }
    }
 
-   bool findInclude(const std::string& source, std::size_t& includeStartPos, std::size_t& includeEndPos, std::size_t& pathStartPos, std::size_t& pathEndPos)
+   bool findInclude(const std::string& source, std::size_t& includeStartPos, std::size_t& includeEndPos,
+      std::size_t& pathStartPos, std::size_t& pathEndPos)
    {
       includeStartPos = includeEndPos = pathStartPos = pathEndPos = std::string::npos;
 
@@ -59,14 +61,29 @@ namespace
       return true;
    }
 
-   bool loadShaderSource(const std::string& path, const ShaderDefinitions& definitions, std::string& source, std::unordered_set<std::string>& loadedFilePaths)
+   bool loadShaderSourceRecursive(const std::string& path, std::string& source, ShaderSourceMap& shaderSourceMap,
+      bool forceLoadFromDisk, std::unordered_set<std::string>& loadedFilePaths)
    {
-      // Prevent files from being included multiple times
+      // Prevent circular inclusion
       if (loadedFilePaths.count(path))
       {
          return false;
       }
       loadedFilePaths.insert(path);
+
+      if (forceLoadFromDisk)
+      {
+         shaderSourceMap.erase(path);
+      }
+      else
+      {
+         auto loadedLocation = shaderSourceMap.find(path);
+         if (loadedLocation != shaderSourceMap.end())
+         {
+            source = loadedLocation->second;
+            return true;
+         }
+      }
 
       if (!IOUtils::readTextFile(path, source))
       {
@@ -84,11 +101,10 @@ namespace
       while (findInclude(source, includeStartPos, includeEndPos, pathStartPos, pathEndPos))
       {
          std::string includePath = directory + '/' + source.substr(pathStartPos, (pathEndPos - pathStartPos) + 1);
-
          source.erase(includeStartPos, (includeEndPos - includeStartPos) + 1);
 
          std::string includeSource;
-         if (loadShaderSource(includePath, definitions, includeSource, loadedFilePaths))
+         if (loadShaderSourceRecursive(includePath, includeSource, shaderSourceMap, forceLoadFromDisk, loadedFilePaths))
          {
             source.insert(includeStartPos, includeSource);
          }
@@ -107,29 +123,38 @@ namespace
          source.erase(versionPos, (endOfLinePos - versionPos) + 1);
       }
 
-      // Replace all defined values
-      for (const auto& pair : definitions)
-      {
-         replaceAll(source, pair.first, pair.second);
-      }
-
+      shaderSourceMap.emplace(path, source);
       return true;
    }
 
-   bool loadShaderSource(const std::string& path, const ShaderDefinitions& definitions, std::string& source)
+   bool loadShaderSource(const std::string& path, const ShaderDefinitions& definitions, std::string& source,
+      ShaderSourceMap& shaderSourceMap, bool forceLoadFromDisk)
    {
       std::unordered_set<std::string> loadedFilePaths;
-      return loadShaderSource(path, definitions, source, loadedFilePaths);
+      if (loadShaderSourceRecursive(path, source, shaderSourceMap, forceLoadFromDisk, loadedFilePaths))
+      {
+         // Replace all defined values
+         for (const auto& pair : definitions)
+         {
+            replaceAll(source, pair.first, pair.second);
+         }
+
+         return true;
+      }
+
+      return false;
    }
 
-   bool loadAndCompileSource(Shader& shader, const ShaderSpecification& specification)
+#if SWAP_DEBUG
+   bool loadAndCompileSource(Shader& shader, const ShaderSpecification& specification, ShaderSourceMap& shaderSourceMap,
+      bool forceLoadFromDisk)
    {
       bool giveUp = false;
-
       while (!giveUp)
       {
          std::string source;
-         if (loadShaderSource(specification.path, specification.definitions, source))
+         if (loadShaderSource(specification.path, specification.definitions, source, shaderSourceMap,
+            forceLoadFromDisk))
          {
             if (shader.compile(source.c_str()))
             {
@@ -137,7 +162,6 @@ namespace
             }
             else
             {
-#if SWAP_DEBUG
                std::stringstream sstream;
                sstream << "Failed to compile " << shader.getTypeName() << " shader, try again?\n\n"
                   << specification.path << "\n\n" << shader.getInfoLog();
@@ -145,28 +169,25 @@ namespace
                boxer::Selection selection = boxer::show(sstream.str().c_str(), "Shader Compilation Failure",
                   boxer::Style::Question, boxer::Buttons::YesNo);
                giveUp = selection != boxer::Selection::Yes;
-#else
-               giveUp = true;
-#endif // SWAP_DEBUG
 
                if (giveUp)
                {
                   LOG_ERROR("Unable to compile shader: " << specification.path);
                }
+               else
+               {
+                  forceLoadFromDisk = true;
+               }
             }
          }
          else
          {
-#if SWAP_DEBUG
             std::stringstream sstream;
             sstream << "Failed to load shader from file, try again?\n\n" << specification.path;
 
             boxer::Selection selection = boxer::show(sstream.str().c_str(), "Shader Load Failure",
                boxer::Style::Question, boxer::Buttons::YesNo);
             giveUp = selection != boxer::Selection::Yes;
-#else
-            giveUp = true;
-#endif // SWAP_DEBUG
 
             if (giveUp)
             {
@@ -177,16 +198,25 @@ namespace
 
       return false;
    }
+#else // SWAP_DEBUG
+   bool loadAndCompileSource(Shader& shader, const ShaderSpecification& specification, ShaderSourceMap& shaderSourceMap,
+      bool forceLoadFromDisk)
+   {
+      std::string source;
+      if (loadShaderSource(specification.path, specification.definitions, source, shaderSourceMap, forceLoadFromDisk))
+      {
+         return shader.compile(source.c_str());
+      }
+
+      return false;
+   }
+#endif // SWAP_DEBUG
 
 #if SWAP_DEBUG
-   bool linkProgram(ShaderProgram& shaderProgram,
-      const std::unordered_map<Shader*, ShaderSpecification>& inverseShaderMap)
-#else
-   bool linkProgram(ShaderProgram& shaderProgram)
-#endif // SWAP_DEBUG
+   bool linkProgram(ShaderProgram& shaderProgram, ShaderSourceMap& shaderSourceMap,
+      const InverseShaderMap& inverseShaderMap)
    {
       bool giveUp = false;
-
       while (!giveUp)
       {
          if (shaderProgram.link())
@@ -195,11 +225,10 @@ namespace
          }
          else
          {
-#if SWAP_DEBUG
-            const std::vector<SPtr<Shader>>& attachedShaders = shaderProgram.getAttachedShaders();
-
             std::stringstream sstream;
             sstream << "Failed to link shader program, try again?";
+
+            const std::vector<SPtr<Shader>>& attachedShaders = shaderProgram.getAttachedShaders();
             for (const SPtr<Shader>& shader : attachedShaders)
             {
                auto location = inverseShaderMap.find(shader.get());
@@ -222,20 +251,13 @@ namespace
                   if (location != inverseShaderMap.end())
                   {
                      const ShaderSpecification& specification = location->second;
-                     loadAndCompileSource(*shader, specification);
+                     loadAndCompileSource(*shader, specification, shaderSourceMap, true);
                   }
                }
             }
             else
             {
                giveUp = true;
-            }
-#else
-            giveUp = true;
-#endif // SWAP_DEBUG
-
-            if (giveUp)
-            {
                LOG_ERROR("Unable to link shader program: " << shaderProgram.getId());
             }
          }
@@ -243,6 +265,12 @@ namespace
 
       return false;
    }
+#else // SWAP_DEBUG
+   bool linkProgram(ShaderProgram& shaderProgram)
+   {
+      return shaderProgram.link();
+   }
+#endif // SWAP_DEBUG
 }
 
 namespace std
@@ -277,7 +305,7 @@ SPtr<Shader> ShaderLoader::loadShader(const ShaderSpecification& specification)
    }
 
    SPtr<Shader> shader(new Shader(specification.type));
-   loadAndCompileSource(*shader, specification);
+   loadAndCompileSource(*shader, specification, shaderSourceMap, false);
 
    shaderMap.emplace(specification, WPtr<Shader>(shader));
 
@@ -288,8 +316,15 @@ SPtr<Shader> ShaderLoader::loadShader(const ShaderSpecification& specification)
    return shader;
 }
 
-SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(gsl::span<ShaderSpecification> specifications)
+SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(std::vector<ShaderSpecification> specifications)
 {
+   // Sort the specifications by their shader type so that hash map lookups are consistent
+   std::sort(specifications.begin(), specifications.end(),
+      [](const ShaderSpecification& first, const ShaderSpecification& second) -> bool
+   {
+      return first.type < second.type;
+   });
+
    auto location = shaderProgramMap.find(specifications);
    if (location != shaderProgramMap.end())
    {
@@ -311,17 +346,20 @@ SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(gsl::span<ShaderSpecificatio
    }
 
 #if SWAP_DEBUG
-   linkProgram(*shaderProgram, inverseShaderMap);
-#else
+   linkProgram(*shaderProgram, shaderSourceMap, inverseShaderMap);
+#else // SWAP_DEBUG
    linkProgram(*shaderProgram);
 #endif // SWAP_DEBUG
 
-   shaderProgramMap.emplace(specifications, WPtr<ShaderProgram>(shaderProgram));
+   shaderProgramMap.emplace(std::move(specifications), WPtr<ShaderProgram>(shaderProgram));
    return shaderProgram;
 }
 
 void ShaderLoader::reloadShaders()
 {
+   // Clear the cached source to force loading from disk
+   shaderSourceMap.clear();
+
    // Recompile each shader
    for (const auto& pair : shaderMap)
    {
@@ -329,7 +367,7 @@ void ShaderLoader::reloadShaders()
       if (shader)
       {
          const ShaderSpecification& specification = pair.first;
-         loadAndCompileSource(*shader, specification);
+         loadAndCompileSource(*shader, specification, shaderSourceMap, false);
       }
    }
 
@@ -340,8 +378,8 @@ void ShaderLoader::reloadShaders()
       if (shaderProgram)
       {
 #if SWAP_DEBUG
-         linkProgram(*shaderProgram, inverseShaderMap);
-#else
+         linkProgram(*shaderProgram, shaderSourceMap, inverseShaderMap);
+#else // SWAP_DEBUG
          linkProgram(*shaderProgram);
 #endif // SWAP_DEBUG
       }
