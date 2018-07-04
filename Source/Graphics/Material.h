@@ -30,6 +30,9 @@ public:
       }
    }
 
+   bool isParameterEnabled(const std::string& name) const;
+   void setParameterEnabled(const std::string& name, bool enabled);
+
    ShaderProgram& getShaderProgram()
    {
       ASSERT(shaderProgram);

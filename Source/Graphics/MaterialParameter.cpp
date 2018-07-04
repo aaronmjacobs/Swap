@@ -12,7 +12,10 @@ void MaterialParameterBase::typeError(const char* dataTypeName)
 #define DEFINE_MATERIAL_PARAM_TYPE(uniform_type, data_type, param_type)\
 void uniform_type##MaterialParameter::commit(Material& owningMaterial)\
 {\
-   owningMaterial.getShaderProgram().setUniformValue(name, value);\
+   if (enabled)\
+   {\
+      owningMaterial.getShaderProgram().setUniformValue(name, value);\
+   }\
 }\
 
 #define FOR_EACH_UNIFORM_TYPE DEFINE_MATERIAL_PARAM_TYPE
@@ -25,7 +28,7 @@ void uniform_type##MaterialParameter::commit(Material& owningMaterial)\
 
 void TextureMaterialParameter::commit(Material& owningMaterial)
 {
-   if (value)
+   if (enabled && value)
    {
       GLint textureUnit = owningMaterial.consumeTextureUnit();
       owningMaterial.getShaderProgram().setUniformValue(name, textureUnit);

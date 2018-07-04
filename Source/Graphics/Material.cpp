@@ -53,3 +53,30 @@ void Material::commit()
 
    shaderProgram->commit();
 }
+
+bool Material::isParameterEnabled(const std::string& name) const
+{
+   auto location = parameters.find(name);
+   if (location != parameters.end())
+   {
+      return location->second->isEnabled();
+   }
+   else
+   {
+      ASSERT(false, "Material parameter with given name doesn't exist: %s", name.c_str());
+      return false;
+   }
+}
+
+void Material::setParameterEnabled(const std::string& name, bool enabled)
+{
+   auto location = parameters.find(name);
+   if (location != parameters.end())
+   {
+      location->second->setEnabled(enabled);
+   }
+   else
+   {
+      ASSERT(false, "Material parameter with given name doesn't exist: %s", name.c_str());
+   }
+}

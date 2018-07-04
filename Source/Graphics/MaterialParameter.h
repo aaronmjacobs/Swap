@@ -15,7 +15,18 @@ class MaterialParameterBase
 public:
    MaterialParameterBase(const std::string& paramName)
       : name(paramName)
+      , enabled(true)
    {
+   }
+
+   bool isEnabled() const
+   {
+      return enabled;
+   }
+
+   void setEnabled(bool newEnabled)
+   {
+      enabled = newEnabled;
    }
 
    virtual void commit(Material& owningMaterial) = 0;
@@ -34,6 +45,7 @@ protected:
    virtual const char* getDataTypeName() const = 0;
 
    const std::string name;
+   bool enabled;
 
 private:
    void typeError(const char* dataTypeName);
