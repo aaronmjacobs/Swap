@@ -3,6 +3,7 @@
 #include <gsl/span>
 
 #include <utility>
+#include <vector>
 
 namespace Hash
 {
@@ -29,6 +30,15 @@ namespace std
          }
 
          return seed;
+      }
+   };
+
+   template<typename T>
+   struct hash<std::vector<T>>
+   {
+      std::size_t operator()(const std::vector<T>& values) const
+      {
+         return hash<gsl::span<const T>>()(values);
       }
    };
 }
