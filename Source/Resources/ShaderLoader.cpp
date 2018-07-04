@@ -1,6 +1,5 @@
 #include "Resources/ShaderLoader.h"
 
-#include "Core/Assert.h"
 #include "Core/Log.h"
 #include "Graphics/ShaderProgram.h"
 #include "Platform/IOUtils.h"
@@ -61,7 +60,7 @@ namespace
       return true;
    }
 
-   bool loadShaderSourceRecursive(const std::string& path, std::string& source, ShaderSourceMap& shaderSourceMap,
+   bool loadSourceRecursive(const std::string& path, std::string& source, ShaderSourceMap& shaderSourceMap,
       bool forceLoadFromDisk, std::unordered_set<std::string>& loadedFilePaths)
    {
       // Prevent circular inclusion
@@ -104,7 +103,7 @@ namespace
          source.erase(includeStartPos, (includeEndPos - includeStartPos) + 1);
 
          std::string includeSource;
-         if (loadShaderSourceRecursive(includePath, includeSource, shaderSourceMap, forceLoadFromDisk, loadedFilePaths))
+         if (loadSourceRecursive(includePath, includeSource, shaderSourceMap, forceLoadFromDisk, loadedFilePaths))
          {
             source.insert(includeStartPos, includeSource);
          }
@@ -127,11 +126,11 @@ namespace
       return true;
    }
 
-   bool loadShaderSource(const std::string& path, const ShaderDefinitions& definitions, std::string& source,
+   bool loadSource(const std::string& path, const ShaderDefinitions& definitions, std::string& source,
       ShaderSourceMap& shaderSourceMap, bool forceLoadFromDisk)
    {
       std::unordered_set<std::string> loadedFilePaths;
-      if (loadShaderSourceRecursive(path, source, shaderSourceMap, forceLoadFromDisk, loadedFilePaths))
+      if (loadSourceRecursive(path, source, shaderSourceMap, forceLoadFromDisk, loadedFilePaths))
       {
          // Replace all defined values
          for (const auto& pair : definitions)
@@ -153,8 +152,7 @@ namespace
       while (!giveUp)
       {
          std::string source;
-         if (loadShaderSource(specification.path, specification.definitions, source, shaderSourceMap,
-            forceLoadFromDisk))
+         if (loadSource(specification.path, specification.definitions, source, shaderSourceMap, forceLoadFromDisk))
          {
             if (shader.compile(source.c_str()))
             {
@@ -203,7 +201,7 @@ namespace
       bool forceLoadFromDisk)
    {
       std::string source;
-      if (loadShaderSource(specification.path, specification.definitions, source, shaderSourceMap, forceLoadFromDisk))
+      if (loadSource(specification.path, specification.definitions, source, shaderSourceMap, forceLoadFromDisk))
       {
          return shader.compile(source.c_str());
       }
