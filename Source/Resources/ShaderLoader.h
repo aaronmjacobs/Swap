@@ -58,9 +58,4 @@ private:
 #if SWAP_DEBUG
    InverseShaderMap inverseShaderMap;
 #endif // SWAP_DEBUG
-
-   SPtr<Shader> defaultVertexShader;
-   SPtr<Shader> defaultGeometryShader;
-   SPtr<Shader> defaultFragmentShader;
-   SPtr<ShaderProgram> defaultShaderProgram;
 };
