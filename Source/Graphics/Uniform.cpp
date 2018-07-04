@@ -20,8 +20,8 @@ void Uniform::commit()
    }
 }
 
-bool Uniform::typeError(const char* typeName)
+bool Uniform::typeError(const char* dataTypeName)
 {
-   ASSERT(false, "Trying to set uniform \"%s\" with invalid type (%s, should be %s)", name.c_str(), typeName, getTypeName());
+   ASSERT(false, "Trying to set %s uniform \"%s\" with invalid data type (%s, should be %s)", getUniformTypeName(), name.c_str(), dataTypeName, getDataTypeName());
    return false;
 }

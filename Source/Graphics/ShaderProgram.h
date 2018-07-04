@@ -41,11 +41,10 @@ public:
    template<typename T>
    void setUniformValue(const std::string& name, const T& value)
    {
-      auto itr = uniforms.find(name);
-
-      if (itr != uniforms.end())
+      auto location = uniforms.find(name);
+      if (location != uniforms.end())
       {
-         itr->second->setValue(value);
+         location->second->setValue(value);
       }
       else
       {
@@ -56,6 +55,11 @@ public:
    GLuint getId() const
    {
       return id;
+   }
+
+   const UniformMap& getUniforms() const
+   {
+      return uniforms;
    }
 
 #if SWAP_DEBUG
