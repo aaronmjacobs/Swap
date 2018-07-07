@@ -49,6 +49,7 @@ public:
    SPtr<ShaderProgram> loadShaderProgram(std::vector<ShaderSpecification> specifications);
 
    void reloadShaders();
+   void clearCachedData();
 
 private:
    ShaderSourceMap shaderSourceMap;

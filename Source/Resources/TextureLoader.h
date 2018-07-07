@@ -20,6 +20,8 @@ public:
    SPtr<Texture> loadCubemap(const std::array<std::string, 6>& paths, Tex::Wrap wrap = Tex::Wrap::Repeat,
       Tex::MinFilter minFilter = Tex::MinFilter::NearestMipmapLinear, Tex::MagFilter magFilter = Tex::MagFilter::Linear);
 
+   void clearCachedData();
+
 private:
    std::unordered_map<std::string, WPtr<Texture>> textureMap;
    std::unordered_map<std::string, WPtr<Texture>> cubemapMap;

@@ -383,3 +383,14 @@ void ShaderLoader::reloadShaders()
       }
    }
 }
+
+void ShaderLoader::clearCachedData()
+{
+   shaderSourceMap.clear();
+   shaderMap.clear();
+   shaderProgramMap.clear();
+
+#if SWAP_DEBUG
+   inverseShaderMap.clear();
+#endif // SWAP_DEBUG
+}

@@ -161,8 +161,8 @@ namespace
    }
 }
 
-SPtr<Texture> TextureLoader::loadTexture(const std::string& path, Tex::Wrap wrap /*= Tex::Wrap::ClampToBorder*/,
-   Tex::MinFilter minFilter /*= Tex::MinFilter::LinearMipmapLinear*/,
+SPtr<Texture> TextureLoader::loadTexture(const std::string& path, Tex::Wrap wrap /*= Tex::Wrap::Repeat*/,
+   Tex::MinFilter minFilter /*= Tex::MinFilter::NearestMipmapLinear*/,
    Tex::MagFilter magFilter /*= Tex::MagFilter::Linear*/)
 {
    auto location = textureMap.find(path);
@@ -188,7 +188,7 @@ SPtr<Texture> TextureLoader::loadTexture(const std::string& path, Tex::Wrap wrap
 }
 
 SPtr<Texture> TextureLoader::loadCubemap(const std::array<std::string, 6>& paths,
-   Tex::Wrap wrap /*= Tex::Wrap::ClampToEdge*/, Tex::MinFilter minFilter /*= Tex::MinFilter::LinearMipmapLinear*/,
+   Tex::Wrap wrap /*= Tex::Wrap::Repeat*/, Tex::MinFilter minFilter /*= Tex::MinFilter::NearestMipmapLinear*/,
    Tex::MagFilter magFilter /*= Tex::MagFilter::Linear*/)
 {
    auto location = cubemapMap.find(paths[0]);
@@ -233,4 +233,10 @@ SPtr<Texture> TextureLoader::loadCubemap(const std::array<std::string, 6>& paths
 
    cubemapMap.emplace(paths[0], WPtr<Texture>(cubemap));
    return cubemap;
+}
+
+void TextureLoader::clearCachedData()
+{
+   textureMap.clear();
+   cubemapMap.clear();
 }
