@@ -1,7 +1,27 @@
 #pragma once
 
+#include "Graphics/BufferObject.h"
+
 #include <glad/glad.h>
 #include <gsl/span>
+
+template<typename T>
+struct MeshAttributeData
+{
+   gsl::span<T> values;
+   GLint valueSize = 0;
+};
+
+struct MeshData
+{
+   gsl::span<GLuint> indices;
+   MeshAttributeData<GLfloat> positions;
+   MeshAttributeData<GLfloat> normals;
+   MeshAttributeData<GLfloat> texCoords;
+   MeshAttributeData<GLfloat> tangents;
+   MeshAttributeData<GLfloat> bitangents;
+   MeshAttributeData<GLfloat> colors;
+};
 
 class Mesh
 {
@@ -18,19 +38,22 @@ private:
    void release();
 
 public:
-   void setData(gsl::span<GLuint> indices, gsl::span<GLfloat> vertices, gsl::span<GLfloat> normals = {}, gsl::span<GLfloat> texCoords = {}, int dimensionality = 3);
-
-   void bind();
+   void setData(const MeshData& data);
    void draw();
 
 private:
-   void assertBound() const;
+   void bind();
+   void unbind();
 
    GLuint vertexArrayObject;
-   GLuint elementBufferObject;
-   GLuint positionBufferObject;
-   GLuint normalBufferObject;
-   GLuint texCoordBufferObject;
+
+   BufferObject elementBufferObject;
+   VertexBufferObject positionBufferObject;
+   VertexBufferObject normalBufferObject;
+   VertexBufferObject texCoordBufferObject;
+   VertexBufferObject tangentBufferObject;
+   VertexBufferObject bitangentBufferObject;
+   VertexBufferObject colorBufferObject;
 
    GLsizei numIndices;
 };

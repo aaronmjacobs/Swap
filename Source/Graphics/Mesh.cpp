@@ -4,35 +4,21 @@
 
 #include <utility>
 
-namespace
-{
-   namespace Attribute
-   {
-      enum Enum
-      {
-         Vertex = 0,
-         Normal = 1,
-         TexCoord = 2,
-      };
-   }
-}
-
 Mesh::Mesh()
    : vertexArrayObject(0)
-   , elementBufferObject(0)
-   , positionBufferObject(0)
-   , normalBufferObject(0)
-   , texCoordBufferObject(0)
+   , positionBufferObject(VertexAttribute::Position)
+   , normalBufferObject(VertexAttribute::Normal)
+   , texCoordBufferObject(VertexAttribute::TexCoord)
+   , tangentBufferObject(VertexAttribute::Tangent)
+   , bitangentBufferObject(VertexAttribute::Bitangent)
+   , colorBufferObject(VertexAttribute::Color)
    , numIndices(0)
 {
    glGenVertexArrays(1, &vertexArrayObject);
-   glGenBuffers(1, &elementBufferObject);
-   glGenBuffers(1, &positionBufferObject);
-   glGenBuffers(1, &normalBufferObject);
-   glGenBuffers(1, &texCoordBufferObject);
 }
 
 Mesh::Mesh(Mesh&& other)
+   : Mesh()
 {
    move(std::move(other));
 }
@@ -54,17 +40,13 @@ void Mesh::move(Mesh&& other)
    vertexArrayObject = other.vertexArrayObject;
    other.vertexArrayObject = 0;
 
-   elementBufferObject = other.elementBufferObject;
-   other.elementBufferObject = 0;
-
-   positionBufferObject = other.positionBufferObject;
-   other.positionBufferObject = 0;
-
-   normalBufferObject = other.normalBufferObject;
-   other.normalBufferObject = 0;
-
-   texCoordBufferObject = other.texCoordBufferObject;
-   other.texCoordBufferObject = 0;
+   elementBufferObject = std::move(other.elementBufferObject);
+   positionBufferObject = std::move(other.positionBufferObject);
+   normalBufferObject = std::move(other.normalBufferObject);
+   texCoordBufferObject = std::move(other.texCoordBufferObject);
+   tangentBufferObject = std::move(other.tangentBufferObject);
+   bitangentBufferObject = std::move(other.bitangentBufferObject);
+   colorBufferObject = std::move(other.colorBufferObject);
 
    numIndices = other.numIndices;
    other.numIndices = 0;
@@ -72,19 +54,13 @@ void Mesh::move(Mesh&& other)
 
 void Mesh::release()
 {
-   static const auto releaseBuffer = [](GLuint& buffer)
-   {
-      if (buffer != 0)
-      {
-         glDeleteBuffers(1, &buffer);
-         buffer = 0;
-      }
-   };
-
-   releaseBuffer(elementBufferObject);
-   releaseBuffer(positionBufferObject);
-   releaseBuffer(normalBufferObject);
-   releaseBuffer(texCoordBufferObject);
+   elementBufferObject.release();
+   positionBufferObject.release();
+   normalBufferObject.release();
+   texCoordBufferObject.release();
+   tangentBufferObject.release();
+   bitangentBufferObject.release();
+   colorBufferObject.release();
 
    if (vertexArrayObject != 0)
    {
@@ -95,76 +71,67 @@ void Mesh::release()
    numIndices = 0;
 }
 
-void Mesh::setData(gsl::span<GLuint> indices, gsl::span<GLfloat> vertices, gsl::span<GLfloat> normals/* = {}*/, gsl::span<GLfloat> texCoords/* = {}*/, int dimensionality/* = 3*/)
+void Mesh::setData(const MeshData& data)
 {
-   ASSERT(indices.size() % 3 == 0);
-   ASSERT(dimensionality > 0 && dimensionality < 5);
-   ASSERT((vertices.size() % dimensionality == 0) && (normals.size() % dimensionality == 0) && (texCoords.size() % 2 == 0));
-   assertBound();
+   ASSERT(data.indices.size() % 3 == 0);
+   ASSERT(data.positions.valueSize >= 0 && data.positions.valueSize < 5
+      && data.normals.valueSize >= 0 && data.normals.valueSize < 5
+      && data.texCoords.valueSize >= 0 && data.texCoords.valueSize < 5
+      && data.tangents.valueSize >= 0 && data.tangents.valueSize < 5
+      && data.bitangents.valueSize >= 0 && data.bitangents.valueSize < 5
+      && data.colors.valueSize >= 0 && data.colors.valueSize < 5);
+   ASSERT(data.positions.values.size() == 0 || (data.positions.values.size() % data.positions.valueSize == 0)
+      && data.normals.values.size() == 0 || (data.normals.values.size() % data.normals.valueSize == 0)
+      && data.texCoords.values.size() == 0 || (data.texCoords.values.size() % data.texCoords.valueSize == 0)
+      && data.tangents.values.size() == 0 || (data.tangents.values.size() % data.tangents.valueSize == 0)
+      && data.bitangents.values.size() == 0 || (data.bitangents.values.size() % data.bitangents.valueSize == 0)
+      && data.colors.values.size() == 0 || (data.colors.values.size() % data.colors.valueSize == 0));
 
-   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
-   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size_bytes(), indices.data(), GL_STATIC_DRAW);
+   bind();
 
-   glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-   glBufferData(GL_ARRAY_BUFFER, vertices.size_bytes(), vertices.data(), GL_STATIC_DRAW);
-   glVertexAttribPointer(Attribute::Vertex, dimensionality, GL_FLOAT, GL_FALSE, 0, 0);
-   if (vertices.empty())
-   {
-      glDisableVertexAttribArray(Attribute::Vertex);
-   }
-   else
-   {
-      glEnableVertexAttribArray(Attribute::Vertex);
-   }
+   elementBufferObject.setData(BufferBindingTarget::ElementArray, data.indices.size_bytes(), data.indices.data(),
+      BufferUsage::StaticDraw);
 
-   glBindBuffer(GL_ARRAY_BUFFER, normalBufferObject);
-   glBufferData(GL_ARRAY_BUFFER, normals.size_bytes(), normals.data(), GL_STATIC_DRAW);
-   glVertexAttribPointer(Attribute::Normal, dimensionality, GL_FLOAT, GL_FALSE, 0, 0);
-   if (normals.empty())
-   {
-      glDisableVertexAttribArray(Attribute::Normal);
-   }
-   else
-   {
-      glEnableVertexAttribArray(Attribute::Normal);
-   }
+   positionBufferObject.setData(data.positions.values.size_bytes(), data.positions.values.data(),
+      BufferUsage::StaticDraw, data.positions.valueSize);
 
-   glBindBuffer(GL_ARRAY_BUFFER, texCoordBufferObject);
-   glBufferData(GL_ARRAY_BUFFER, texCoords.size_bytes(), texCoords.data(), GL_STATIC_DRAW);
-   glVertexAttribPointer(Attribute::TexCoord, 2, GL_FLOAT, GL_FALSE, 0, 0);
-   if (texCoords.empty())
-   {
-      glDisableVertexAttribArray(Attribute::TexCoord);
-   }
-   else
-   {
-      glEnableVertexAttribArray(Attribute::TexCoord);
-   }
+   normalBufferObject.setData(data.normals.values.size_bytes(), data.normals.values.data(), BufferUsage::StaticDraw,
+      data.normals.valueSize);
 
-   numIndices = static_cast<GLsizei>(indices.size());
-}
+   texCoordBufferObject.setData(data.texCoords.values.size_bytes(), data.texCoords.values.data(),
+      BufferUsage::StaticDraw, data.texCoords.valueSize);
 
-void Mesh::bind()
-{
-   glBindVertexArray(vertexArrayObject);
+   tangentBufferObject.setData(data.tangents.values.size_bytes(), data.tangents.values.data(), BufferUsage::StaticDraw,
+      data.tangents.valueSize);
+
+   bitangentBufferObject.setData(data.bitangents.values.size_bytes(), data.bitangents.values.data(),
+      BufferUsage::StaticDraw, data.bitangents.valueSize);
+
+   colorBufferObject.setData(data.colors.values.size_bytes(), data.colors.values.data(), BufferUsage::StaticDraw,
+      data.colors.valueSize);
+
+   unbind();
+
+   numIndices = static_cast<GLsizei>(data.indices.size());
 }
 
 void Mesh::draw()
 {
    ASSERT(numIndices > 0);
-   assertBound();
 
+   bind();
    glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+   unbind();
 }
 
-void Mesh::assertBound() const
+void Mesh::bind()
 {
-#if SWAP_DEBUG
    ASSERT(vertexArrayObject != 0);
 
-   GLint vertexArrayBinding = 0;
-   glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vertexArrayBinding);
+   glBindVertexArray(vertexArrayObject);
+}
 
-   ASSERT(static_cast<GLuint>(vertexArrayBinding) == vertexArrayObject);
-#endif // SWAP_DEBUG
+void Mesh::unbind()
+{
+   glBindVertexArray(0);
 }
