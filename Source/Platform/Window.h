@@ -10,6 +10,7 @@ class Window
 public:
    using FramebufferSizeChangedDelegate = Delegate<void, int, int>;
    using WindowRefreshRequestedDelegate = Delegate<void, Window&>;
+   using WindowFocusDelegate = Delegate<void, bool>;
 
    static UPtr<Window> create(int width, int height, const char* title);
 
@@ -25,7 +26,7 @@ public:
 
    FramebufferSizeChangedDelegate onFramebufferSizeChanged;
    WindowRefreshRequestedDelegate onWindowRefreshRequested;
-
+   WindowFocusDelegate onWindowFocusChanged;
 private:
    GLFWwindow* glfwWindow;
 };

@@ -11,7 +11,10 @@ namespace
       Window *window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
       ASSERT(window);
 
-      window->onFramebufferSizeChanged.execute(width, height);
+      if (window->onFramebufferSizeChanged.isBound())
+      {
+         window->onFramebufferSizeChanged.execute(width, height);
+      }
    }
 
    void windowRefreshCallback(GLFWwindow* glfwWindow)
@@ -19,7 +22,21 @@ namespace
       Window *window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
       ASSERT(window);
 
-      window->onWindowRefreshRequested.execute(*window);
+      if (window->onWindowRefreshRequested.isBound())
+      {
+         window->onWindowRefreshRequested.execute(*window);
+      }
+   }
+
+   void windowFocusCallback(GLFWwindow* glfwWindow, int focused)
+   {
+      Window *window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+      ASSERT(window);
+
+      if (window->onWindowFocusChanged.isBound())
+      {
+         window->onWindowFocusChanged.execute(focused == GLFW_TRUE);
+      }
    }
 }
 
@@ -45,6 +62,7 @@ Window::Window(GLFWwindow* internalWindow)
    glfwSetWindowUserPointer(glfwWindow, this);
    glfwSetFramebufferSizeCallback(glfwWindow, framebufferSizeCallback);
    glfwSetWindowRefreshCallback(glfwWindow, windowRefreshCallback);
+   glfwSetWindowFocusCallback(glfwWindow, windowFocusCallback);
 }
 
 Window::~Window()
