@@ -40,6 +40,8 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Resources/DefaultImageSource.h"
    "${SRC_DIR}/Resources/ModelLoader.h"
    "${SRC_DIR}/Resources/ModelLoader.cpp"
+   "${SRC_DIR}/Resources/ResourceManager.h"
+   "${SRC_DIR}/Resources/ResourceManager.cpp"
    "${SRC_DIR}/Resources/ShaderLoader.h"
    "${SRC_DIR}/Resources/ShaderLoader.cpp"
    "${SRC_DIR}/Resources/TextureLoader.h"
