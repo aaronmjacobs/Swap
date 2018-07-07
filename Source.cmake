@@ -8,6 +8,8 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Core/Log.h"
    "${SRC_DIR}/Core/Pointers.h"
 
+   "${SRC_DIR}/Graphics/BufferObject.h"
+   "${SRC_DIR}/Graphics/BufferObject.cpp"
    "${SRC_DIR}/Graphics/ForEachUniformType.inl"
    "${SRC_DIR}/Graphics/Material.h"
    "${SRC_DIR}/Graphics/Material.cpp"
