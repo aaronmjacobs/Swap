@@ -114,7 +114,7 @@ public:
       return !delegates.empty();
    }
 
-   void execute(Params... params)
+   void broadcast(Params... params)
    {
       for (DelegateType& delegate : delegates)
       {
@@ -122,7 +122,7 @@ public:
       }
    }
 
-   std::vector<ReturnType> executeWithReturn(Params... params)
+   std::vector<ReturnType> broadcastWithReturn(Params... params)
    {
       std::vector<ReturnType> returnValues(delegates.size());
 
