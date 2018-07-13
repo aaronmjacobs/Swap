@@ -57,15 +57,15 @@ namespace
       SPtr<ShaderProgram> shaderProgram = shaderLoader.loadShaderProgram(localSpecifications);
       Material material(shaderProgram);
 
-      if (diffuseTexture)
+      if (diffuseTexture && material.hasParameter("uDiffuseTexture"))
       {
          material.setParameter("uDiffuseTexture", diffuseTexture);
       }
-      if (normalTexture)
+      if (normalTexture && material.hasParameter("uNormalTexture"))
       {
          material.setParameter("uNormalTexture", normalTexture);
       }
-      if (specularTexture)
+      if (specularTexture && material.hasParameter("uSpecularTexture"))
       {
          material.setParameter("uSpecularTexture", specularTexture);
       }
