@@ -48,8 +48,11 @@ public:
    SPtr<Shader> loadShader(const ShaderSpecification& specification);
    SPtr<ShaderProgram> loadShaderProgram(std::vector<ShaderSpecification> specifications);
 
-   void reloadShaders();
    void clearCachedData();
+
+#if SWAP_DEBUG
+   void reloadShaders();
+#endif // SWAP_DEBUG
 
 private:
    ShaderSourceMap shaderSourceMap;

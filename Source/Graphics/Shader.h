@@ -51,4 +51,5 @@ public:
 private:
    GLuint id;
    ShaderType type;
+   bool compiled;
 };

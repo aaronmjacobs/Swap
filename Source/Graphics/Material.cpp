@@ -32,18 +32,60 @@ Material::Material(const SPtr<ShaderProgram>& program)
 {
    ASSERT(shaderProgram);
 
-   for (const auto& pair : shaderProgram->getUniforms())
+   generateParameters();
+#if SWAP_DEBUG
+   bindOnLinkDelegate();
+#endif // SWAP_DEBUG
+}
+
+Material::Material(Material&& other)
+{
+   move(std::move(other));
+}
+
+Material::~Material()
+{
+   release();
+}
+
+Material& Material::operator=(Material&& other)
+{
+   release();
+   move(std::move(other));
+   return *this;
+}
+
+void Material::move(Material&& other)
+{
+   other.release();
+
+   parameters = std::move(other.parameters);
+   shaderProgram = std::move(other.shaderProgram);
+   textureUnitCounter = other.textureUnitCounter;
+   other.textureUnitCounter = 0;
+
+#if SWAP_DEBUG
+   bindOnLinkDelegate();
+#endif // SWAP_DEBUG
+}
+
+void Material::release()
+{
+#if SWAP_DEBUG
+   if (onLinkDelegateHandle.isValid())
    {
-      UPtr<MaterialParameterBase> parameter = createParameter(pair.first, pair.second->getType());
-      if (parameter)
-      {
-         parameters.emplace(pair.first, std::move(parameter));
-      }
+      ASSERT(shaderProgram);
+
+      shaderProgram->removeOnLinkDelegate(onLinkDelegateHandle);
+      onLinkDelegateHandle.invalidate();
    }
+#endif // SWAP_DEBUG
 }
 
 void Material::commit()
 {
+   ASSERT(shaderProgram);
+
    textureUnitCounter = 0;
 
    for (auto& pair : parameters)
@@ -80,3 +122,64 @@ void Material::setParameterEnabled(const std::string& name, bool enabled)
       ASSERT(false, "Material parameter with given name doesn't exist: %s", name.c_str());
    }
 }
+
+#if SWAP_DEBUG
+void Material::generateParameters()
+{
+   ASSERT(shaderProgram);
+
+   const ShaderProgram::UniformMap& uniforms = shaderProgram->getUniforms();
+
+   // Clear parameters that no longer have an associated uniform
+   for (auto it = parameters.begin(); it != parameters.end();)
+   {
+      if (uniforms.count(it->first) == 0)
+      {
+         it = parameters.erase(it);
+      }
+      else
+      {
+         ++it;
+      }
+   }
+
+   // Add parameters for new uniforms
+   for (const auto& pair : uniforms)
+   {
+      if (parameters.count(pair.first) == 0)
+      {
+         UPtr<MaterialParameterBase> parameter = createParameter(pair.first, pair.second->getType());
+         if (parameter)
+         {
+            parameters.emplace(pair.first, std::move(parameter));
+         }
+      }
+   }
+}
+#else // SWAP_DEBUG
+void Material::generateParameters()
+{
+   for (const auto& pair : shaderProgram->getUniforms())
+   {
+      UPtr<MaterialParameterBase> parameter = createParameter(pair.first, pair.second->getType());
+      if (parameter)
+      {
+         parameters.emplace(pair.first, std::move(parameter));
+      }
+   }
+}
+#endif // SWAP_DEBUG
+
+#if SWAP_DEBUG
+void Material::bindOnLinkDelegate()
+{
+   ASSERT(shaderProgram);
+   ASSERT(!onLinkDelegateHandle.isValid());
+
+   onLinkDelegateHandle = shaderProgram->addOnLinkDelegate([this](ShaderProgram& program, bool linked)
+   {
+      ASSERT(&program == shaderProgram.get());
+      generateParameters();
+   });
+}
+#endif // SWAP_DEBUG

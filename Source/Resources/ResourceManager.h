@@ -20,12 +20,14 @@ public:
       Tex::MinFilter minFilter = Tex::MinFilter::NearestMipmapLinear,
       Tex::MagFilter magFilter = Tex::MagFilter::Linear);
 
+   void clearCachedData();
+
+#if SWAP_DEBUG
    void reloadShaders()
    {
       shaderLoader.reloadShaders();
    }
-
-   void clearCachedData();
+#endif // SWAP_DEBUG
 
    ModelLoader& getModelLoader()
    {

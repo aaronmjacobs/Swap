@@ -179,6 +179,7 @@ namespace
 
 ShaderProgram::ShaderProgram()
    : id(glCreateProgram())
+   , linked(false)
 {
 }
 
@@ -246,7 +247,16 @@ bool ShaderProgram::link()
 {
    ASSERT(shaders.size() >= 2, "Need at least two shaders to link (currently have %lu)", shaders.size());
 
+#if SWAP_DEBUG
    uniforms.clear();
+#else // SWAP_DEBUG
+   // Don't allow re-linking shader programs in release builds
+   if (linked)
+   {
+      return true;
+   }
+#endif // SWAP_DEBUG
+
    glLinkProgram(id);
 
    GLint linkStatus;
@@ -255,12 +265,19 @@ bool ShaderProgram::link()
    {
 #if SWAP_DEBUG
       LOG_WARNING("Failed to link shader program " << id << ":\n" << getInfoLog());
+
+      onLink.broadcast(*this, false);
 #endif // SWAP_DEBUG
 
       return false;
    }
 
    createProgramUniforms(uniforms, id);
+   linked = true;
+
+#if SWAP_DEBUG
+   onLink.broadcast(*this, true);
+#endif // SWAP_DEBUG
 
    return true;
 }

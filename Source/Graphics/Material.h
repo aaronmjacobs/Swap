@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Core/Assert.h"
+#if SWAP_DEBUG
+#include "Core/Delegate.h"
+#endif // SWAP_DEBUG
 #include "Core/Pointers.h"
 #include "Graphics/MaterialParameter.h"
 
@@ -13,7 +16,17 @@ class Material
 {
 public:
    Material(const SPtr<ShaderProgram>& program);
+   Material(const Material& other) = delete;
+   Material(Material&& other);
+   ~Material();
+   Material& operator=(const Material& other) = delete;
+   Material& operator=(Material&& other);
 
+private:
+   void move(Material&& other);
+   void release();
+
+public:
    void commit();
 
    template<typename T>
@@ -51,7 +64,14 @@ public:
    }
 
 private:
+   void generateParameters();
+
+#if SWAP_DEBUG
+   void bindOnLinkDelegate();
+   DelegateHandle onLinkDelegateHandle;
+#endif // SWAP_DEBUG
+
    std::unordered_map<std::string, UPtr<MaterialParameterBase>> parameters;
-   const SPtr<ShaderProgram> shaderProgram;
+   SPtr<ShaderProgram> shaderProgram;
    int textureUnitCounter;
 };

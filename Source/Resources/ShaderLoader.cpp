@@ -353,6 +353,18 @@ SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(std::vector<ShaderSpecificat
    return shaderProgram;
 }
 
+void ShaderLoader::clearCachedData()
+{
+   shaderSourceMap.clear();
+   shaderMap.clear();
+   shaderProgramMap.clear();
+
+#if SWAP_DEBUG
+   inverseShaderMap.clear();
+#endif // SWAP_DEBUG
+}
+
+#if SWAP_DEBUG
 void ShaderLoader::reloadShaders()
 {
    // Clear the cached source to force loading from disk
@@ -375,22 +387,8 @@ void ShaderLoader::reloadShaders()
       SPtr<ShaderProgram> shaderProgram = pair.second.lock();
       if (shaderProgram)
       {
-#if SWAP_DEBUG
          linkProgram(*shaderProgram, shaderSourceMap, inverseShaderMap);
-#else // SWAP_DEBUG
-         linkProgram(*shaderProgram);
-#endif // SWAP_DEBUG
       }
    }
 }
-
-void ShaderLoader::clearCachedData()
-{
-   shaderSourceMap.clear();
-   shaderMap.clear();
-   shaderProgramMap.clear();
-
-#if SWAP_DEBUG
-   inverseShaderMap.clear();
 #endif // SWAP_DEBUG
-}

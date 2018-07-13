@@ -8,6 +8,7 @@
 Shader::Shader(ShaderType shaderType)
    : id(glCreateShader(static_cast<GLuint>(shaderType)))
    , type(shaderType)
+   , compiled(false)
 {
 }
 
@@ -47,12 +48,25 @@ void Shader::release()
 
 bool Shader::compile(const char* source)
 {
+#if !SWAP_DEBUG
+   // Don't allow re-compiling shaders in release builds
+   if (compiled)
+   {
+      return true;
+   }
+#endif // !SWAP_DEBUG
+
    glShaderSource(id, 1, &source, nullptr);
    glCompileShader(id);
 
    GLint status = 0;
    glGetShaderiv(id, GL_COMPILE_STATUS, &status);
    bool success = status == GL_TRUE;
+
+   if (success)
+   {
+      compiled = true;
+   }
 
 #if SWAP_DEBUG
    if (!success)

@@ -1,5 +1,8 @@
 #pragma once
 
+#if SWAP_DEBUG
+#include "Core/Delegate.h"
+#endif // SWAP_DEBUG
 #include "Core/Pointers.h"
 #include "Graphics/Uniform.h"
 
@@ -15,6 +18,9 @@ class ShaderProgram
 {
 public:
    using UniformMap = std::unordered_map<std::string, UPtr<Uniform>>;
+#if SWAP_DEBUG
+   using OnLinkDelegate = MulticastDelegate<void, ShaderProgram& /* shaderProgram */, bool /* success */>;
+#endif // SWAP_DEBUG
 
    ShaderProgram();
    ShaderProgram(const ShaderProgram& other) = delete;
@@ -63,6 +69,16 @@ public:
    }
 
 #if SWAP_DEBUG
+   DelegateHandle addOnLinkDelegate(OnLinkDelegate::FuncType&& function)
+   {
+      return onLink.add(std::move(function));
+   }
+
+   void removeOnLinkDelegate(const DelegateHandle& handle)
+   {
+      onLink.remove(handle);
+   }
+
    const std::vector<SPtr<Shader>>& getAttachedShaders() const
    {
       return shaders;
@@ -75,4 +91,9 @@ private:
    GLuint id;
    UniformMap uniforms;
    std::vector<SPtr<Shader>> shaders;
+   bool linked;
+
+#if SWAP_DEBUG
+   OnLinkDelegate onLink;
+#endif // SWAP_DEBUG
 };
