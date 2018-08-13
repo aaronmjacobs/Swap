@@ -19,6 +19,8 @@ public:
    {
    }
 
+   virtual ~MaterialParameterBase() = default;
+
    bool isEnabled() const
    {
       return enabled;
