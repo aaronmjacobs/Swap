@@ -31,7 +31,7 @@ class uniform_type##Uniform : public Uniform\
 {\
 public:\
    uniform_type##Uniform(const std::string& uniformName, const GLint uniformLocation, const GLenum uniformType, const GLuint program)\
-      : Uniform(uniformName, uniformLocation, uniformType, program)\
+      : Uniform(uniformName, uniformLocation, program)\
       , data{}\
    {\
       checkTypeEnum(uniformType, __VA_ARGS__);\

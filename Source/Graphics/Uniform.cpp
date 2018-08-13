@@ -2,10 +2,9 @@
 
 #include "Core/Assert.h"
 
-Uniform::Uniform(const std::string& uniformName, const GLint uniformLocation, const GLenum uniformType, const GLuint program)
+Uniform::Uniform(const std::string& uniformName, const GLint uniformLocation, const GLuint program)
    : name(uniformName)
    , location(uniformLocation)
-   , type(uniformType)
    , dirty(false)
 {
    ASSERT(program != 0);

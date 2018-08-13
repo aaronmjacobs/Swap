@@ -47,7 +47,7 @@ enum class UniformType : uint8_t
 class Uniform
 {
 public:
-   Uniform(const std::string& uniformName, const GLint uniformLocation, const GLenum uniformType, const GLuint program);
+   Uniform(const std::string& uniformName, const GLint uniformLocation, const GLuint program);
    Uniform(const Uniform& other) = delete;
    Uniform(Uniform&& other) = delete;
    virtual ~Uniform() = default;
@@ -111,6 +111,5 @@ private:
 
    const std::string name;
    const GLint location;
-   const GLenum type;
    bool dirty;
 };
