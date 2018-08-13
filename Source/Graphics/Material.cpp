@@ -20,7 +20,7 @@ namespace
 
 #undef UNIFORM_TYPE_CASE
       default:
-         ASSERT(false, "Invalid uniform type: %u", type);
+         ASSERT(false, "Invalid uniform type: %u", static_cast<unsigned int>(type));
          return nullptr;
       }
    }
