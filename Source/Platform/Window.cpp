@@ -4,40 +4,79 @@
 
 #include <GLFW/glfw3.h>
 
-namespace
+#include <utility>
+
+class WindowCallbackHelper
 {
-   void framebufferSizeCallback(GLFWwindow* glfwWindow, int width, int height)
+public:
+   static void framebufferSizeCallback(GLFWwindow* glfwWindow, int width, int height);
+   static void windowRefreshCallback(GLFWwindow* glfwWindow);
+   static void windowFocusCallback(GLFWwindow* glfwWindow, int focused);
+   static void keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int action, int mods);
+   static void cursorPosCallback(GLFWwindow* glfwWindow, double xPos, double yPos);
+   static void mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action, int mods);
+};
+
+// static
+void WindowCallbackHelper::framebufferSizeCallback(GLFWwindow* glfwWindow, int width, int height)
+{
+   Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+   ASSERT(window);
+
+   if (window->onFramebufferSizeChanged.isBound())
    {
-      Window *window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
-      ASSERT(window);
-
-      if (window->onFramebufferSizeChanged.isBound())
-      {
-         window->onFramebufferSizeChanged.execute(width, height);
-      }
+      window->onFramebufferSizeChanged.execute(width, height);
    }
+}
 
-   void windowRefreshCallback(GLFWwindow* glfwWindow)
+// static
+void WindowCallbackHelper::windowRefreshCallback(GLFWwindow* glfwWindow)
+{
+   Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+   ASSERT(window);
+
+   if (window->onWindowRefreshRequested.isBound())
    {
-      Window *window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
-      ASSERT(window);
-
-      if (window->onWindowRefreshRequested.isBound())
-      {
-         window->onWindowRefreshRequested.execute(*window);
-      }
+      window->onWindowRefreshRequested.execute(*window);
    }
+}
 
-   void windowFocusCallback(GLFWwindow* glfwWindow, int focused)
+// static
+void WindowCallbackHelper::windowFocusCallback(GLFWwindow* glfwWindow, int focused)
+{
+   Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+   ASSERT(window);
+
+   if (window->onWindowFocusChanged.isBound())
    {
-      Window *window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
-      ASSERT(window);
-
-      if (window->onWindowFocusChanged.isBound())
-      {
-         window->onWindowFocusChanged.execute(focused == GLFW_TRUE);
-      }
+      window->onWindowFocusChanged.execute(focused == GLFW_TRUE);
    }
+}
+
+// static
+void WindowCallbackHelper::keyCallback(GLFWwindow* glfwWindow, int key, int scancode, int action, int mods)
+{
+   Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+   ASSERT(window);
+
+   window->onKeyEvent(key, scancode, action, mods);
+}
+
+// static
+void WindowCallbackHelper::cursorPosCallback(GLFWwindow* glfwWindow, double xPos, double yPos)
+{
+   Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+   ASSERT(window);
+
+   window->onCursorPosChanged(xPos, yPos);
+}
+
+void WindowCallbackHelper::mouseButtonCallback(GLFWwindow* glfwWindow, int button, int action, int mods)
+{
+   Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+   ASSERT(window);
+
+   window->onMouseButtonEvent(button, action, mods);
 }
 
 // static
@@ -60,9 +99,13 @@ Window::Window(GLFWwindow* internalWindow)
    ASSERT(glfwWindow);
 
    glfwSetWindowUserPointer(glfwWindow, this);
-   glfwSetFramebufferSizeCallback(glfwWindow, framebufferSizeCallback);
-   glfwSetWindowRefreshCallback(glfwWindow, windowRefreshCallback);
-   glfwSetWindowFocusCallback(glfwWindow, windowFocusCallback);
+
+   glfwSetFramebufferSizeCallback(glfwWindow, WindowCallbackHelper::framebufferSizeCallback);
+   glfwSetWindowRefreshCallback(glfwWindow, WindowCallbackHelper::windowRefreshCallback);
+   glfwSetWindowFocusCallback(glfwWindow, WindowCallbackHelper::windowFocusCallback);
+   glfwSetKeyCallback(glfwWindow, WindowCallbackHelper::keyCallback);
+   glfwSetMouseButtonCallback(glfwWindow, WindowCallbackHelper::mouseButtonCallback);
+   glfwSetCursorPosCallback(glfwWindow, WindowCallbackHelper::cursorPosCallback);
 }
 
 Window::~Window()
@@ -80,7 +123,58 @@ void Window::swapBuffers()
    glfwSwapBuffers(glfwWindow);
 }
 
+void Window::pollEvents()
+{
+   glfwPollEvents();
+   inputManager.pollGamepads();
+}
+
 bool Window::shouldClose() const
 {
    return glfwWindowShouldClose(glfwWindow) != GLFW_FALSE;
+}
+
+DelegateHandle Window::bindOnFramebufferSizeChanged(FramebufferSizeChangedDelegate::FuncType&& func)
+{
+   return onFramebufferSizeChanged.bind(std::move(func));
+}
+
+void Window::unbindOnFramebufferSizeChanged()
+{
+   onFramebufferSizeChanged.unbind();
+}
+
+DelegateHandle Window::bindOnWindowRefreshRequested(WindowRefreshRequestedDelegate::FuncType&& func)
+{
+   return onWindowRefreshRequested.bind(std::move(func));
+}
+
+void Window::unbindOnWindowRefreshRequested()
+{
+   onWindowRefreshRequested.unbind();
+}
+
+DelegateHandle Window::bindOnWindowFocusChanged(WindowFocusDelegate::FuncType&& func)
+{
+   return onWindowFocusChanged.bind(std::move(func));
+}
+
+void Window::unbindOnWindowFocusChanged()
+{
+   onWindowFocusChanged.unbind();
+}
+
+void Window::onKeyEvent(int key, int scancode, int action, int mods)
+{
+   inputManager.onKeyEvent(key, scancode, action, mods);
+}
+
+void Window::onCursorPosChanged(double xPos, double yPos)
+{
+   inputManager.onCursorPosChanged(xPos, yPos);
+}
+
+void Window::onMouseButtonEvent(int button, int action, int mods)
+{
+   inputManager.onMouseButtonEvent(button, action, mods);
 }
