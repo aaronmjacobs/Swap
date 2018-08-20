@@ -36,8 +36,23 @@ public:
 private:
    static uint64_t counter;
 
+   friend struct std::hash<DelegateHandle>;
+
    uint64_t id;
 };
+
+namespace std
+{
+   template<>
+   struct hash<DelegateHandle>
+   {
+      size_t operator()(const DelegateHandle& delegateHandle) const
+      {
+         std::hash<uint64_t> hasher;
+         return hasher(delegateHandle.id);
+      }
+   };
+}
 
 template<typename RetType, typename... Params>
 class Delegate
@@ -65,7 +80,7 @@ public:
       return !!function;
    }
 
-   ReturnType execute(Params... params)
+   ReturnType execute(Params... params) const
    {
       ASSERT(isBound());
       return function(std::forward<Params>(params)...);
@@ -114,15 +129,15 @@ public:
       return !delegates.empty();
    }
 
-   void broadcast(Params... params)
+   void broadcast(Params... params) const
    {
-      for (DelegateType& delegate : delegates)
+      for (const DelegateType& delegate : delegates)
       {
          delegate.execute(std::forward<Params>(params)...);
       }
    }
 
-   std::vector<ReturnType> broadcastWithReturn(Params... params)
+   std::vector<ReturnType> broadcastWithReturn(Params... params) const
    {
       std::vector<ReturnType> returnValues(delegates.size());
 
