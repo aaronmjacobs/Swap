@@ -1,5 +1,7 @@
 #include "Platform/InputManager.h"
 
+#include <glm/glm.hpp>
+
 #include <utility>
 
 namespace
@@ -90,11 +92,30 @@ namespace
          }
       }
    }
+
+   float applyDeadzone(float value)
+   {
+      static const float kDeadzone = 0.25f;
+      static const float kDeadzoneScale = 1.0f / (1.0f - kDeadzone);
+
+      float clampedValue = glm::max(0.0f, glm::abs(value) - kDeadzone) * glm::sign(value);
+      float scaledValue = clampedValue * kDeadzoneScale;
+
+      return scaledValue;
+   }
 }
 
 InputManager::InputManager()
-   : gamepadStates{}
+   : lastMouseX(0.0)
+   , lastMouseY(0.0)
+   , gamepadStates{}
 {
+}
+
+void InputManager::init(double cursorX, double cursorY)
+{
+   lastMouseX = cursorX;
+   lastMouseY = cursorY;
 }
 
 DelegateHandle InputManager::addKeyDelegate(KeyDelegate::FuncType&& function)
@@ -224,10 +245,18 @@ void InputManager::onMouseButtonEvent(int button, int action, int mods)
 
 void InputManager::onCursorPosChanged(double xPos, double yPos)
 {
+   static const double kMouseSensitivity = 0.1;
+
    cursorAxisDelegate.broadcast(xPos, yPos);
 
-   broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::X, xPos);
-   broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::Y, yPos);
+   double xDiff = (xPos - lastMouseX) * kMouseSensitivity;
+   double yDiff = (yPos - lastMouseY) * kMouseSensitivity;
+
+   broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::X, xDiff);
+   broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::Y, yDiff);
+
+   lastMouseX = xPos;
+   lastMouseY = yPos;
 }
 
 void InputManager::pollGamepads()
@@ -263,6 +292,8 @@ void InputManager::pollGamepad(int gamepadId)
 
       for (int axisId = 0; axisId <= GLFW_GAMEPAD_AXIS_LAST; ++axisId)
       {
+         newGamepadState.axes[axisId] = applyDeadzone(newGamepadState.axes[axisId]);
+
          if (currentGamepadState.axes[axisId] != newGamepadState.axes[axisId])
          {
             GamepadAxisChord gamepadAxisChord;

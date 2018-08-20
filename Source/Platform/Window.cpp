@@ -100,6 +100,11 @@ Window::Window(GLFWwindow* internalWindow)
 
    glfwSetWindowUserPointer(glfwWindow, this);
 
+   double cursorX = 0.0;
+   double cursorY = 0.0;
+   glfwGetCursorPos(glfwWindow, &cursorX, &cursorY);
+   inputManager.init(cursorX, cursorY);
+
    glfwSetFramebufferSizeCallback(glfwWindow, WindowCallbackHelper::framebufferSizeCallback);
    glfwSetWindowRefreshCallback(glfwWindow, WindowCallbackHelper::windowRefreshCallback);
    glfwSetWindowFocusCallback(glfwWindow, WindowCallbackHelper::windowFocusCallback);

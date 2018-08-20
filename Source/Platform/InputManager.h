@@ -63,6 +63,8 @@ public:
 private:
    friend class Window;
 
+   void init(double cursorX, double cursorY);
+
    void onKeyEvent(int key, int scancode, int action, int mods);
    void onMouseButtonEvent(int button, int action, int mods);
    void onCursorPosChanged(double xPos, double yPos);
@@ -85,5 +87,7 @@ private:
    InputBindings<ButtonInputDelegate> buttonBindings;
    InputBindings<AxisInputDelegate> axisBindings;
 
+   double lastMouseX;
+   double lastMouseY;
    std::array<GLFWgamepadstate, GLFW_JOYSTICK_LAST + 1> gamepadStates;
 };
