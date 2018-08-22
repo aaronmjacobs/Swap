@@ -49,6 +49,13 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Resources/ShaderLoader.cpp"
    "${SRC_DIR}/Resources/TextureLoader.h"
    "${SRC_DIR}/Resources/TextureLoader.cpp"
+
+   "${SRC_DIR}/Scene/Component.h"
+   "${SRC_DIR}/Scene/Component.cpp"
+   "${SRC_DIR}/Scene/Entity.h"
+   "${SRC_DIR}/Scene/Entity.cpp"
+   "${SRC_DIR}/Scene/Scene.h"
+   "${SRC_DIR}/Scene/Scene.cpp"
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${SRC_DIR}")
