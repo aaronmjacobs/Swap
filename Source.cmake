@@ -30,6 +30,9 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Graphics/Uniform.cpp"
    "${SRC_DIR}/Graphics/UniformTypes.h"
 
+   "${SRC_DIR}/Math/MathUtils.h"
+   "${SRC_DIR}/Math/Transform.h"
+
    "${SRC_DIR}/Platform/InputManager.h"
    "${SRC_DIR}/Platform/InputManager.cpp"
    "${SRC_DIR}/Platform/InputTypes.h"
