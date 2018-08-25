@@ -36,6 +36,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
 # GLM
 set(GLM_INSTALL_ENABLE OFF CACHE INTERNAL "GLM install")
 add_subdirectory("${LIB_DIR}/glm")
+target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_ENABLE_EXPERIMENTAL)
 target_link_libraries(${PROJECT_NAME} PUBLIC glm)
 
 # GSL
