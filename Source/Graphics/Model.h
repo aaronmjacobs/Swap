@@ -31,17 +31,26 @@ public:
    void draw();
 
    template<typename T>
-   void setMaterialParameter(const std::string& name, const T& value)
+   bool setMaterialParameter(const std::string& name, const T& value, bool assertOnFailure = true)
    {
+      bool success = true;
+
       for (ModelSection& section : sections)
       {
-         section.material.setParameter(name, value);
+         success &= section.material.setParameter(name, value, assertOnFailure);
       }
+
+      return success;
    }
 
    void setMaterialParameterEnabled(const std::string& name, bool enabled);
 
    void addSection(ModelSection&& section);
+
+   std::vector<ModelSection>& getSections()
+   {
+      return sections;
+   }
 
    const std::vector<ModelSection>& getSections() const
    {

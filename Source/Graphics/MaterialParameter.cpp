@@ -4,9 +4,10 @@
 #include "Graphics/ShaderProgram.h"
 #include "Graphics/Texture.h"
 
-void MaterialParameterBase::typeError(const char* dataTypeName)
+bool MaterialParameterBase::typeError(const char* dataTypeName)
 {
    ASSERT(false, "Trying to set %s material parameter \"%s\" with invalid data type (%s, should be %s)", getUniformTypeName(), name.c_str(), dataTypeName, getDataTypeName());
+   return false;
 }
 
 #define DEFINE_MATERIAL_PARAM_TYPE(uniform_type, data_type, param_type)\

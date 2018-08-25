@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Assert.h"
 #if SWAP_DEBUG
 #include "Core/Delegate.h"
 #endif // SWAP_DEBUG
@@ -45,17 +46,17 @@ public:
    }
 
    template<typename T>
-   void setUniformValue(const std::string& name, const T& value)
+   bool setUniformValue(const std::string& name, const T& value, bool assertOnFailure = true)
    {
       auto location = uniforms.find(name);
       if (location != uniforms.end())
       {
          location->second->setValue(value);
+         return true;
       }
-      else
-      {
-         ASSERT(false, "Uniform with given name doesn't exist: %s", name.c_str());
-      }
+
+      ASSERT(!assertOnFailure, "Uniform with given name doesn't exist: %s", name.c_str());
+      return false;
    }
 
    GLuint getId() const

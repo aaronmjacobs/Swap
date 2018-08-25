@@ -30,17 +30,19 @@ public:
    void commit();
 
    template<typename T>
-   void setParameter(const std::string& name, const T& value)
+   bool setParameter(const std::string& name, const T& value, bool assertOnFailure = true)
    {
+      bool success = false;
+
       auto location = parameters.find(name);
       if (location != parameters.end())
       {
-         location->second->setValue(value);
+         success = location->second->setValue(value);
       }
-      else
-      {
-         ASSERT(false, "Material parameter with given name doesn't exist: %s", name.c_str());
-      }
+
+      ASSERT(success || !assertOnFailure, "Material parameter with given name doesn't exist: %s", name.c_str());
+
+      return success;
    }
 
    bool isParameterEnabled(const std::string& name) const;
@@ -58,7 +60,7 @@ public:
       return textureUnitCounter++;
    }
 
-   bool hasParameter(const std::string& name)
+   bool hasParameter(const std::string& name) const
    {
       return parameters.count(name) > 0;
    }

@@ -34,7 +34,7 @@ public:
    virtual void commit(Material& owningMaterial) = 0;
 
 #define DECLARE_SET_VALUE(uniform_type, data_type, param_type)\
-   virtual void setValue(param_type newValue) { typeError(#data_type); }
+   virtual bool setValue(param_type newValue) { return typeError(#data_type); }
 
 #define FOR_EACH_UNIFORM_TYPE DECLARE_SET_VALUE
 #include "ForEachUniformType.inl"
@@ -50,7 +50,7 @@ protected:
    bool enabled;
 
 private:
-   void typeError(const char* dataTypeName);
+   bool typeError(const char* dataTypeName);
 };
 
 #define DECLARE_MATERIAL_PARAM_TYPE(uniform_type, data_type, param_type)\
@@ -64,9 +64,10 @@ public:\
 \
    void commit(Material& owningMaterial) override;\
 \
-   void setValue(param_type newValue) override\
+   bool setValue(param_type newValue) override\
    {\
       value = newValue;\
+      return true;\
    }\
 \
 protected:\
