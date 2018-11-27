@@ -366,6 +366,26 @@ void Texture::updateSpecification(const Tex::Specification& textureSpecification
    }
 }
 
+void Texture::updateResolution(GLsizei width, GLsizei height, GLsizei depth)
+{
+   Tex::Specification newSpecification = specification;
+
+   if (width >= 0)
+   {
+      newSpecification.width = width;
+   }
+   if (height >= 0)
+   {
+      newSpecification.height = height;
+   }
+   if (depth >= 0)
+   {
+      newSpecification.depth = depth;
+   }
+
+   updateSpecification(newSpecification);
+}
+
 void Texture::setParam(Tex::FloatParam param, GLfloat value)
 {
    assertBound();

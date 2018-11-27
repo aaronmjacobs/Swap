@@ -23,6 +23,7 @@ public:
    void bind();
 
    void updateSpecification(const Tex::Specification& textureSpecification);
+   void updateResolution(GLsizei width = -1, GLsizei height = -1, GLsizei depth = -1);
 
    void setParam(Tex::FloatParam param, GLfloat value);
    void setParam(Tex::IntParam param, GLint value);
