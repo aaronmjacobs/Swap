@@ -19,7 +19,7 @@ public:
    using OnDestroyDelegate = MulticastDelegate<void, Entity*>;
 
    ~Entity();
-   
+
    void destroy();
 
    template<typename T>
@@ -85,7 +85,7 @@ T* Entity::createComponent()
 {
    UPtr<T> newComponent = ComponentRegistry::instance().createComponent<T>(*this);
    ASSERT(newComponent, "Failed to create a typed component");
-   
+
    T* newComponentRaw = newComponent.get();
    components.push_back(std::move(newComponent));
    onComponentCreated(newComponentRaw);
@@ -102,7 +102,7 @@ T* Entity::getComponentByClass()
          return castedComponent;
       }
    }
-   
+
    return nullptr;
 }
 
@@ -116,7 +116,7 @@ const T* Entity::getComponentByClass() const
          return castedComponent;
       }
    }
-   
+
    return nullptr;
 }
 
@@ -124,7 +124,7 @@ template<typename T>
 std::vector<T*> Entity::getComponentsByClass()
 {
    std::vector<T*> componentsOfClass;
-   
+
    for (const UPtr<Component>& component : components)
    {
       if (T* castedComponent = dynamic_cast<T*>(component.get()))
@@ -132,7 +132,7 @@ std::vector<T*> Entity::getComponentsByClass()
          componentsOfClass.push_back(castedComponent);
       }
    }
-   
+
    return componentsOfClass;
 }
 
@@ -140,7 +140,7 @@ template<typename T>
 std::vector<const T*> Entity::getComponentsByClass() const
 {
    std::vector<const T*> componentsOfClass;
-   
+
    for (const UPtr<Component>& component : components)
    {
       if (const T* castedComponent = dynamic_cast<const T*>(component.get()))
@@ -148,7 +148,7 @@ std::vector<const T*> Entity::getComponentsByClass() const
          componentsOfClass.push_back(castedComponent);
       }
    }
-   
+
    return componentsOfClass;
 }
 
@@ -157,10 +157,10 @@ template<typename... ComponentTypes>
 UPtr<Entity> Entity::create(Scene& scene)
 {
    UPtr<Entity> entity(new Entity(scene));
-   
+
    entity->constructComponents<ComponentTypes...>();
    entity->onInitialized();
-   
+
    return entity;
 }
 

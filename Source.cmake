@@ -55,12 +55,22 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Resources/TextureLoader.h"
    "${SRC_DIR}/Resources/TextureLoader.cpp"
 
+   "${SRC_DIR}/Scene/CameraComponent.h"
+   "${SRC_DIR}/Scene/CameraComponent.cpp"
    "${SRC_DIR}/Scene/Component.h"
    "${SRC_DIR}/Scene/Component.cpp"
    "${SRC_DIR}/Scene/Entity.h"
    "${SRC_DIR}/Scene/Entity.cpp"
+   "${SRC_DIR}/Scene/ModelComponent.h"
+   "${SRC_DIR}/Scene/ModelComponent.cpp"
    "${SRC_DIR}/Scene/Scene.h"
    "${SRC_DIR}/Scene/Scene.cpp"
+   "${SRC_DIR}/Scene/SceneComponent.h"
+   "${SRC_DIR}/Scene/SceneComponent.cpp"
+   "${SRC_DIR}/Scene/SceneRenderer.h"
+   "${SRC_DIR}/Scene/SceneRenderer.cpp"
+   "${SRC_DIR}/Scene/Tickable.h"
+   "${SRC_DIR}/Scene/Tickable.cpp"
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${SRC_DIR}")

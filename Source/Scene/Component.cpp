@@ -11,8 +11,8 @@ Component::~Component()
 
 void Component::destroy()
 {
-   bool destroyed = owner.destroyComponent(this);
-   ASSERT(destroyed, "Component not destroyed by owner, possibly already distroyed?");
+   bool destroyed = entity.destroyComponent(this);
+   ASSERT(destroyed, "Component not destroyed by entity, possibly already distroyed?");
 }
 
 DelegateHandle Component::addOnDestroyDelegate(OnDestroyDelegate::FuncType&& function)
@@ -23,6 +23,16 @@ DelegateHandle Component::addOnDestroyDelegate(OnDestroyDelegate::FuncType&& fun
 void Component::removeOnDestroyDelegate(const DelegateHandle& handle)
 {
    onDestroyDelegate.remove(handle);
+}
+
+Scene& Component::getScene()
+{
+   return getEntity().getScene();
+}
+
+const Scene& Component::getScene() const
+{
+   return getEntity().getScene();
 }
 
 // static

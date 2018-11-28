@@ -22,7 +22,7 @@ Component* Entity::createComponentByName(const std::string& className)
    {
       return nullptr;
    }
-   
+
    Component* newComponentRaw = newComponent.get();
    components.push_back(std::move(newComponent));
    onComponentCreated(newComponentRaw);
@@ -35,13 +35,13 @@ bool Entity::destroyComponent(Component* componentToDestroy)
    {
       return component.get() == componentToDestroy;
    });
-   
+
    if (location != components.end())
    {
       components.erase(location);
       return true;
    }
-   
+
    return false;
 }
 
@@ -59,7 +59,7 @@ void Entity::removeOnDestroyDelegate(const DelegateHandle &handle)
 UPtr<Entity> Entity::create(gsl::span<std::string> componentClassNames, Scene& scene)
 {
    UPtr<Entity> entity(new Entity(scene));
-   
+
    entity->components.reserve(componentClassNames.size());
    for (const std::string& className : componentClassNames)
    {
@@ -69,7 +69,7 @@ UPtr<Entity> Entity::create(gsl::span<std::string> componentClassNames, Scene& s
       }
    }
    entity->onInitialized();
-   
+
    return entity;
 }
 

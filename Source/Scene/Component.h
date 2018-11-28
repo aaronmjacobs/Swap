@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 class Entity;
+class Scene;
 
 class Component
 {
@@ -21,26 +22,29 @@ public:
    DelegateHandle addOnDestroyDelegate(OnDestroyDelegate::FuncType&& function);
    void removeOnDestroyDelegate(const DelegateHandle& handle);
 
-   Entity& getOwner()
+   Entity& getEntity()
    {
-      return owner;
+      return entity;
    }
 
-   const Entity& getOwner() const
+   const Entity& getEntity() const
    {
-      return owner;
+      return entity;
    }
+
+   Scene& getScene();
+   const Scene& getScene() const;
 
 protected:
-   Component(Entity& entity)
-      : owner(entity)
+   Component(Entity& owningEntity)
+      : entity(owningEntity)
    {
    }
-   
+
    virtual void onOwnerInitialized()
    {
    }
-   
+
    virtual void onComponentAddedToOwner(Component* component)
    {
    }
@@ -48,7 +52,7 @@ protected:
 private:
    friend class Entity;
 
-   Entity& owner;
+   Entity& entity;
    OnDestroyDelegate onDestroyDelegate;
 };
 
@@ -103,9 +107,9 @@ class ComponentRegistry
 private:
    template<typename T> friend class ComponentRegistrar;
    friend class Entity;
-   
+
    using CreateComponentFunc = UPtr<Component>(*)(Entity&);
-   
+
    static ComponentRegistry& instance();
 
    ComponentRegistry() = default;
