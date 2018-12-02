@@ -102,18 +102,20 @@ void Framebuffer::updateSpecification(const Fb::Specification& framebufferSpecif
    colorSpecification.width = framebufferSpecification.width;
    colorSpecification.height = framebufferSpecification.height;
 
-   for (std::size_t i = 0; i < framebufferSpecification.colorAttachmentFormats.size(); ++i)
+   std::size_t attachmentIndex = 0;
+   for (SPtr<Texture>& colorAttachment : colorAttachments)
    {
-      colorSpecification.internalFormat = framebufferSpecification.colorAttachmentFormats[i];
-      colorAttachments[i] = std::make_shared<Texture>(colorSpecification);
-      drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
+      colorSpecification.internalFormat = framebufferSpecification.colorAttachmentFormats[attachmentIndex];
+      colorAttachment = std::make_shared<Texture>(colorSpecification);
 
-      colorAttachments[i]->setParam(Tex::IntParam::TextureMinFilter, GL_LINEAR);
-      colorAttachments[i]->setParam(Tex::IntParam::TextureMagFilter, GL_LINEAR);
-      colorAttachments[i]->setParam(Tex::IntParam::TextureWrapS, GL_CLAMP_TO_BORDER);
-      colorAttachments[i]->setParam(Tex::IntParam::TextureWrapT, GL_CLAMP_TO_BORDER);
+      colorAttachment->setParam(Tex::IntParam::TextureMinFilter, GL_LINEAR);
+      colorAttachment->setParam(Tex::IntParam::TextureMagFilter, GL_LINEAR);
+      colorAttachment->setParam(Tex::IntParam::TextureWrapS, GL_CLAMP_TO_BORDER);
+      colorAttachment->setParam(Tex::IntParam::TextureWrapT, GL_CLAMP_TO_BORDER);
 
-      glFramebufferTexture2D(GL_FRAMEBUFFER, drawBuffers[i], GL_TEXTURE_2D, colorAttachments[i]->getId(), 0);
+      drawBuffers[attachmentIndex] = static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + attachmentIndex);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, drawBuffers[attachmentIndex], GL_TEXTURE_2D, colorAttachment->getId(), 0);
+      ++attachmentIndex;
    }
    glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
 

@@ -13,7 +13,7 @@ struct Transform
    glm::vec3 position;
    glm::vec3 scale;
 
-   Transform(const glm::quat& inOrientation = glm::quat_identity<float, glm::qualifier::highp>(),
+   Transform(const glm::quat& inOrientation = glm::identity<glm::quat>(),
              const glm::vec3& inPosition = glm::vec3(0.0f), const glm::vec3& inScale = glm::vec3(1.0f))
       : orientation(inOrientation)
       , position(inPosition)

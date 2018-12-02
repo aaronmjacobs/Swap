@@ -249,8 +249,8 @@ void InputManager::onCursorPosChanged(double xPos, double yPos)
 
    cursorAxisDelegate.broadcast(xPos, yPos);
 
-   double xDiff = (xPos - lastMouseX) * kMouseSensitivity;
-   double yDiff = (yPos - lastMouseY) * kMouseSensitivity;
+   float xDiff = static_cast<float>((xPos - lastMouseX) * kMouseSensitivity);
+   float yDiff = static_cast<float>((yPos - lastMouseY) * kMouseSensitivity);
 
    broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::X, xDiff);
    broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::Y, yDiff);
