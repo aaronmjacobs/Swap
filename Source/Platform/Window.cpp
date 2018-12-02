@@ -139,6 +139,11 @@ bool Window::shouldClose() const
    return glfwWindowShouldClose(glfwWindow) != GLFW_FALSE;
 }
 
+void Window::getFramebufferSize(int& width, int& height)
+{
+   glfwGetFramebufferSize(glfwWindow, &width, &height);
+}
+
 DelegateHandle Window::bindOnFramebufferSizeChanged(FramebufferSizeChangedDelegate::FuncType&& func)
 {
    return onFramebufferSizeChanged.bind(std::move(func));

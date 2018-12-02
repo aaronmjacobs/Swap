@@ -31,6 +31,8 @@ public:
       return inputManager;
    }
 
+   void getFramebufferSize(int& width, int& height);
+
    DelegateHandle bindOnFramebufferSizeChanged(FramebufferSizeChangedDelegate::FuncType&& func);
    void unbindOnFramebufferSizeChanged();
 

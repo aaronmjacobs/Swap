@@ -7,6 +7,7 @@
 namespace MathUtils
 {
    constexpr float kSmallNumber = 1.e-8f;
+   constexpr float kKindaSmallNumber = 1.e-4f;
    static const glm::vec3 kForwardVector = glm::vec3(0.0f, 0.0f, -1.0f);
    static const glm::vec3 kRightVector = glm::vec3(1.0f, 0.0f, 0.0f);
    static const glm::vec3 kUpVector = glm::vec3(0.0f, 1.0f, 0.0f);

@@ -1,8 +1,11 @@
 #include "Scene/SceneRenderer.h"
 
+#include "Core/Assert.h"
 #include "Scene/CameraComponent.h"
 #include "Scene/ModelComponent.h"
 #include "Scene/Scene.h"
+
+#include <algorithm>
 
 namespace
 {
@@ -12,6 +15,12 @@ namespace
    const char* kNormalMatrix = "uNormalMatrix";
 
    const char* kCameraPos = "uCameraPos";
+}
+
+SceneRenderer::SceneRenderer(int initialWidth, int initialHeight)
+   : width(0), height(0), nearPlaneDistance(0.01f), farPlaneDistance(1000.0f)
+{
+   onFramebufferSizeChanged(initialWidth, initialHeight);
 }
 
 void SceneRenderer::renderScene(const Scene& scene)
@@ -24,11 +33,14 @@ void SceneRenderer::renderScene(const Scene& scene)
       return;
    }
 
+   ASSERT(width > 0 && height > 0, "Invalid framebuffer size");
+   float aspectRatio = static_cast<float>(width) / height;
+   glm::mat4 projectionMatrix = glm::perspective(glm::radians(activeCamera->getFieldOfView()), aspectRatio, nearPlaneDistance, farPlaneDistance);
+
    Transform cameraTransform = activeCamera->getAbsoluteTransform();
-   glm::mat4 projectionMatrix = glm::perspective(activeCamera->getFieldOfView(), 1280.0f / 720.0f, 0.1f, 1000.0f); // TODO
    glm::mat4 viewMatrix = glm::lookAt(cameraTransform.position, cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
 
-   const std::vector<ModelComponent*> modelComponents = scene.getModelComponents();
+   const std::vector<ModelComponent*>& modelComponents = scene.getModelComponents();
    for (const ModelComponent* modelComponent : modelComponents)
    {
       ASSERT(modelComponent);
@@ -49,4 +61,29 @@ void SceneRenderer::renderScene(const Scene& scene)
          model->draw();
       }
    }
+}
+
+void SceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
+{
+   ASSERT(newWidth > 0 && newHeight > 0, "Invalid framebuffer size");
+
+   width = std::max(newWidth, 1);
+   height = std::max(newHeight, 1);
+
+   glViewport(0, 0, width, height);
+}
+
+void SceneRenderer::setNearPlaneDistance(float newNearPlaneDistance)
+{
+   ASSERT(newNearPlaneDistance >= MathUtils::kKindaSmallNumber);
+   ASSERT(newNearPlaneDistance < farPlaneDistance);
+
+   nearPlaneDistance = std::max(std::min(newNearPlaneDistance, farPlaneDistance - MathUtils::kKindaSmallNumber), MathUtils::kKindaSmallNumber);
+}
+
+void SceneRenderer::setFarPlaneDistance(float newFarPlaneDistance)
+{
+   ASSERT(newFarPlaneDistance > nearPlaneDistance);
+
+   farPlaneDistance = std::max(newFarPlaneDistance, nearPlaneDistance + MathUtils::kKindaSmallNumber);
 }
