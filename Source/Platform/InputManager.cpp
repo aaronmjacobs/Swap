@@ -294,10 +294,12 @@ void InputManager::pollGamepad(int gamepadId)
       {
          newGamepadState.axes[axisId] = applyDeadzone(newGamepadState.axes[axisId]);
 
-         if (currentGamepadState.axes[axisId] != newGamepadState.axes[axisId])
+         GamepadAxis axis = static_cast<GamepadAxis>(axisId);
+         float defaultValue = (axis == GamepadAxis::LeftTrigger || axis == GamepadAxis::RightTrigger) ? -1.0f : 0.0f;
+         if (newGamepadState.axes[axisId] != defaultValue || currentGamepadState.axes[axisId] != newGamepadState.axes[axisId])
          {
             GamepadAxisChord gamepadAxisChord;
-            gamepadAxisChord.axis = static_cast<GamepadAxis>(axisId);
+            gamepadAxisChord.axis = axis;
             gamepadAxisChord.gamepadId = gamepadId;
 
             float value = newGamepadState.axes[axisId];
