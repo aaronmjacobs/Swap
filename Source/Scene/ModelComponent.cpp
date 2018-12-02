@@ -1,6 +1,5 @@
 #include "Scene/ModelComponent.h"
 
-#include "Scene/Entity.h"
 #include "Scene/Scene.h"
 
 SWAP_REGISTER_COMPONENT(ModelComponent)

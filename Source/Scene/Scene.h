@@ -11,7 +11,10 @@
 #include <vector>
 
 class CameraComponent;
+class DirectionalLightComponent;
 class ModelComponent;
+class PointLightComponent;
+class SpotLightComponent;
 class Tickable;
 
 class Scene
@@ -68,12 +71,41 @@ public:
    void registerModelComponent(ModelComponent* modelComponent);
    void unregisterModelComponent(ModelComponent* modelComponent);
 
+   const std::vector<DirectionalLightComponent*>& getDirectionalLightComponents() const
+   {
+      return directionalLightComponents;
+   }
+
+   void registerDirectionalLightComponent(DirectionalLightComponent* directionalLightComponent);
+   void unregisterDirectionalLightComponent(DirectionalLightComponent* directionalLightComponent);
+
+   const std::vector<PointLightComponent*>& getPointLightComponents() const
+   {
+      return pointLightComponents;
+   }
+
+   void registerPointLightComponent(PointLightComponent* pointLightComponent);
+   void unregisterPointLightComponent(PointLightComponent* pointLightComponent);
+
+   const std::vector<SpotLightComponent*>& getSpotLightComponents() const
+   {
+      return spotLightComponents;
+   }
+
+   void registerSpotLightComponent(SpotLightComponent* spotLightComponent);
+   void unregisterSpotLightComponent(SpotLightComponent* spotLightComponent);
+
 private:
    std::vector<UPtr<Entity>> entities;
 
    std::vector<Tickable*> tickables;
+
    std::vector<CameraComponent*> cameraComponents;
+   CameraComponent* activeCameraComponent;
+
    std::vector<ModelComponent*> modelComponents;
 
-   CameraComponent* activeCameraComponent;
+   std::vector<DirectionalLightComponent*> directionalLightComponents;
+   std::vector<PointLightComponent*> pointLightComponents;
+   std::vector<SpotLightComponent*> spotLightComponents;
 };

@@ -7,6 +7,29 @@
 
 #include <algorithm>
 
+namespace
+{
+   template<typename T>
+   void registerComponent(std::vector<T*>& components, T* component)
+   {
+      ASSERT(component);
+      ASSERT(std::find(components.begin(), components.end(), component) == components.end());
+
+      components.push_back(component);
+   }
+
+   template<typename T>
+   void unregisterComponent(std::vector<T*>& components, T* component)
+   {
+      ASSERT(component);
+
+      auto location = std::find(components.begin(), components.end(), component);
+      ASSERT(location != components.end());
+
+      components.erase(location);
+   }
+}
+
 Scene::Scene()
    : activeCameraComponent(nullptr)
 {
@@ -15,9 +38,17 @@ Scene::Scene()
 Scene::~Scene()
 {
    entities.clear();
-   activeCameraComponent = nullptr;
+
+   tickables.clear();
+
    cameraComponents.clear();
+   activeCameraComponent = nullptr;
+
    modelComponents.clear();
+
+   directionalLightComponents.clear();
+   pointLightComponents.clear();
+   spotLightComponents.clear();
 }
 
 void Scene::tick(float dt)
@@ -46,20 +77,12 @@ bool Scene::destroyEntity(Entity* entityToDestroy)
 
 void Scene::registerTickable(Tickable* tickable)
 {
-   ASSERT(tickable);
-   ASSERT(std::find(tickables.begin(), tickables.end(), tickable) == tickables.end());
-
-   tickables.push_back(tickable);
+   registerComponent(tickables, tickable);
 }
 
 void Scene::unregisterTickable(Tickable* tickable)
 {
-   ASSERT(tickable);
-
-   auto location = std::find(tickables.begin(), tickables.end(), tickable);
-   ASSERT(location != tickables.end());
-
-   tickables.erase(location);
+   unregisterComponent(tickables, tickable);
 }
 
 void Scene::setActiveCameraComponent(CameraComponent* newActiveCameraComponent)
@@ -71,41 +94,55 @@ void Scene::setActiveCameraComponent(CameraComponent* newActiveCameraComponent)
 
 void Scene::registerCameraComponent(CameraComponent* cameraComponent)
 {
-   ASSERT(cameraComponent);
-   ASSERT(std::find(cameraComponents.begin(), cameraComponents.end(), cameraComponent) == cameraComponents.end());
-
-   cameraComponents.push_back(cameraComponent);
+   registerComponent(cameraComponents, cameraComponent);
 }
 
 void Scene::unregisterCameraComponent(CameraComponent* cameraComponent)
 {
-   ASSERT(cameraComponent);
+   unregisterComponent(cameraComponents, cameraComponent);
 
    if (activeCameraComponent == cameraComponent)
    {
       activeCameraComponent = nullptr;
    }
-
-   auto location = std::find(cameraComponents.begin(), cameraComponents.end(), cameraComponent);
-   ASSERT(location != cameraComponents.end());
-
-   cameraComponents.erase(location);
 }
 
 void Scene::registerModelComponent(ModelComponent* modelComponent)
 {
-   ASSERT(modelComponent);
-   ASSERT(std::find(modelComponents.begin(), modelComponents.end(), modelComponent) == modelComponents.end());
-
-   modelComponents.push_back(modelComponent);
+   registerComponent(modelComponents, modelComponent);
 }
 
 void Scene::unregisterModelComponent(ModelComponent* modelComponent)
 {
-   ASSERT(modelComponent);
+   unregisterComponent(modelComponents, modelComponent);
+}
 
-   auto location = std::find(modelComponents.begin(), modelComponents.end(), modelComponent);
-   ASSERT(location != modelComponents.end());
+void Scene::registerDirectionalLightComponent(DirectionalLightComponent* directionalLightComponent)
+{
+   registerComponent(directionalLightComponents, directionalLightComponent);
+}
 
-   modelComponents.erase(location);
+void Scene::unregisterDirectionalLightComponent(DirectionalLightComponent* directionalLightComponent)
+{
+   unregisterComponent(directionalLightComponents, directionalLightComponent);
+}
+
+void Scene::registerPointLightComponent(PointLightComponent* pointLightComponent)
+{
+   registerComponent(pointLightComponents, pointLightComponent);
+}
+
+void Scene::unregisterPointLightComponent(PointLightComponent* pointLightComponent)
+{
+   unregisterComponent(pointLightComponents, pointLightComponent);
+}
+
+void Scene::registerSpotLightComponent(SpotLightComponent* spotLightComponent)
+{
+   registerComponent(spotLightComponents, spotLightComponent);
+}
+
+void Scene::unregisterSpotLightComponent(SpotLightComponent* spotLightComponent)
+{
+   unregisterComponent(spotLightComponents, spotLightComponent);
 }
