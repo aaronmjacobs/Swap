@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Scene/Lights/LightComponent.h"
+#include "Scene/Components/Lights/LightComponent.h"
 
 class DirectionalLightComponent : public LightComponent
 {

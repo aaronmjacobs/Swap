@@ -1,4 +1,4 @@
-#include "Scene/ModelComponent.h"
+#include "Scene/Components/ModelComponent.h"
 
 #include "Scene/Scene.h"
 

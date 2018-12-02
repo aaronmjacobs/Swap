@@ -1,4 +1,4 @@
-#include "Scene/Component.h"
+#include "Scene/Components/Component.h"
 
 #include "Scene/Entity.h"
 

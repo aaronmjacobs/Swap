@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Scene/SceneComponent.h"
+#include "Scene/Components/SceneComponent.h"
 
 class CameraComponent : public SceneComponent
 {

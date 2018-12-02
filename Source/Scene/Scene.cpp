@@ -1,8 +1,8 @@
 #include "Scene/Scene.h"
 
 #include "Core/Assert.h"
-#include "Scene/CameraComponent.h"
-#include "Scene/ModelComponent.h"
+#include "Scene/Components/CameraComponent.h"
+#include "Scene/Components/ModelComponent.h"
 #include "Scene/Tickable.h"
 
 #include <algorithm>

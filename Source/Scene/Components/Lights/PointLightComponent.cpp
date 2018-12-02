@@ -1,4 +1,4 @@
-#include "Scene/Lights/PointLightComponent.h"
+#include "Scene/Components/Lights/PointLightComponent.h"
 
 #include "Core/Assert.h"
 #include "Scene/Scene.h"

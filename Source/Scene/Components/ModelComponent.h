@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Scene/SceneComponent.h"
+#include "Scene/Components/SceneComponent.h"
 
 #include "Core/Pointers.h"
 #include "Graphics/Model.h"

@@ -3,7 +3,7 @@
 #include "Core/Assert.h"
 #include "Core/Delegate.h"
 #include "Core/Pointers.h"
-#include "Scene/Component.h"
+#include "Scene/Components/Component.h"
 
 #include <gsl/span>
 

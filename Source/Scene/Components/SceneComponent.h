@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Scene/Component.h"
+#include "Scene/Components/Component.h"
 
 #include "Math/Transform.h"
 

@@ -1,4 +1,4 @@
-#include "Scene/SceneComponent.h"
+#include "Scene/Components/SceneComponent.h"
 
 #include "Core/Assert.h"
 
