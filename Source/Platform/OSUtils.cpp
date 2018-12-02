@@ -193,7 +193,21 @@ namespace OSUtils
          return false;
       }
 
-      dir = path.substr(0, pos);
+#ifdef _WIN32
+      bool isRoot = pos == 2;
+#else
+      bool isRoot = pos == 0;
+#endif
+
+      if (isRoot)
+      {
+         dir = path;
+      }
+      else
+      {
+         dir = path.substr(0, pos);
+      }
+
       return true;
    }
 

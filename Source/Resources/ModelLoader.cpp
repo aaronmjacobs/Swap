@@ -165,7 +165,7 @@ namespace
       TextureLoader& textureLoader)
    {
       std::string directory;
-      if (!IOUtils::getDirectory(specification.path, directory))
+      if (!IOUtils::getSanitizedDirectory(specification.path, directory))
       {
          LOG_ERROR("Unable to get directory from model file path: " << specification.path);
          return nullptr;

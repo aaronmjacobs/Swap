@@ -98,18 +98,6 @@ namespace IOUtils
       return OSUtils::createDirectory(directory);
    }
 
-   bool makeAppDataRelativePath(const std::string& appName, const std::string& fileName, std::string& path)
-   {
-      std::string appDataPath;
-      if (!OSUtils::getAppDataPath(appName, appDataPath))
-      {
-         return false;
-      }
-
-      path = appDataPath + "/" + fileName;
-      return true;
-   }
-
    std::string sanitizePath(std::string path)
    {
       // Convert all back slashes to forward slashes
@@ -137,31 +125,65 @@ namespace IOUtils
       return path;
    }
 
-   bool getDirectory(const std::string& path, std::string& directory)
+   bool getSanitizedDirectory(const std::string& path, std::string& directory)
    {
       std::string sanitizedPath = sanitizePath(path);
 
-      size_t pos = sanitizedPath.rfind('/');
-      if (pos == std::string::npos)
+      return OSUtils::getDirectoryFromPath(sanitizedPath, directory);
+   }
+
+   bool getResourceDirectory(std::string& resourceDirectory)
+   {
+      static bool resourceDirectoryCached = false;
+      static std::string cachedResourceDirectory;
+
+      if (resourceDirectoryCached)
+      {
+         resourceDirectory = cachedResourceDirectory;
+         return true;
+      }
+
+      std::string executeablePath;
+      if (!OSUtils::getExecutablePath(executeablePath))
       {
          return false;
       }
 
-#ifdef _WIN32
-      bool isRoot = pos == 2;
-#else
-      bool isRoot = pos == 0;
-#endif
-
-      if (isRoot)
+      std::string executableDirectory;
+      if (!OSUtils::getDirectoryFromPath(executeablePath, executableDirectory))
       {
-         directory = sanitizedPath;
-      }
-      else
-      {
-         directory = sanitizedPath.substr(0, pos);
+         return false;
       }
 
+      resourceDirectory = sanitizePath(executableDirectory + "/../../Resources");
+
+      cachedResourceDirectory = resourceDirectory;
+      resourceDirectoryCached = true;
+
+      return true;
+   }
+
+   bool getAbsoluteResourcePath(const std::string& relativePath, std::string& absolutePath)
+   {
+      std::string resourceDirectory;
+      if (!getResourceDirectory(resourceDirectory))
+      {
+         return false;
+      }
+
+      absolutePath = resourceDirectory + "/" + relativePath;
+      return true;
+   }
+
+   bool getAbsoluteAppDataPath(const std::string& appName, const std::string& relativePath, std::string& absolutePath)
+   {
+      std::string appDataPath;
+      if (!OSUtils::getAppDataPath(appName, appDataPath))
+      {
+         return false;
+      }
+
+      absolutePath = appDataPath + "/" + relativePath;
       return true;
    }
 }

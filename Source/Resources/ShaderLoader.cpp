@@ -90,7 +90,7 @@ namespace
       }
 
       std::string directory;
-      if (!IOUtils::getDirectory(path, directory))
+      if (!IOUtils::getSanitizedDirectory(path, directory))
       {
          return false;
       }

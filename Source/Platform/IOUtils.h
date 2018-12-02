@@ -13,8 +13,12 @@ namespace IOUtils
    bool writeBinaryFile(const std::string& path, const std::vector<uint8_t>& data);
 
    bool ensurePathToFileExists(const std::string& path);
-   bool makeAppDataRelativePath(const std::string& appName, const std::string& fileName, std::string& path);
 
    std::string sanitizePath(std::string path);
-   bool getDirectory(const std::string& path, std::string& directory);
+   bool getSanitizedDirectory(const std::string& path, std::string& directory);
+
+   bool getResourceDirectory(std::string& resourceDirectory);
+   bool getAbsoluteResourcePath(const std::string& relativePath, std::string& absolutePath);
+
+   bool getAbsoluteAppDataPath(const std::string& appName, const std::string& relativePath, std::string& absolutePath);
 }
