@@ -3,20 +3,30 @@
 #include "Core/Pointers.h"
 #include "Resources/ShaderLoader.h"
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
 class Model;
 class TextureLoader;
 
+enum class NormalGenerationMode : uint8_t
+{
+   None,
+   Flat,
+   Smooth
+};
+
 struct ModelSpecification
 {
    std::string path;
+   NormalGenerationMode normalGenerationMode = NormalGenerationMode::Smooth;
    std::vector<ShaderSpecification> shaderSpecifications;
 
    bool operator==(const ModelSpecification& other) const
    {
-      return path == other.path && shaderSpecifications == other.shaderSpecifications;
+      return path == other.path && normalGenerationMode == other.normalGenerationMode
+         && shaderSpecifications == other.shaderSpecifications;
    }
 };
 

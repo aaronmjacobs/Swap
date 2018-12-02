@@ -171,9 +171,20 @@ namespace
          return nullptr;
       }
 
+      unsigned int normalFlag = 0;
+      switch (specification.normalGenerationMode)
+      {
+      case NormalGenerationMode::Flat:
+         normalFlag = aiProcess_GenNormals;
+         break;
+      case NormalGenerationMode::Smooth:
+         normalFlag = aiProcess_GenSmoothNormals;
+         break;
+      }
+      unsigned int flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | normalFlag;
+
       Assimp::Importer importer;
-      const aiScene* assimpScene = importer.ReadFile(specification.path,
-         aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
+      const aiScene* assimpScene = importer.ReadFile(specification.path, flags);
       if (!assimpScene || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !assimpScene->mRootNode)
       {
          LOG_ERROR("Unable to load model from file (" << specification.path << "): " << importer.GetErrorString());
