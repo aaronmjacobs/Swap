@@ -76,8 +76,6 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Scene/Scene.cpp"
    "${SRC_DIR}/Scene/SceneRenderer.h"
    "${SRC_DIR}/Scene/SceneRenderer.cpp"
-   "${SRC_DIR}/Scene/Tickable.h"
-   "${SRC_DIR}/Scene/Tickable.cpp"
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${SRC_DIR}")
