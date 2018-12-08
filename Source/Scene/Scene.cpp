@@ -3,7 +3,6 @@
 #include "Core/Assert.h"
 #include "Scene/Components/CameraComponent.h"
 #include "Scene/Components/ModelComponent.h"
-#include "Scene/Tickable.h"
 
 #include <algorithm>
 
@@ -39,8 +38,6 @@ Scene::~Scene()
 {
    entities.clear();
 
-   tickables.clear();
-
    cameraComponents.clear();
    activeCameraComponent = nullptr;
 
@@ -53,9 +50,9 @@ Scene::~Scene()
 
 void Scene::tick(float dt)
 {
-   for (Tickable* tickable : tickables)
+   for (const UPtr<Entity>& entity : entities)
    {
-      tickable->tick(dt);
+      entity->tick(dt);
    }
 }
 
@@ -73,16 +70,6 @@ bool Scene::destroyEntity(Entity* entityToDestroy)
    }
 
    return false;
-}
-
-void Scene::registerTickable(Tickable* tickable)
-{
-   registerComponent(tickables, tickable);
-}
-
-void Scene::unregisterTickable(Tickable* tickable)
-{
-   unregisterComponent(tickables, tickable);
 }
 
 void Scene::setActiveCameraComponent(CameraComponent* newActiveCameraComponent)

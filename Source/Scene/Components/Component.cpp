@@ -25,6 +25,24 @@ void Component::removeOnDestroyDelegate(const DelegateHandle& handle)
    onDestroyDelegate.remove(handle);
 }
 
+void Component::tick(float dt)
+{
+   if (tickFunction)
+   {
+      tickFunction(this, dt);
+   }
+}
+
+void Component::setTickFunction(TickFunction newTickFunction)
+{
+   tickFunction = std::move(newTickFunction);
+}
+
+void Component::clearTickFunction()
+{
+   setTickFunction(nullptr);
+}
+
 Scene& Component::getScene()
 {
    return getEntity().getScene();

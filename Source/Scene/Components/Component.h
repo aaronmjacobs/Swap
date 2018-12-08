@@ -4,6 +4,7 @@
 #include "Core/Delegate.h"
 #include "Core/Pointers.h"
 
+#include <functional>
 #include <string>
 #include <unordered_map>
 
@@ -14,6 +15,7 @@ class Component
 {
 public:
    using OnDestroyDelegate = MulticastDelegate<void, Component*>;
+   using TickFunction = std::function<void(Component*, float)>;
 
    virtual ~Component();
 
@@ -21,6 +23,10 @@ public:
 
    DelegateHandle addOnDestroyDelegate(OnDestroyDelegate::FuncType&& function);
    void removeOnDestroyDelegate(const DelegateHandle& handle);
+
+   void tick(float dt);
+   void setTickFunction(TickFunction newTickFunction);
+   void clearTickFunction();
 
    Entity& getEntity()
    {
@@ -54,6 +60,7 @@ private:
 
    Entity& entity;
    OnDestroyDelegate onDestroyDelegate;
+   TickFunction tickFunction;
 };
 
 template<typename T>

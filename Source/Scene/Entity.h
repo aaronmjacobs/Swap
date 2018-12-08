@@ -22,6 +22,8 @@ public:
 
    void destroy();
 
+   void tick(float dt);
+
    template<typename T>
    T* createComponent();
 

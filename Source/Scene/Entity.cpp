@@ -15,6 +15,14 @@ void Entity::destroy()
    ASSERT(destroyed, "Entity not destroyed by scene, possibly already distroyed?");
 }
 
+void Entity::tick(float dt)
+{
+   for (const UPtr<Component>& component : components)
+   {
+      component->tick(dt);
+   }
+}
+
 Component* Entity::createComponentByName(const std::string& className)
 {
    UPtr<Component> newComponent = ComponentRegistry::instance().createComponent(*this, className);

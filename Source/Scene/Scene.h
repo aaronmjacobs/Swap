@@ -15,7 +15,6 @@ class DirectionalLightComponent;
 class ModelComponent;
 class PointLightComponent;
 class SpotLightComponent;
-class Tickable;
 
 class Scene
 {
@@ -44,9 +43,6 @@ public:
    {
       return entities;
    }
-
-   void registerTickable(Tickable* tickable);
-   void unregisterTickable(Tickable* tickable);
 
    const CameraComponent* getActiveCameraComponent() const
    {
@@ -97,8 +93,6 @@ public:
 
 private:
    std::vector<UPtr<Entity>> entities;
-
-   std::vector<Tickable*> tickables;
 
    std::vector<CameraComponent*> cameraComponents;
    CameraComponent* activeCameraComponent;
