@@ -9,6 +9,7 @@ class LightComponent : public SceneComponent
 protected:
    LightComponent(Entity& owningEntity)
       : SceneComponent(owningEntity)
+      , color(glm::vec3(1.0f))
    {
    }
 
