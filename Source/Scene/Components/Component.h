@@ -86,6 +86,12 @@ private:
    std::string componentClassName;
 };
 
+#if defined(_MSC_VER) && _MSC_VER <= 1900
+#  define SWAP_SUPPRESS_UNRECOGNIZED_ATTRIBUTE __pragma(warning(suppress: 5030))
+#else
+#  define SWAP_SUPPRESS_UNRECOGNIZED_ATTRIBUTE
+#endif
+
 #define SWAP_REFERENCE_COMPONENT(component_name) \
 namespace InitializationHack \
 { \
@@ -94,7 +100,7 @@ namespace component_name \
 extern const int kDummyInteger; \
 namespace \
 { \
-[[maybe_unused]] int referenceDummyInteger() { return kDummyInteger; } \
+SWAP_SUPPRESS_UNRECOGNIZED_ATTRIBUTE [[maybe_unused]] int referenceDummyInteger() { return kDummyInteger; } \
 } /* namespace */ \
 } /* namespace component_name */ \
 } /* namespace InitializationHack */
