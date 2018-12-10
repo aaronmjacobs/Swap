@@ -31,7 +31,7 @@ public:
       return cutoffAngle;
    }
 
-   void setGetCutoffAngle(float newCutoffAngle);
+   void setCutoffAngle(float newCutoffAngle);
 
 private:
    float radius;

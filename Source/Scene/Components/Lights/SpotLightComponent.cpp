@@ -36,7 +36,7 @@ void SpotLightComponent::setBeamAngle(float newBeamAngle)
    beamAngle = std::max(std::min(newBeamAngle, cutoffAngle), 0.0f);
 }
 
-void SpotLightComponent::setGetCutoffAngle(float newCutoffAngle)
+void SpotLightComponent::setCutoffAngle(float newCutoffAngle)
 {
    ASSERT(newCutoffAngle >= 0.0f);
    ASSERT(newCutoffAngle >= beamAngle);
