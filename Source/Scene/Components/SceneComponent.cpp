@@ -26,6 +26,33 @@ void SceneComponent::setAbsoluteTransform(const Transform& newAbsoluteTransform)
    }
 }
 
+void SceneComponent::setAbsoluteOrientation(const glm::quat& newAbsoluteOrientation)
+{
+   Transform absoluteTransform = getAbsoluteTransform();
+
+   absoluteTransform.orientation = newAbsoluteOrientation;
+
+   setAbsoluteTransform(absoluteTransform);
+}
+
+void SceneComponent::setAbsolutePosition(const glm::vec3& newAbsolutePosition)
+{
+   Transform absoluteTransform = getAbsoluteTransform();
+
+   absoluteTransform.position = newAbsolutePosition;
+
+   setAbsoluteTransform(absoluteTransform);
+}
+
+void SceneComponent::setAbsoluteScale(const glm::vec3& newAbsoluteScale)
+{
+   Transform absoluteTransform = getAbsoluteTransform();
+
+   absoluteTransform.scale = newAbsoluteScale;
+
+   setAbsoluteTransform(absoluteTransform);
+}
+
 void SceneComponent::setParent(SceneComponent* newParent)
 {
    if (newParent && &getEntity() != &newParent->getEntity())
