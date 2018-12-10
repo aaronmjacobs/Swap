@@ -3,6 +3,8 @@
 #include "Core/Assert.h"
 #include "Scene/Scene.h"
 
+#include <glm/glm.hpp>
+
 #include <algorithm>
 
 SWAP_REGISTER_COMPONENT(SpotLightComponent)
@@ -33,7 +35,7 @@ void SpotLightComponent::setBeamAngle(float newBeamAngle)
    ASSERT(newBeamAngle >= 0.0f);
    ASSERT(newBeamAngle <= cutoffAngle);
 
-   beamAngle = std::max(std::min(newBeamAngle, cutoffAngle), 0.0f);
+   beamAngle = glm::clamp(newBeamAngle, 0.0f, cutoffAngle - MathUtils::kKindaSmallNumber);
 }
 
 void SpotLightComponent::setCutoffAngle(float newCutoffAngle)
@@ -41,5 +43,5 @@ void SpotLightComponent::setCutoffAngle(float newCutoffAngle)
    ASSERT(newCutoffAngle >= 0.0f);
    ASSERT(newCutoffAngle >= beamAngle);
 
-   cutoffAngle = std::max(std::max(newCutoffAngle, beamAngle), 0.0f);
+   cutoffAngle = glm::max(glm::max(newCutoffAngle, beamAngle + MathUtils::kKindaSmallNumber), 0.0f);
 }
