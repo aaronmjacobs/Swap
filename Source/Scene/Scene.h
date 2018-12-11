@@ -24,6 +24,11 @@ public:
 
    void tick(float dt);
 
+   float getTime() const
+   {
+      return time;
+   }
+
    template<typename... ComponentTypes>
    Entity* createEntity()
    {
@@ -92,6 +97,8 @@ public:
    void unregisterSpotLightComponent(SpotLightComponent* spotLightComponent);
 
 private:
+   float time;
+
    std::vector<UPtr<Entity>> entities;
 
    std::vector<CameraComponent*> cameraComponents;
