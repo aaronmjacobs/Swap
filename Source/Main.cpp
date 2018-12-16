@@ -244,6 +244,7 @@ int main(int argc, char* argv[])
          win.swapBuffers();
       });
 
+#if SWAP_DEBUG
       window->bindOnWindowFocusChanged([&resourceManager](bool focused)
       {
          if (focused)
@@ -251,6 +252,7 @@ int main(int argc, char* argv[])
             resourceManager.reloadShaders();
          }
       });
+#endif // SWAP_DEBUG
 
       loadTestScene(resourceManager, scene);
 
