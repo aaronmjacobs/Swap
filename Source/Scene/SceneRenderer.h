@@ -6,12 +6,35 @@ class SceneRenderer
 {
 public:
    SceneRenderer(int initialWidth, int initialHeight);
+   virtual ~SceneRenderer() = default;
 
-   void renderScene(const Scene& scene);
+   virtual void renderScene(const Scene& scene) = 0;
 
-   void onFramebufferSizeChanged(int newWidth, int newHeight);
+   virtual void onFramebufferSizeChanged(int newWidth, int newHeight);
+
    void setNearPlaneDistance(float newNearPlaneDistance);
    void setFarPlaneDistance(float newFarPlaneDistance);
+
+protected:
+   int getWidth() const
+   {
+      return width;
+   }
+
+   int getHeight() const
+   {
+      return height;
+   }
+
+   float getNearPlaneDistance() const
+   {
+      return nearPlaneDistance;
+   }
+
+   float getFarPlaneDistance() const
+   {
+      return farPlaneDistance;
+   }
 
 private:
    int width;
