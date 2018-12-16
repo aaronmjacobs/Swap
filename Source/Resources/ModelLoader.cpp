@@ -180,6 +180,8 @@ namespace
       case NormalGenerationMode::Smooth:
          normalFlag = aiProcess_GenSmoothNormals;
          break;
+      default:
+         break;
       }
       unsigned int flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | normalFlag;
 
