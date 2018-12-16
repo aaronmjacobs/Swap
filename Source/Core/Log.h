@@ -5,76 +5,25 @@
 
 #include <cstring>
 #include <ctime>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
 #include <string>
 
-namespace
+// Delimiter for splitting the title and message of logs to be written by the boxer_write_policy
+#define LOG_BOXER_MESSAGE_SPLIT "|"
+
+// Severity names
+#define LOG_SEV_DEBUG "Debug"
+#define LOG_SEV_INFO "Information"
+#define LOG_SEV_MESSAGE "Message"
+#define LOG_SEV_WARNING "Warning"
+#define LOG_SEV_ERROR "Error"
+#define LOG_SEV_FATAL "Fatal Error"
+
+namespace Log
 {
-   // Severity names
-   const char* kSevDebug = "Debug";
-   const char* kSevInfo = "Information";
-   const char* kSevMessage = "Message";
-   const char* kSevWarning = "Warning";
-   const char* kSevError = "Error";
-   const char* kSevFatal = "Fatal Error";
-
-   boxer::Style boxerStyle(const std::string &sev)
-   {
-      if (sev == kSevDebug || sev == kSevInfo || sev == kSevMessage)
-      {
-         return boxer::Style::Info;
-      }
-
-      if (sev == kSevWarning)
-      {
-         return boxer::Style::Warning;
-      }
-
-      return boxer::Style::Error;
-   }
-
-   // Width of the severity tag in log output (e.g. [ warning ])
-   const int kSevNameWidth = 9;
-
-   // Delimiter for splitting the title and message of logs to be written by the boxer_write_policy
-   const std::string kBoxerMessageSplit = "|";
-
-   // Used for centering content in the log output
-   std::string center(const std::string& input, int width)
-   { 
-      return std::string((width - input.length()) / 2, ' ') + input + std::string((width - input.length() + 1) / 2, ' ');
-   }
-
-   // Format time to a string (hh:mm:ss)
-   std::string formatTime(const tm& time)
-   {
-      std::stringstream ss;
-
-      ss << std::setfill('0')
-         << std::setw(2) << time.tm_hour << ':'
-         << std::setw(2) << time.tm_min << ':'
-         << std::setw(2) << time.tm_sec;
-
-      return ss.str();
-   }
-
-   tm getCurrentTime()
-   {
-      time_t now(std::time(nullptr));
-      tm time;
-
-   #if defined(_POSIX_VERSION)
-      localtime_r(&now, &time);
-   #elif defined(_MSC_VER)
-      localtime_s(&time, &now);
-   #else
-      time = *localtime(&now);
-   #endif
-
-      return time;
-   }
+   boxer::Style boxerStyle(const std::string& sev);
+   std::string center(const std::string& input, int width);
+   std::string formatTime(const tm& time);
+   tm getCurrentTime();
 
    // Text formatting policy
    class text_formating_policy : public templog::formating_policy_base<text_formating_policy>
@@ -83,6 +32,9 @@ namespace
       template<class WritePolicy_, int Sev_, int Aud_, class WriteToken_, class ParamList_>
       static void write(WriteToken_& token, TEMPLOG_SOURCE_SIGN, const ParamList_& parameters)
       {
+         // Width of the severity tag in log output (e.g. [ warning ])
+         static const int kSevNameWidth = 9;
+
          write_obj<WritePolicy_>(token, TEMPLOG_SOURCE_FILE);
          write_obj<WritePolicy_>(token, "(");
          write_obj<WritePolicy_>(token, TEMPLOG_SOURCE_LINE);
@@ -119,15 +71,15 @@ namespace
 
       static void write_str(const std::string& str)
       {
-         size_t split = str.find(kBoxerMessageSplit);
+         size_t split = str.find(LOG_BOXER_MESSAGE_SPLIT);
 
-         std::string sevName = kSevError;
+         std::string sevName = LOG_SEV_ERROR;
          std::string message = str;
          // Should always be found, but in some off chance that it isn't, we don't want to break here
          if (split != std::string::npos)
          {
             sevName = str.substr(0, split);
-            message = str.substr(split + kBoxerMessageSplit.size());
+            message = str.substr(split + std::strlen(LOG_BOXER_MESSAGE_SPLIT));
          }
 
          boxer::show(message.c_str(), sevName.c_str(), boxerStyle(sevName));
@@ -135,24 +87,22 @@ namespace
    };
 
 #if SWAP_DEBUG
-#  define CERR_SEV_THRESHOLD templog::sev_debug
-#  define MSG_BOX_SEV_THRESHOLD templog::sev_debug
+#  define LOG_CERR_SEV_THRESHOLD templog::sev_debug
+#  define LOG_MSG_BOX_SEV_THRESHOLD templog::sev_debug
 #else // SWAP_DEBUG
 // Prevent text logging in release builds
-#  define CERR_SEV_THRESHOLD templog::sev_fatal + 1
+#  define LOG_CERR_SEV_THRESHOLD templog::sev_fatal + 1
 // Prevent debug messages boxes in release builds
-#  define MSG_BOX_SEV_THRESHOLD templog::sev_info
+#  define LOG_MSG_BOX_SEV_THRESHOLD templog::sev_info
 #endif // SWAP_DEBUG
 
-   typedef templog::logger<templog::non_filtering_logger<text_formating_policy, templog::std_write_policy>
-                         , CERR_SEV_THRESHOLD
-                         , templog::audience_list<templog::aud_developer>>
-                         cerr_logger;
+   using cerr_logger = templog::logger<templog::non_filtering_logger<text_formating_policy, templog::std_write_policy>
+                                       , LOG_CERR_SEV_THRESHOLD
+                                       , templog::audience_list<templog::aud_developer>>;
 
-   typedef templog::logger<templog::non_filtering_logger<boxer_formating_policy, boxer_write_policy>
-                         , MSG_BOX_SEV_THRESHOLD
-                         , templog::audience_list<templog::aud_user>> // Only show message boxes when the user should be notified
-                         boxer_logger;
+   using boxer_logger = templog::logger<templog::non_filtering_logger<boxer_formating_policy, boxer_write_policy>
+                                       , LOG_MSG_BOX_SEV_THRESHOLD
+                                       , templog::audience_list<templog::aud_user>>; // Only show message boxes when the user should be notified
 }
 
 // Simplify logging calls
@@ -167,40 +117,40 @@ namespace
 #define LOG(_log_message_, _log_title_, _log_severity_) \
 do \
 { \
-   TEMPLOG_LOG(cerr_logger, _log_severity_, templog::aud_developer) << _log_message_; \
+   TEMPLOG_LOG(Log::cerr_logger, _log_severity_, templog::aud_developer) << _log_message_; \
 } while (0)
 
-#define LOG_DEBUG(_log_message_) LOG(_log_message_, kSevDebug, templog::sev_debug)
-#define LOG_INFO(_log_message_) LOG(_log_message_, kSevInfo, templog::sev_info)
-#define LOG_MESSAGE(_log_message_) LOG(_log_message_, kSevMessage, templog::sev_message)
-#define LOG_WARNING(_log_message_) LOG(_log_message_, kSevWarning, templog::sev_warning)
-#define LOG_ERROR(_log_message_) LOG(_log_message_, kSevError, templog::sev_error)
+#define LOG_DEBUG(_log_message_) LOG(_log_message_, LOG_SEV_DEBUG, templog::sev_debug)
+#define LOG_INFO(_log_message_) LOG(_log_message_, LOG_SEV_INFO, templog::sev_info)
+#define LOG_MESSAGE(_log_message_) LOG(_log_message_, LOG_SEV_MESSAGE, templog::sev_message)
+#define LOG_WARNING(_log_message_) LOG(_log_message_, LOG_SEV_WARNING, templog::sev_warning)
+#define LOG_ERROR(_log_message_) LOG(_log_message_, LOG_SEV_ERROR, templog::sev_error)
 
 // Easy calls to create message boxes
 
 #define LOG_MSG_BOX(_log_message_, _log_title_, _log_severity_) \
 do \
 { \
-   TEMPLOG_LOG(boxer_logger, _log_severity_, templog::aud_user) << _log_title_ << kBoxerMessageSplit << _log_message_; \
+   TEMPLOG_LOG(Log::boxer_logger, _log_severity_, templog::aud_user) << _log_title_ << LOG_BOXER_MESSAGE_SPLIT << _log_message_; \
 } while (0)
 
-#define LOG_DEBUG_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, kSevDebug, templog::sev_debug)
-#define LOG_INFO_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, kSevInfo, templog::sev_info)
-#define LOG_MESSAGE_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, kSevMessage, templog::sev_message)
-#define LOG_WARNING_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, kSevWarning, templog::sev_warning)
-#define LOG_ERROR_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, kSevError, templog::sev_error)
+#define LOG_DEBUG_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, LOG_SEV_DEBUG, templog::sev_debug)
+#define LOG_INFO_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, LOG_SEV_INFO, templog::sev_info)
+#define LOG_MESSAGE_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, LOG_SEV_MESSAGE, templog::sev_message)
+#define LOG_WARNING_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, LOG_SEV_WARNING, templog::sev_warning)
+#define LOG_ERROR_MSG_BOX(_log_message_) LOG_MSG_BOX(_log_message_, LOG_SEV_ERROR, templog::sev_error)
 
 // Fatal errors (kill the program, even in release)
 
 #define LOG_FATAL(_log_message_) \
 do \
 { \
-   LOG(_log_message_, kSevFatal, templog::sev_fatal); \
+   LOG(_log_message_, LOG_SEV_FATAL, templog::sev_fatal); \
    abort(); \
 } while(0)
 #define LOG_FATAL_MSG_BOX(_log_message_) \
 do \
 { \
-   LOG_MSG_BOX(_log_message_, kSevFatal, templog::sev_fatal); \
+   LOG_MSG_BOX(_log_message_, LOG_SEV_FATAL, templog::sev_fatal); \
    abort(); \
 } while(0)
