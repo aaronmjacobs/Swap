@@ -54,13 +54,15 @@ namespace
    }
 #endif // SWAP_DEBUG
 
+   const int kNumSamples = 8;
+
    UPtr<Window> createWindow()
    {
       glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
       glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
       glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
       glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-      glfwWindowHint(GLFW_SAMPLES, 8);
+      glfwWindowHint(GLFW_SAMPLES, kNumSamples);
 
       UPtr<Window> window = Window::create(1280, 720, "Swap");
       if (!window)
@@ -80,8 +82,6 @@ namespace
             return nullptr;
          }
       }
-
-      glEnable(GL_MULTISAMPLE);
 
       return window;
    }
