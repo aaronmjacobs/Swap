@@ -24,9 +24,11 @@ namespace Fb
       GLsizei width = 0;
       GLsizei height = 0;
 
+      GLsizei samples = 0;
+
       DepthStencilType depthStencilType = DepthStencilType::Depth24Stencil8;
 
-      gsl::span<Tex::InternalFormat> colorAttachmentFormats;
+      gsl::span<const Tex::InternalFormat> colorAttachmentFormats;
    };
 }
 
