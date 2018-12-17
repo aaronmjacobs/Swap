@@ -39,11 +39,11 @@ private:
 
 public:
    void setData(const MeshData& data);
-   void draw();
+   void draw() const;
 
 private:
-   void bind();
-   void unbind();
+   void bind() const;
+   void unbind() const;
 
    GLuint vertexArrayObject;
 

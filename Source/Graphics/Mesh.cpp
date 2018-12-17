@@ -18,7 +18,14 @@ Mesh::Mesh()
 }
 
 Mesh::Mesh(Mesh&& other)
-   : Mesh()
+   : vertexArrayObject(0)
+   , positionBufferObject(VertexAttribute::Position)
+   , normalBufferObject(VertexAttribute::Normal)
+   , texCoordBufferObject(VertexAttribute::TexCoord)
+   , tangentBufferObject(VertexAttribute::Tangent)
+   , bitangentBufferObject(VertexAttribute::Bitangent)
+   , colorBufferObject(VertexAttribute::Color)
+   , numIndices(0)
 {
    move(std::move(other));
 }
@@ -115,7 +122,7 @@ void Mesh::setData(const MeshData& data)
    numIndices = static_cast<GLsizei>(data.indices.size());
 }
 
-void Mesh::draw()
+void Mesh::draw() const
 {
    ASSERT(numIndices > 0);
 
@@ -124,14 +131,14 @@ void Mesh::draw()
    unbind();
 }
 
-void Mesh::bind()
+void Mesh::bind() const
 {
    ASSERT(vertexArrayObject != 0);
 
    glBindVertexArray(vertexArrayObject);
 }
 
-void Mesh::unbind()
+void Mesh::unbind() const
 {
    glBindVertexArray(0);
 }
