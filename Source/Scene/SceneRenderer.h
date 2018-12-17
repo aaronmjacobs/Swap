@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/Mesh.h"
+
 class Scene;
 
 class SceneRenderer
@@ -36,9 +38,16 @@ protected:
       return farPlaneDistance;
    }
 
+   const Mesh& getScreenMesh() const
+   {
+      return screenMesh;
+   }
+
 private:
    int width;
    int height;
    float nearPlaneDistance;
    float farPlaneDistance;
+
+   Mesh screenMesh;
 };
