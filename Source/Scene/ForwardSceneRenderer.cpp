@@ -1,6 +1,7 @@
 #include "Scene/ForwardSceneRenderer.h"
 
 #include "Core/Assert.h"
+#include "Graphics/Texture.h"
 #include "Math/MathUtils.h"
 #include "Scene/Components/CameraComponent.h"
 #include "Scene/Components/Lights/DirectionalLightComponent.h"
@@ -22,6 +23,24 @@ namespace
    const char* kNormalMatrix = "uNormalMatrix";
 
    const char* kCameraPos = "uCameraPos";
+
+   Fb::Specification getFramebufferSpecification(int width, int height, int numSamples)
+   {
+      static const std::array<Tex::InternalFormat, 1> kColorAttachmentFormats =
+      {
+         Tex::InternalFormat::RGBA8
+      };
+
+      Fb::Specification specification;
+
+      specification.width = width;
+      specification.height = height;
+      specification.samples = numSamples;
+      specification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
+      specification.colorAttachmentFormats = kColorAttachmentFormats;
+
+      return specification;
+   }
 
    void populateDirectionalLightUniforms(const Scene& scene, Model& model)
    {
@@ -87,16 +106,31 @@ namespace
    }
 }
 
-ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight)
+#include "Graphics/ShaderProgram.h"
+#include "Platform/IOUtils.h"
+#include "Resources/ResourceManager.h"
+
+ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples)
    : SceneRenderer(initialWidth, initialHeight)
+   , mainPassFramebuffer(getFramebufferSpecification(getWidth(), getHeight(), numSamples))
 {
+   // TODO
+   ResourceManager resourceManager;
+
+   std::vector<ShaderSpecification> shaderSpecifications;
+   shaderSpecifications.resize(2);
+   shaderSpecifications[0].type = ShaderType::Vertex;
+   shaderSpecifications[1].type = ShaderType::Fragment;
+   IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
+   IOUtils::getAbsoluteResourcePath("SSAO.frag", shaderSpecifications[1].path);
+
+   ssaoProgram = resourceManager.loadShaderProgram(shaderSpecifications);
+   ssaoProgram->setUniformValue("uSceneColorTexture", 0);
+   ssaoProgram->setUniformValue("uSceneDepthTexture", 1);
 }
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
 {
-   glEnable(GL_DEPTH_TEST);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
    const CameraComponent* activeCamera = scene.getActiveCameraComponent();
    if (!activeCamera)
    {
@@ -111,6 +145,10 @@ void ForwardSceneRenderer::renderScene(const Scene& scene)
    glm::mat4 viewMatrix = glm::lookAt(cameraTransform.position, cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
 
    // TODO Use uniform buffer objects
+
+   mainPassFramebuffer.bind();
+   glEnable(GL_DEPTH_TEST);
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
    const std::vector<ModelComponent*>& modelComponents = scene.getModelComponents();
    for (const ModelComponent* modelComponent : modelComponents)
@@ -135,4 +173,30 @@ void ForwardSceneRenderer::renderScene(const Scene& scene)
          model->draw();
       }
    }
+
+   Framebuffer::bindDefault();
+   glDisable(GL_DEPTH_TEST);
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+   ssaoProgram->commit();
+
+   const std::vector<SPtr<Texture>>& colorAttachments = mainPassFramebuffer.getColorAttachments();
+   const SPtr<Texture>& depthStencilAttachment = mainPassFramebuffer.getDepthStencilAttachment();
+   ASSERT(colorAttachments.size() == 1);
+   ASSERT(depthStencilAttachment);
+
+   glActiveTexture(GL_TEXTURE0);
+   colorAttachments[0]->bind();
+
+   glActiveTexture(GL_TEXTURE1);
+   depthStencilAttachment->bind();
+
+   getScreenMesh().draw();
+}
+
+void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
+{
+   SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
+
+   mainPassFramebuffer.updateResolution(getWidth(), getHeight());
 }

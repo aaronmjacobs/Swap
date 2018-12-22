@@ -54,7 +54,7 @@ namespace
    }
 #endif // SWAP_DEBUG
 
-   const int kNumSamples = 8;
+   const int kNumSamples = 0;
 
    UPtr<Window> createWindow()
    {
@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
 
       ResourceManager resourceManager;
       Scene scene;
-      UPtr<SceneRenderer> sceneRenderer = std::make_unique<ForwardSceneRenderer>(framebufferWidth, framebufferHeight);
+      UPtr<SceneRenderer> sceneRenderer = std::make_unique<ForwardSceneRenderer>(framebufferWidth, framebufferHeight, kNumSamples);
 
       window->bindOnFramebufferSizeChanged([&sceneRenderer](int width, int height)
       {

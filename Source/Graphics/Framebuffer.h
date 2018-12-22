@@ -48,6 +48,16 @@ public:
    void updateSpecification(const Fb::Specification& framebufferSpecification);
    void updateResolution(GLsizei width, GLsizei height);
 
+   const SPtr<Texture>& getDepthStencilAttachment() const
+   {
+      return depthStencilAttachment;
+   }
+
+   const std::vector<SPtr<Texture>>& getColorAttachments() const
+   {
+      return colorAttachments;
+   }
+
 private:
    void move(Framebuffer&& other);
    void release();
