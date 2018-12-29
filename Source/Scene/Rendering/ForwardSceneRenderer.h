@@ -2,7 +2,7 @@
 
 #include "Core/Pointers.h"
 #include "Graphics/Framebuffer.h"
-#include "Scene/SceneRenderer.h"
+#include "Scene/Rendering/SceneRenderer.h"
 
 class ShaderProgram;
 

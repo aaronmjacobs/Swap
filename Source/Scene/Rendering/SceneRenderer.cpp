@@ -1,4 +1,4 @@
-#include "Scene/SceneRenderer.h"
+#include "Scene/Rendering/SceneRenderer.h"
 
 #include "Core/Assert.h"
 #include "Math/MathUtils.h"

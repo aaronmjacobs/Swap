@@ -12,7 +12,7 @@
 #include "Scene/Components/ModelComponent.h"
 #include "Scene/Entity.h"
 #include "Scene/Scene.h"
-#include "Scene/ForwardSceneRenderer.h"
+#include "Scene/Rendering/ForwardSceneRenderer.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>

@@ -1,4 +1,4 @@
-#include "Scene/ForwardSceneRenderer.h"
+#include "Scene/Rendering/ForwardSceneRenderer.h"
 
 #include "Core/Assert.h"
 #include "Graphics/Texture.h"

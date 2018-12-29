@@ -73,12 +73,12 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Scene/Components/SceneComponent.cpp"
    "${SRC_DIR}/Scene/Entity.h"
    "${SRC_DIR}/Scene/Entity.cpp"
-   "${SRC_DIR}/Scene/ForwardSceneRenderer.h"
-   "${SRC_DIR}/Scene/ForwardSceneRenderer.cpp"
+   "${SRC_DIR}/Scene/Rendering/ForwardSceneRenderer.h"
+   "${SRC_DIR}/Scene/Rendering/ForwardSceneRenderer.cpp"
+   "${SRC_DIR}/Scene/Rendering/SceneRenderer.h"
+   "${SRC_DIR}/Scene/Rendering/SceneRenderer.cpp"
    "${SRC_DIR}/Scene/Scene.h"
    "${SRC_DIR}/Scene/Scene.cpp"
-   "${SRC_DIR}/Scene/SceneRenderer.h"
-   "${SRC_DIR}/Scene/SceneRenderer.cpp"
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${SRC_DIR}")
