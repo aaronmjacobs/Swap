@@ -136,9 +136,11 @@ namespace
       {
          Entity* directionalLightEntity = scene.createEntity<DirectionalLightComponent>();
 
-         DirectionalLightComponent* directionalLightComponent = directionalLightEntity->getComponentByClass<DirectionalLightComponent>();
+         DirectionalLightComponent* directionalLightComponent =
+            directionalLightEntity->getComponentByClass<DirectionalLightComponent>();
          directionalLightComponent->setColor(glm::vec3(0.25f));
-         directionalLightComponent->setRelativeOrientation(glm::angleAxis(glm::radians(-60.0f), MathUtils::kRightVector));
+         directionalLightComponent->setRelativeOrientation(glm::angleAxis(glm::radians(-60.0f),
+                                                                          MathUtils::kRightVector));
       }
 
       // Point light
@@ -156,7 +158,9 @@ namespace
             float r = 1.5f;
             float phi = std::fmod(time, 2.0f * glm::pi<float>());
             float theta = std::fmod(time * 0.7f, 2.0f * glm::pi<float>());
-            sceneComponent->setRelativePosition(glm::vec3(r * glm::sin(phi) * glm::cos(theta), r * glm::sin(phi) * glm::sin(theta), r * glm::cos(phi)));
+            sceneComponent->setRelativePosition(glm::vec3(r * glm::sin(phi) * glm::cos(theta),
+                                                          r * glm::sin(phi) * glm::sin(theta),
+                                                          r * glm::cos(phi)));
          });
 
          ModelSpecification sphereModelSpecification;
@@ -229,9 +233,10 @@ int main(int argc, char* argv[])
       int framebufferHeight = 0;
       window->getFramebufferSize(framebufferWidth, framebufferHeight);
 
-      ResourceManager resourceManager;
+      SPtr<ResourceManager> resourceManager = std::make_shared<ResourceManager>();
       Scene scene;
-      UPtr<SceneRenderer> sceneRenderer = std::make_unique<ForwardSceneRenderer>(framebufferWidth, framebufferHeight, kNumSamples);
+      UPtr<SceneRenderer> sceneRenderer = std::make_unique<ForwardSceneRenderer>(framebufferWidth, framebufferHeight,
+                                                                                 kNumSamples, resourceManager);
 
       window->bindOnFramebufferSizeChanged([&sceneRenderer](int width, int height)
       {
@@ -245,16 +250,16 @@ int main(int argc, char* argv[])
       });
 
 #if SWAP_DEBUG
-      window->bindOnWindowFocusChanged([&resourceManager](bool focused)
+      window->bindOnWindowFocusChanged([resourceManager](bool focused)
       {
          if (focused)
          {
-            resourceManager.reloadShaders();
+            resourceManager->reloadShaders();
          }
       });
 #endif // SWAP_DEBUG
 
-      loadTestScene(resourceManager, scene);
+      loadTestScene(*resourceManager, scene);
 
       double lastTime = glfwGetTime();
       while (!window->shouldClose())

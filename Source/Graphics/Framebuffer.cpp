@@ -158,3 +158,22 @@ void Framebuffer::updateResolution(GLsizei width, GLsizei height)
       colorAttachment->updateResolution(width, height);
    }
 }
+
+void Framebuffer::setColorAttachmentsEnabled(bool enabled)
+{
+   if (enabled)
+   {
+      std::vector<GLenum> drawBuffers(colorAttachments.size());
+
+      for (std::size_t i = 0; i < colorAttachments.size(); ++i)
+      {
+         drawBuffers[i] = static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + i);
+      }
+
+      glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+   }
+   else
+   {
+      glDrawBuffers(0, nullptr);
+   }
+}

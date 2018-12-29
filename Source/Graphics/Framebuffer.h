@@ -47,6 +47,12 @@ public:
 
    void updateSpecification(const Fb::Specification& framebufferSpecification);
    void updateResolution(GLsizei width, GLsizei height);
+   void setColorAttachmentsEnabled(bool enabled);
+
+   GLuint getId() const
+   {
+      return id;
+   }
 
    const SPtr<Texture>& getDepthStencilAttachment() const
    {

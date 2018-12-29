@@ -3,6 +3,7 @@
 #include "Core/Assert.h"
 #include "Graphics/Texture.h"
 #include "Math/MathUtils.h"
+#include "Resources/ResourceManager.h"
 #include "Scene/Components/CameraComponent.h"
 #include "Scene/Components/Lights/DirectionalLightComponent.h"
 #include "Scene/Components/Lights/PointLightComponent.h"
@@ -24,7 +25,7 @@ namespace
 
    const char* kCameraPos = "uCameraPos";
 
-   Fb::Specification getFramebufferSpecification(int width, int height, int numSamples)
+   Fb::Specification getMainPassFramebufferSpecification(int width, int height, int numSamples)
    {
       static const std::array<Tex::InternalFormat, 1> kColorAttachmentFormats =
       {
@@ -50,11 +51,13 @@ namespace
          std::string directionalLightStr = "uDirectionalLights[" + std::to_string(directionalLightIndex) + "]";
 
          model.setMaterialParameter(directionalLightStr + ".color", directionalLightComponent->getColor());
-         model.setMaterialParameter(directionalLightStr + ".direction", directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
+         model.setMaterialParameter(directionalLightStr + ".direction",
+            directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
 
          ++directionalLightIndex;
       }
-      model.setMaterialParameter("uNumDirectionalLights", static_cast<int>(scene.getDirectionalLightComponents().size()));
+      model.setMaterialParameter("uNumDirectionalLights",
+         static_cast<int>(scene.getDirectionalLightComponents().size()));
    }
 
    void populatePointLightUniforms(const Scene& scene, Model& model)
@@ -108,50 +111,111 @@ namespace
 
 #include "Graphics/ShaderProgram.h"
 #include "Platform/IOUtils.h"
-#include "Resources/ResourceManager.h"
 
-ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples)
+ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples,
+   const SPtr<ResourceManager>& inResourceManager)
    : SceneRenderer(initialWidth, initialHeight)
-   , mainPassFramebuffer(getFramebufferSpecification(getWidth(), getHeight(), numSamples))
+   , mainPassFramebuffer(getMainPassFramebufferSpecification(getWidth(), getHeight(), numSamples))
+   , resourceManager(inResourceManager)
 {
-   // TODO
-   ResourceManager resourceManager;
+   ASSERT(resourceManager);
 
    std::vector<ShaderSpecification> shaderSpecifications;
    shaderSpecifications.resize(2);
    shaderSpecifications[0].type = ShaderType::Vertex;
    shaderSpecifications[1].type = ShaderType::Fragment;
-   IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
-   IOUtils::getAbsoluteResourcePath("SSAO.frag", shaderSpecifications[1].path);
+   IOUtils::getAbsoluteResourcePath("DepthOnly.vert", shaderSpecifications[0].path);
+   IOUtils::getAbsoluteResourcePath("DepthOnly.frag", shaderSpecifications[1].path);
 
-   ssaoProgram = resourceManager.loadShaderProgram(shaderSpecifications);
-   ssaoProgram->setUniformValue("uSceneColorTexture", 0);
-   ssaoProgram->setUniformValue("uSceneDepthTexture", 1);
+   depthOnlyProgram = resourceManager->loadShaderProgram(shaderSpecifications);
 }
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
 {
-   const CameraComponent* activeCamera = scene.getActiveCameraComponent();
-   if (!activeCamera)
+   // TODO Use uniform buffer objects
+
+   PerspectiveInfo perspectiveInfo;
+   if (!getPerspectiveInfo(scene, perspectiveInfo))
    {
       return;
    }
 
+   renderPrePass(scene, perspectiveInfo);
+   renderMainPass(scene, perspectiveInfo);
+   renderPostProcessPasses(scene, perspectiveInfo);
+}
+
+void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
+{
+   SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
+
+   mainPassFramebuffer.updateResolution(getWidth(), getHeight());
+}
+
+bool ForwardSceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const
+{
+   const CameraComponent* activeCamera = scene.getActiveCameraComponent();
+   if (!activeCamera)
+   {
+      return false;
+   }
+
    ASSERT(getWidth() > 0 && getHeight() > 0, "Invalid framebuffer size");
    float aspectRatio = static_cast<float>(getWidth()) / getHeight();
-   glm::mat4 projectionMatrix = glm::perspective(glm::radians(activeCamera->getFieldOfView()), aspectRatio, getNearPlaneDistance(), getFarPlaneDistance());
+   perspectiveInfo.projectionMatrix = glm::perspective(glm::radians(activeCamera->getFieldOfView()), aspectRatio,
+      getNearPlaneDistance(), getFarPlaneDistance());
 
    Transform cameraTransform = activeCamera->getAbsoluteTransform();
-   glm::mat4 viewMatrix = glm::lookAt(cameraTransform.position, cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
+   perspectiveInfo.viewMatrix = glm::lookAt(cameraTransform.position,
+      cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
 
-   // TODO Use uniform buffer objects
+   perspectiveInfo.cameraPosition = cameraTransform.position;
 
+   return true;
+}
+
+void ForwardSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+{
    mainPassFramebuffer.bind();
+
    glEnable(GL_DEPTH_TEST);
+   glDepthFunc(GL_LESS);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-   const std::vector<ModelComponent*>& modelComponents = scene.getModelComponents();
-   for (const ModelComponent* modelComponent : modelComponents)
+   mainPassFramebuffer.setColorAttachmentsEnabled(false);
+
+   depthOnlyProgram->setUniformValue(kProjectionMatrix, perspectiveInfo.projectionMatrix);
+   depthOnlyProgram->setUniformValue(kViewMatrix, perspectiveInfo.viewMatrix);
+
+   for (const ModelComponent* modelComponent : scene.getModelComponents())
+   {
+      ASSERT(modelComponent);
+
+      if (const SPtr<Model>& model = modelComponent->getModel())
+      {
+         Transform transform = modelComponent->getAbsoluteTransform();
+         glm::mat4 modelMatrix = transform.toMatrix();
+
+         depthOnlyProgram->setUniformValue(kModelMatrix, modelMatrix);
+         depthOnlyProgram->commit();
+
+         for (ModelSection& modelSection : model->getSections())
+         {
+            modelSection.mesh.draw();
+         }
+      }
+   }
+}
+
+void ForwardSceneRenderer::renderMainPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+{
+   mainPassFramebuffer.bind();
+   mainPassFramebuffer.setColorAttachmentsEnabled(true);
+
+   glEnable(GL_DEPTH_TEST);
+   glDepthFunc(GL_LEQUAL);
+
+   for (const ModelComponent* modelComponent : scene.getModelComponents())
    {
       ASSERT(modelComponent);
 
@@ -161,42 +225,26 @@ void ForwardSceneRenderer::renderScene(const Scene& scene)
          glm::mat4 modelMatrix = transform.toMatrix();
          glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
 
-         model->setMaterialParameter(kProjectionMatrix, projectionMatrix, false);
-         model->setMaterialParameter(kViewMatrix, viewMatrix, false);
+         model->setMaterialParameter(kProjectionMatrix, perspectiveInfo.projectionMatrix, false);
+         model->setMaterialParameter(kViewMatrix, perspectiveInfo.viewMatrix, false);
          model->setMaterialParameter(kModelMatrix, modelMatrix, false);
          model->setMaterialParameter(kNormalMatrix, normalMatrix, false);
 
-         model->setMaterialParameter(kCameraPos, cameraTransform.position);
+         model->setMaterialParameter(kCameraPos, perspectiveInfo.cameraPosition);
 
          populateLightUniforms(scene, *model);
 
          model->draw();
       }
    }
-
-   Framebuffer::bindDefault();
-   glDisable(GL_DEPTH_TEST);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-   ssaoProgram->commit();
-
-   const std::vector<SPtr<Texture>>& colorAttachments = mainPassFramebuffer.getColorAttachments();
-   const SPtr<Texture>& depthStencilAttachment = mainPassFramebuffer.getDepthStencilAttachment();
-   ASSERT(colorAttachments.size() == 1);
-   ASSERT(depthStencilAttachment);
-
-   glActiveTexture(GL_TEXTURE0);
-   colorAttachments[0]->bind();
-
-   glActiveTexture(GL_TEXTURE1);
-   depthStencilAttachment->bind();
-
-   getScreenMesh().draw();
 }
 
-void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
+void ForwardSceneRenderer::renderPostProcessPasses(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
 {
-   SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
+   // TODO Eventually an actual set of render passes
 
-   mainPassFramebuffer.updateResolution(getWidth(), getHeight());
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, mainPassFramebuffer.getId());
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
