@@ -31,6 +31,7 @@ namespace
 
 Scene::Scene()
    : time(0.0f)
+   , deltaTime(0.0f)
    , activeCameraComponent(nullptr)
 {
 }
@@ -52,6 +53,7 @@ Scene::~Scene()
 void Scene::tick(float dt)
 {
    time += dt;
+   deltaTime = dt;
 
    for (const UPtr<Entity>& entity : entities)
    {

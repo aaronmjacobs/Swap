@@ -29,6 +29,11 @@ public:
       return time;
    }
 
+   float getDeltaTime() const
+   {
+      return deltaTime;
+   }
+
    template<typename... ComponentTypes>
    Entity* createEntity()
    {
@@ -47,6 +52,11 @@ public:
    const std::vector<UPtr<Entity>>& getEntities() const
    {
       return entities;
+   }
+
+   CameraComponent* getActiveCameraComponent()
+   {
+      return activeCameraComponent;
    }
 
    const CameraComponent* getActiveCameraComponent() const
@@ -98,6 +108,7 @@ public:
 
 private:
    float time;
+   float deltaTime;
 
    std::vector<UPtr<Entity>> entities;
 
