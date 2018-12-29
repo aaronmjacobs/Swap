@@ -8,6 +8,7 @@
 #include <array>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 template<typename KeyType>
 using InputMappings = std::unordered_map<KeyType, std::vector<std::string>>;
@@ -51,7 +52,7 @@ public:
    void createButtonMapping(const std::string& action, const KeyChord* keyChord, const MouseButtonChord* mouseButtonChord, const GamepadButtonChord* gamepadButtonChord);
    void destroyButtonMapping(const std::string& action);
 
-   void createAxisMapping(const std::string& action, const CursorAxis* cursorAxis, const GamepadAxisChord* gamepadAxisChord);
+   void createAxisMapping(const std::string& action, const KeyAxisChord* keyAxisChord, const CursorAxisChord* cursorAxisChord, const GamepadAxisChord* gamepadAxisChord);
    void destroyAxisMapping(const std::string& action);
 
    DelegateHandle bindButtonMapping(const std::string& action, ButtonInputDelegate::FuncType&& function);
@@ -69,7 +70,7 @@ private:
    void onMouseButtonEvent(int button, int action, int mods);
    void onCursorPosChanged(double xPos, double yPos);
 
-   void pollGamepads();
+   void pollEvents();
    void pollGamepad(int gamepadId);
 
    KeyDelegate keyDelegate;
@@ -79,13 +80,16 @@ private:
    GamepadAxisDelegate gamepadAxisDelegate;
 
    InputMappings<KeyChord> keyMappings;
+   InputMappings<KeyAxisChord> keyAxisMappings;
    InputMappings<MouseButtonChord> mouseButtonMappings;
-   InputMappings<CursorAxis> cursorAxisMappings;
+   InputMappings<CursorAxisChord> cursorAxisMappings;
    InputMappings<GamepadButtonChord> gamepadButtonMappings;
    InputMappings<GamepadAxisChord> gamepadAxisMappings;
 
    InputBindings<ButtonInputDelegate> buttonBindings;
    InputBindings<AxisInputDelegate> axisBindings;
+
+   std::unordered_set<KeyChord> heldKeys;
 
    double lastMouseX;
    double lastMouseY;

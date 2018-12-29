@@ -182,9 +182,10 @@ void InputManager::destroyButtonMapping(const std::string& action)
    destroyMapping(gamepadButtonMappings, action);
 }
 
-void InputManager::createAxisMapping(const std::string& action, const CursorAxis* cursorAxis, const GamepadAxisChord* gamepadAxisChord)
+void InputManager::createAxisMapping(const std::string& action, const KeyAxisChord* keyAxisChord, const CursorAxisChord* cursorAxisChord, const GamepadAxisChord* gamepadAxisChord)
 {
-   createMapping(cursorAxisMappings, cursorAxis, action);
+   createMapping(keyAxisMappings, keyAxisChord, action);
+   createMapping(cursorAxisMappings, cursorAxisChord, action);
    createMapping(gamepadAxisMappings, gamepadAxisChord, action);
 }
 
@@ -227,6 +228,15 @@ void InputManager::onKeyEvent(int key, int scancode, int action, int mods)
       keyDelegate.broadcast(keyChord, pressed);
 
       broadcastEvent(keyMappings, buttonBindings, keyChord, pressed);
+
+      if (pressed)
+      {
+         heldKeys.insert(keyChord);
+      }
+      else
+      {
+         heldKeys.erase(keyChord);
+      }
    }
 }
 
@@ -250,17 +260,44 @@ void InputManager::onCursorPosChanged(double xPos, double yPos)
    cursorAxisDelegate.broadcast(xPos, yPos);
 
    float xDiff = static_cast<float>((xPos - lastMouseX) * kMouseSensitivity);
-   float yDiff = static_cast<float>((yPos - lastMouseY) * kMouseSensitivity);
+   float yDiff = static_cast<float>((lastMouseY - yPos) * kMouseSensitivity);
 
-   broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::X, xDiff);
-   broadcastEvent(cursorAxisMappings, axisBindings, CursorAxis::Y, yDiff);
+   CursorAxisChord xAxisChord;
+   xAxisChord.cursorAxis = CursorAxis::X;
+
+   xAxisChord.invert = false;
+   broadcastEvent(cursorAxisMappings, axisBindings, xAxisChord, xDiff);
+
+   xAxisChord.invert = true;
+   broadcastEvent(cursorAxisMappings, axisBindings, xAxisChord, -xDiff);
+
+   CursorAxisChord yAxisChord;
+   yAxisChord.cursorAxis = CursorAxis::Y;
+
+   yAxisChord.invert = false;
+   broadcastEvent(cursorAxisMappings, axisBindings, yAxisChord, yDiff);
+
+   yAxisChord.invert = true;
+   broadcastEvent(cursorAxisMappings, axisBindings, yAxisChord, -yDiff);
 
    lastMouseX = xPos;
    lastMouseY = yPos;
 }
 
-void InputManager::pollGamepads()
+void InputManager::pollEvents()
 {
+   for (const KeyChord& heldKey : heldKeys)
+   {
+      KeyAxisChord keyAxisChord;
+      keyAxisChord.keyChord = heldKey;
+
+      keyAxisChord.invert = false;
+      broadcastEvent(keyAxisMappings, axisBindings, keyAxisChord, 1.0f);
+
+      keyAxisChord.invert = true;
+      broadcastEvent(keyAxisMappings, axisBindings, keyAxisChord, -1.0f);
+   }
+
    for (int gamepadId = 0; gamepadId <= GLFW_JOYSTICK_LAST; ++gamepadId)
    {
       pollGamepad(gamepadId);
@@ -295,8 +332,17 @@ void InputManager::pollGamepad(int gamepadId)
          newGamepadState.axes[axisId] = applyDeadzone(newGamepadState.axes[axisId]);
 
          GamepadAxis axis = static_cast<GamepadAxis>(axisId);
-         float defaultValue = (axis == GamepadAxis::LeftTrigger || axis == GamepadAxis::RightTrigger) ? -1.0f : 0.0f;
-         if (newGamepadState.axes[axisId] != defaultValue || currentGamepadState.axes[axisId] != newGamepadState.axes[axisId])
+
+         if (axis == GamepadAxis::LeftY || axis == GamepadAxis::RightY)
+         {
+            newGamepadState.axes[axisId] *= -1.0f;
+         }
+         else if (axis == GamepadAxis::LeftTrigger || axis == GamepadAxis::RightTrigger)
+         {
+            newGamepadState.axes[axisId] = (newGamepadState.axes[axisId] + 1.0f) * 0.5f;
+         }
+
+         if (newGamepadState.axes[axisId] != 0.0f || currentGamepadState.axes[axisId] != newGamepadState.axes[axisId])
          {
             GamepadAxisChord gamepadAxisChord;
             gamepadAxisChord.axis = axis;
@@ -306,7 +352,11 @@ void InputManager::pollGamepad(int gamepadId)
 
             gamepadAxisDelegate.broadcast(gamepadAxisChord, value);
 
+            gamepadAxisChord.invert = false;
             broadcastEvent(gamepadAxisMappings, axisBindings, gamepadAxisChord, value);
+
+            gamepadAxisChord.invert = true;
+            broadcastEvent(gamepadAxisMappings, axisBindings, gamepadAxisChord, -value);
          }
       }
 

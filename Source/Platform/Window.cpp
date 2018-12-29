@@ -131,7 +131,7 @@ void Window::swapBuffers()
 void Window::pollEvents()
 {
    glfwPollEvents();
-   inputManager.pollGamepads();
+   inputManager.pollEvents();
 }
 
 bool Window::shouldClose() const

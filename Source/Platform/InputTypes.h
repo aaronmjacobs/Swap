@@ -157,6 +157,17 @@ struct KeyChord
    }
 };
 
+struct KeyAxisChord
+{
+   KeyChord keyChord;
+   bool invert = false;
+
+   bool operator==(const KeyAxisChord& other) const
+   {
+      return keyChord == other.keyChord && invert == other.invert;
+   }
+};
+
 enum class MouseButton
 {
    First = GLFW_MOUSE_BUTTON_1,
@@ -188,6 +199,17 @@ enum class CursorAxis
 {
    X,
    Y
+};
+
+struct CursorAxisChord
+{
+   CursorAxis cursorAxis;
+   bool invert = false;
+
+   bool operator==(const CursorAxisChord& other) const
+   {
+      return cursorAxis == other.cursorAxis && invert == other.invert;
+   }
 };
 
 enum class GamepadButton
@@ -239,10 +261,11 @@ struct GamepadAxisChord
 {
    GamepadAxis axis = GamepadAxis::LeftX;
    int gamepadId = -1;
+   bool invert = false;
 
    bool operator==(const GamepadAxisChord& other) const
    {
-      return axis == other.axis && gamepadId == other.gamepadId;
+      return axis == other.axis && gamepadId == other.gamepadId && invert == other.invert;
    }
 };
 
@@ -263,6 +286,20 @@ namespace std
    };
 
    template<>
+   struct hash<KeyAxisChord>
+   {
+      size_t operator()(const KeyAxisChord& keyAxisChord) const
+      {
+         size_t seed = 0;
+
+         Hash::combine(seed, keyAxisChord.keyChord);
+         Hash::combine(seed, keyAxisChord.invert);
+
+         return seed;
+      }
+   };
+
+   template<>
    struct hash<MouseButtonChord>
    {
       size_t operator()(const MouseButtonChord& mouseButtonChord) const
@@ -271,6 +308,20 @@ namespace std
 
          Hash::combine(seed, mouseButtonChord.button);
          Hash::combine(seed, mouseButtonChord.mods);
+
+         return seed;
+      }
+   };
+
+   template<>
+   struct hash<CursorAxisChord>
+   {
+      size_t operator()(const CursorAxisChord& cursorAxisChord) const
+      {
+         size_t seed = 0;
+
+         Hash::combine(seed, cursorAxisChord.cursorAxis);
+         Hash::combine(seed, cursorAxisChord.invert);
 
          return seed;
       }
