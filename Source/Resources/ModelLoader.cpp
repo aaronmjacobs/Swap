@@ -17,14 +17,19 @@
 namespace
 {
    SPtr<Texture> loadMaterialTexture(const aiMaterial& assimpMaterial, aiTextureType textureType,
-      const std::string& directory, TextureLoader& textureLoader)
+      const LoadedTextureParameters& textureParams, const std::string& directory, TextureLoader& textureLoader)
    {
       if (assimpMaterial.GetTextureCount(textureType) > 0)
       {
          aiString textureName;
          if (assimpMaterial.GetTexture(textureType, 0, &textureName) == aiReturn_SUCCESS)
          {
-            return textureLoader.loadTexture(directory + "/" + textureName.C_Str());
+            LoadedTextureSpecification specification;
+
+            specification.path = directory + "/" + textureName.C_Str();
+            specification.params = textureParams;
+
+            return textureLoader.loadTexture(specification);
          }
       }
 
@@ -32,19 +37,20 @@ namespace
    }
 
    Material processAssimpMaterial(const aiMaterial& assimpMaterial,
-      const std::vector<ShaderSpecification>& shaderSpecifications, const std::string& directory,
-      ShaderLoader& shaderLoader, TextureLoader& textureLoader)
+      const std::vector<ShaderSpecification>& shaderSpecifications, const LoadedTextureParameters& textureParams,
+      const std::string& directory, ShaderLoader& shaderLoader, TextureLoader& textureLoader)
    {
-      SPtr<Texture> diffuseTexture = loadMaterialTexture(assimpMaterial, aiTextureType_DIFFUSE, directory,
-         textureLoader);
-      SPtr<Texture> normalTexture = loadMaterialTexture(assimpMaterial, aiTextureType_NORMALS, directory,
-         textureLoader);
+      SPtr<Texture> diffuseTexture = loadMaterialTexture(assimpMaterial, aiTextureType_DIFFUSE, textureParams,
+         directory, textureLoader);
+      SPtr<Texture> normalTexture = loadMaterialTexture(assimpMaterial, aiTextureType_NORMALS, textureParams,
+         directory, textureLoader);
       if (!normalTexture)
       {
-         normalTexture = loadMaterialTexture(assimpMaterial, aiTextureType_HEIGHT, directory, textureLoader);
+         normalTexture = loadMaterialTexture(assimpMaterial, aiTextureType_HEIGHT, textureParams, directory,
+            textureLoader);
       }
-      SPtr<Texture> specularTexture = loadMaterialTexture(assimpMaterial, aiTextureType_SPECULAR, directory,
-         textureLoader);
+      SPtr<Texture> specularTexture = loadMaterialTexture(assimpMaterial, aiTextureType_SPECULAR, textureParams,
+         directory, textureLoader);
 
       std::vector<ShaderSpecification> localSpecifications = shaderSpecifications;
       for (ShaderSpecification& shaderSpecification : localSpecifications)
@@ -140,8 +146,8 @@ namespace
    }
 
    void processAssimpNode(Model& model, const aiScene& assimpScene, const aiNode& assimpNode,
-      const std::vector<ShaderSpecification>& shaderSpecifications, const std::string& directory,
-      ShaderLoader& shaderLoader, TextureLoader& textureLoader)
+      const std::vector<ShaderSpecification>& shaderSpecifications, const LoadedTextureParameters& textureParams,
+      const std::string& directory, ShaderLoader& shaderLoader, TextureLoader& textureLoader)
    {
       for (unsigned int i = 0; i < assimpNode.mNumMeshes; ++i)
       {
@@ -149,15 +155,15 @@ namespace
 
          Mesh mesh = processAssimpMesh(assimpMesh);
          Material material = processAssimpMaterial(*assimpScene.mMaterials[assimpMesh.mMaterialIndex],
-            shaderSpecifications, directory, shaderLoader, textureLoader);
+            shaderSpecifications, textureParams, directory, shaderLoader, textureLoader);
 
          model.addSection(ModelSection(std::move(mesh), std::move(material)));
       }
 
       for (unsigned int i = 0; i < assimpNode.mNumChildren; ++i)
       {
-         processAssimpNode(model, assimpScene, *assimpNode.mChildren[i], shaderSpecifications, directory, shaderLoader,
-            textureLoader);
+         processAssimpNode(model, assimpScene, *assimpNode.mChildren[i], shaderSpecifications, textureParams, directory,
+            shaderLoader, textureLoader);
       }
    }
 
@@ -194,8 +200,8 @@ namespace
       }
 
       SPtr<Model> model(new Model);
-      processAssimpNode(*model, *assimpScene, *assimpScene->mRootNode, specification.shaderSpecifications, directory,
-         shaderLoader, textureLoader);
+      processAssimpNode(*model, *assimpScene, *assimpScene->mRootNode, specification.shaderSpecifications,
+         specification.textureParams, directory, shaderLoader, textureLoader);
 
       return model;
    }
@@ -213,6 +219,10 @@ namespace std
       {
          Hash::combine(seed, shaderSpecification);
       }
+
+      Hash::combine(seed, specification.textureParams.wrap);
+      Hash::combine(seed, specification.textureParams.minFilter);
+      Hash::combine(seed, specification.textureParams.magFilter);
 
       return seed;
    }

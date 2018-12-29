@@ -1,6 +1,7 @@
 #include "Resources/TextureLoader.h"
 
 #include "Core/Assert.h"
+#include "Core/Hash.h"
 #include "Core/Log.h"
 #include "Graphics/Texture.h"
 #include "Resources/DefaultImageSource.h"
@@ -66,20 +67,22 @@ namespace
       return info;
    }
 
-   void setParameters(Texture& texture, Tex::Wrap wrap, Tex::MinFilter minFilter, Tex::MagFilter magFilter)
+   void setParameters(Texture& texture, LoadedTextureParameters params)
    {
-      if (minFilter == Tex::MinFilter::NearestMipmapNearest || minFilter == Tex::MinFilter::LinearMipmapNearest
-         || minFilter == Tex::MinFilter::NearestMipmapLinear || minFilter == Tex::MinFilter::LinearMipmapLinear)
+      if (params.minFilter == Tex::MinFilter::NearestMipmapNearest
+         || params.minFilter == Tex::MinFilter::LinearMipmapNearest
+         || params.minFilter == Tex::MinFilter::NearestMipmapLinear
+         || params.minFilter == Tex::MinFilter::LinearMipmapLinear)
       {
          texture.generateMipMaps();
       }
 
-      texture.setParam(Tex::IntParam::TextureWrapS, static_cast<GLint>(wrap));
-      texture.setParam(Tex::IntParam::TextureWrapT, static_cast<GLint>(wrap));
-      texture.setParam(Tex::IntParam::TextureWrapR, static_cast<GLint>(wrap));
+      texture.setParam(Tex::IntParam::TextureWrapS, static_cast<GLint>(params.wrap));
+      texture.setParam(Tex::IntParam::TextureWrapT, static_cast<GLint>(params.wrap));
+      texture.setParam(Tex::IntParam::TextureWrapR, static_cast<GLint>(params.wrap));
 
-      texture.setParam(Tex::IntParam::TextureMinFilter, static_cast<GLint>(minFilter));
-      texture.setParam(Tex::IntParam::TextureMagFilter, static_cast<GLint>(magFilter));
+      texture.setParam(Tex::IntParam::TextureMinFilter, static_cast<GLint>(params.minFilter));
+      texture.setParam(Tex::IntParam::TextureMagFilter, static_cast<GLint>(params.magFilter));
    }
 
    Tex::InternalFormat determineInternalFormat(int composition)
@@ -161,11 +164,40 @@ namespace
    }
 }
 
-SPtr<Texture> TextureLoader::loadTexture(const std::string& path, Tex::Wrap wrap /*= Tex::Wrap::Repeat*/,
-   Tex::MinFilter minFilter /*= Tex::MinFilter::NearestMipmapLinear*/,
-   Tex::MagFilter magFilter /*= Tex::MagFilter::Linear*/)
+namespace std
 {
-   auto location = textureMap.find(path);
+   size_t hash<LoadedTextureSpecification>::operator()(const LoadedTextureSpecification& specification) const
+   {
+      size_t seed = 0;
+
+      Hash::combine(seed, specification.path);
+      Hash::combine(seed, specification.params.wrap);
+      Hash::combine(seed, specification.params.minFilter);
+      Hash::combine(seed, specification.params.magFilter);
+
+      return seed;
+   }
+
+   size_t hash<LoadedCubemapSpecification>::operator()(const LoadedCubemapSpecification& specification) const
+   {
+      size_t seed = 0;
+
+      for (const std::string& path : specification.paths)
+      {
+         Hash::combine(seed, path);
+      }
+
+      Hash::combine(seed, specification.params.wrap);
+      Hash::combine(seed, specification.params.minFilter);
+      Hash::combine(seed, specification.params.magFilter);
+
+      return seed;
+   }
+}
+
+SPtr<Texture> TextureLoader::loadTexture(const LoadedTextureSpecification& specification)
+{
+   auto location = textureMap.find(specification);
    if (location != textureMap.end())
    {
       SPtr<Texture> texture = location->second.lock();
@@ -178,20 +210,18 @@ SPtr<Texture> TextureLoader::loadTexture(const std::string& path, Tex::Wrap wrap
    // Load images bottom-to-top (since that is how OpenGL expects textures)
    stbi_set_flip_vertically_on_load(true);
 
-   ImageInfo info = loadImage(path);
+   ImageInfo info = loadImage(specification.path);
 
    SPtr<Texture> texture = createTexture(info);
-   setParameters(*texture, wrap, minFilter, magFilter);
+   setParameters(*texture, specification.params);
 
-   textureMap.emplace(path, WPtr<Texture>(texture));
+   textureMap.emplace(specification, WPtr<Texture>(texture));
    return texture;
 }
 
-SPtr<Texture> TextureLoader::loadCubemap(const std::array<std::string, 6>& paths,
-   Tex::Wrap wrap /*= Tex::Wrap::Repeat*/, Tex::MinFilter minFilter /*= Tex::MinFilter::NearestMipmapLinear*/,
-   Tex::MagFilter magFilter /*= Tex::MagFilter::Linear*/)
+SPtr<Texture> TextureLoader::loadCubemap(const LoadedCubemapSpecification& specification)
 {
-   auto location = cubemapMap.find(paths[0]);
+   auto location = cubemapMap.find(specification);
    if (location != cubemapMap.end())
    {
       SPtr<Texture> cubemap = location->second.lock();
@@ -207,7 +237,7 @@ SPtr<Texture> TextureLoader::loadCubemap(const std::array<std::string, 6>& paths
    std::array<ImageInfo, 6> infos;
    for (int i = 0; i < infos.size(); ++i)
    {
-      infos[i] = loadImage(paths[i]);
+      infos[i] = loadImage(specification.paths[i]);
    }
 
    bool allMatch = true;
@@ -229,9 +259,9 @@ SPtr<Texture> TextureLoader::loadCubemap(const std::array<std::string, 6>& paths
    }
 
    SPtr<Texture> cubemap = createCubemap(infos);
-   setParameters(*cubemap, wrap, minFilter, magFilter);
+   setParameters(*cubemap, specification.params);
 
-   cubemapMap.emplace(paths[0], WPtr<Texture>(cubemap));
+   cubemapMap.emplace(specification, WPtr<Texture>(cubemap));
    return cubemap;
 }
 

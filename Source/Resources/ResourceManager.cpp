@@ -15,18 +15,14 @@ SPtr<ShaderProgram> ResourceManager::loadShaderProgram(const std::vector<ShaderS
    return shaderLoader.loadShaderProgram(specifications);
 }
 
-SPtr<Texture> ResourceManager::loadTexture(const std::string& path, Tex::Wrap wrap /*= Tex::Wrap::Repeat*/,
-	Tex::MinFilter minFilter /*= Tex::MinFilter::NearestMipmapLinear*/,
-	Tex::MagFilter magFilter /*= Tex::MagFilter::Linear*/)
+SPtr<Texture> ResourceManager::loadTexture(const LoadedTextureSpecification& specification)
 {
-   return textureLoader.loadTexture(path, wrap, minFilter, magFilter);
+   return textureLoader.loadTexture(specification);
 }
 
-SPtr<Texture> ResourceManager::loadCubemap(const std::array<std::string, 6>& paths,
-	Tex::Wrap wrap /*= Tex::Wrap::Repeat*/, Tex::MinFilter minFilter /*= Tex::MinFilter::NearestMipmapLinear*/,
-	Tex::MagFilter magFilter /*= Tex::MagFilter::Linear*/)
+SPtr<Texture> ResourceManager::loadCubemap(const LoadedCubemapSpecification& specification)
 {
-   return textureLoader.loadCubemap(paths, wrap, minFilter, magFilter);
+   return textureLoader.loadCubemap(specification);
 }
 
 void ResourceManager::clearCachedData()

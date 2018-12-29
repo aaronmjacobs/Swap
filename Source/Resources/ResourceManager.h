@@ -12,13 +12,8 @@ public:
    SPtr<Shader> loadShader(const ShaderSpecification& specification);
    SPtr<ShaderProgram> loadShaderProgram(const std::vector<ShaderSpecification>& specifications);
 
-   SPtr<Texture> loadTexture(const std::string& path, Tex::Wrap wrap = Tex::Wrap::Repeat,
-      Tex::MinFilter minFilter = Tex::MinFilter::NearestMipmapLinear,
-      Tex::MagFilter magFilter = Tex::MagFilter::Linear);
-
-   SPtr<Texture> loadCubemap(const std::array<std::string, 6>& paths, Tex::Wrap wrap = Tex::Wrap::Repeat,
-      Tex::MinFilter minFilter = Tex::MinFilter::NearestMipmapLinear,
-      Tex::MagFilter magFilter = Tex::MagFilter::Linear);
+   SPtr<Texture> loadTexture(const LoadedTextureSpecification& specification);
+   SPtr<Texture> loadCubemap(const LoadedCubemapSpecification& specification);
 
    void clearCachedData();
 

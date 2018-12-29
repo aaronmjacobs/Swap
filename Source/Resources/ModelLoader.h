@@ -2,13 +2,13 @@
 
 #include "Core/Pointers.h"
 #include "Resources/ShaderLoader.h"
+#include "Resources/TextureLoader.h"
 
 #include <cstdint>
 #include <string>
 #include <unordered_map>
 
 class Model;
-class TextureLoader;
 
 enum class NormalGenerationMode : uint8_t
 {
@@ -22,11 +22,13 @@ struct ModelSpecification
    std::string path;
    NormalGenerationMode normalGenerationMode = NormalGenerationMode::Smooth;
    std::vector<ShaderSpecification> shaderSpecifications;
+   LoadedTextureParameters textureParams;
 
    bool operator==(const ModelSpecification& other) const
    {
       return path == other.path && normalGenerationMode == other.normalGenerationMode
-         && shaderSpecifications == other.shaderSpecifications;
+         && shaderSpecifications == other.shaderSpecifications
+         && textureParams == other.textureParams;
    }
 };
 
