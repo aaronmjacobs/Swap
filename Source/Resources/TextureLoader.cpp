@@ -207,8 +207,7 @@ SPtr<Texture> TextureLoader::loadTexture(const LoadedTextureSpecification& speci
       }
    }
 
-   // Load images bottom-to-top (since that is how OpenGL expects textures)
-   stbi_set_flip_vertically_on_load(true);
+   stbi_set_flip_vertically_on_load(specification.params.flipVerticallyOnLoad);
 
    ImageInfo info = loadImage(specification.path);
 
@@ -231,8 +230,7 @@ SPtr<Texture> TextureLoader::loadCubemap(const LoadedCubemapSpecification& speci
       }
    }
 
-   // Load images top-to-bottom because cubemaps are weird
-   stbi_set_flip_vertically_on_load(false);
+   stbi_set_flip_vertically_on_load(specification.params.flipVerticallyOnLoad);
 
    std::array<ImageInfo, 6> infos;
    for (int i = 0; i < infos.size(); ++i)

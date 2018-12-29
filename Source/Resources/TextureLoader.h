@@ -16,6 +16,7 @@ struct LoadedTextureParameters
    Tex::Wrap wrap = Tex::Wrap::Repeat;
    Tex::MinFilter minFilter = Tex::MinFilter::NearestMipmapLinear;
    Tex::MagFilter magFilter = Tex::MagFilter::Linear;
+   bool flipVerticallyOnLoad = true;
 
    bool operator==(const LoadedTextureParameters& other) const
    {
@@ -38,6 +39,11 @@ struct LoadedCubemapSpecification
 {
    std::array<std::string, 6> paths;
    LoadedTextureParameters params;
+
+   LoadedCubemapSpecification()
+   {
+      params.flipVerticallyOnLoad = false;
+   }
 
    bool operator==(const LoadedCubemapSpecification& other) const
    {
