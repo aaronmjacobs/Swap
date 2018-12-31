@@ -30,6 +30,32 @@ namespace
       }
    }
 
+#if SWAP_DEBUG
+   std::string addLineNumbers(const std::string& source)
+   {
+      std::stringstream ss;
+      int lineNumber = 0;
+      std::size_t pos = 0;
+      std::size_t nextPos = 0;
+
+      while (nextPos < source.size())
+      {
+         nextPos = source.find('\n', pos);
+         if (nextPos == std::string::npos)
+         {
+            nextPos = source.size();
+         }
+
+         std::size_t count = (nextPos - pos) + 1;
+         ss << std::to_string(++lineNumber) << ": " << source.substr(pos, count);
+
+         pos = nextPos + 1;
+      }
+
+      return ss.str();
+   }
+#endif // SWAP_DEBUG
+
    bool findInclude(const std::string& source, std::size_t& includeStartPos, std::size_t& includeEndPos,
       std::size_t& pathStartPos, std::size_t& pathEndPos)
    {
@@ -160,6 +186,9 @@ namespace
             }
             else
             {
+               std::string sourceWithLineNumbers = addLineNumbers(source);
+               LOG_INFO(specification.path << ":\n\n" << sourceWithLineNumbers);
+
                std::stringstream sstream;
                sstream << "Failed to compile " << shader.getTypeName() << " shader, try again?\n\n"
                   << specification.path << "\n\n" << shader.getInfoLog();
