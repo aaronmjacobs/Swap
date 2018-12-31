@@ -401,24 +401,30 @@ namespace std
 
 SPtr<Shader> ShaderLoader::loadShader(const ShaderSpecification& specification)
 {
-   auto location = shaderMap.find(specification);
-   if (location != shaderMap.end())
+   if (specification.cache)
    {
-      SPtr<Shader> shader = location->second.lock();
-      if (shader)
+      auto location = shaderMap.find(specification);
+      if (location != shaderMap.end())
       {
-         return shader;
+         SPtr<Shader> shader = location->second.lock();
+         if (shader)
+         {
+            return shader;
+         }
       }
    }
 
    SPtr<Shader> shader(new Shader(specification.type));
    loadAndCompileSource(*shader, specification, shaderSourceMap, false);
 
-   shaderMap.emplace(specification, WPtr<Shader>(shader));
+   if (specification.cache)
+   {
+      shaderMap.emplace(specification, WPtr<Shader>(shader));
 
 #if SWAP_DEBUG
-   inverseShaderMap.emplace(shader.get(), specification);
+      inverseShaderMap.emplace(shader.get(), specification);
 #endif // SWAP_DEBUG
+   }
 
    return shader;
 }
@@ -443,6 +449,7 @@ SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(std::vector<ShaderSpecificat
    }
 
    SPtr<ShaderProgram> shaderProgram(new ShaderProgram);
+   bool cache = !specifications.empty();
    for (const ShaderSpecification& specification : specifications)
    {
       SPtr<Shader> shader = loadShader(specification);
@@ -450,6 +457,8 @@ SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(std::vector<ShaderSpecificat
       {
          shaderProgram->attach(shader);
       }
+
+      cache &= specification.cache;
    }
 
 #if SWAP_DEBUG
@@ -458,7 +467,11 @@ SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(std::vector<ShaderSpecificat
    linkProgram(*shaderProgram);
 #endif // SWAP_DEBUG
 
-   shaderProgramMap.emplace(std::move(specifications), WPtr<ShaderProgram>(shaderProgram));
+   if (cache)
+   {
+      shaderProgramMap.emplace(std::move(specifications), WPtr<ShaderProgram>(shaderProgram));
+   }
+
    return shaderProgram;
 }
 

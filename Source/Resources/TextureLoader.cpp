@@ -197,13 +197,16 @@ namespace std
 
 SPtr<Texture> TextureLoader::loadTexture(const LoadedTextureSpecification& specification)
 {
-   auto location = textureMap.find(specification);
-   if (location != textureMap.end())
+   if (specification.cache)
    {
-      SPtr<Texture> texture = location->second.lock();
-      if (texture)
+      auto location = textureMap.find(specification);
+      if (location != textureMap.end())
       {
-         return texture;
+         SPtr<Texture> texture = location->second.lock();
+         if (texture)
+         {
+            return texture;
+         }
       }
    }
 
@@ -214,19 +217,26 @@ SPtr<Texture> TextureLoader::loadTexture(const LoadedTextureSpecification& speci
    SPtr<Texture> texture = createTexture(info);
    setParameters(*texture, specification.params);
 
-   textureMap.emplace(specification, WPtr<Texture>(texture));
+   if (specification.cache)
+   {
+      textureMap.emplace(specification, WPtr<Texture>(texture));
+   }
+
    return texture;
 }
 
 SPtr<Texture> TextureLoader::loadCubemap(const LoadedCubemapSpecification& specification)
 {
-   auto location = cubemapMap.find(specification);
-   if (location != cubemapMap.end())
+   if (specification.cache)
    {
-      SPtr<Texture> cubemap = location->second.lock();
-      if (cubemap)
+      auto location = cubemapMap.find(specification);
+      if (location != cubemapMap.end())
       {
-         return cubemap;
+         SPtr<Texture> cubemap = location->second.lock();
+         if (cubemap)
+         {
+            return cubemap;
+         }
       }
    }
 
@@ -259,7 +269,11 @@ SPtr<Texture> TextureLoader::loadCubemap(const LoadedCubemapSpecification& speci
    SPtr<Texture> cubemap = createCubemap(infos);
    setParameters(*cubemap, specification.params);
 
-   cubemapMap.emplace(specification, WPtr<Texture>(cubemap));
+   if (specification.cache)
+   {
+      cubemapMap.emplace(specification, WPtr<Texture>(cubemap));
+   }
+
    return cubemap;
 }
 

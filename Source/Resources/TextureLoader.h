@@ -28,10 +28,11 @@ struct LoadedTextureSpecification
 {
    std::string path;
    LoadedTextureParameters params;
+   bool cache = true;
 
    bool operator==(const LoadedTextureSpecification& other) const
    {
-      return path == other.path && params == other.params;
+      return path == other.path && params == other.params && cache == other.cache;
    }
 };
 
@@ -39,6 +40,7 @@ struct LoadedCubemapSpecification
 {
    std::array<std::string, 6> paths;
    LoadedTextureParameters params;
+   bool cache = true;
 
    LoadedCubemapSpecification()
    {
@@ -47,7 +49,7 @@ struct LoadedCubemapSpecification
 
    bool operator==(const LoadedCubemapSpecification& other) const
    {
-      return paths == other.paths && params == other.params;
+      return paths == other.paths && params == other.params && cache == other.cache;
    }
 };
 

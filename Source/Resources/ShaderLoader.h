@@ -18,10 +18,11 @@ struct ShaderSpecification
    ShaderDefinitions definitions;
    std::string path;
    ShaderType type = ShaderType::Vertex;
+   bool cache = true;
 
    bool operator==(const ShaderSpecification& other) const
    {
-      return type == other.type && path == other.path && definitions == other.definitions;
+      return type == other.type && path == other.path && definitions == other.definitions && cache == other.cache;
    }
 };
 

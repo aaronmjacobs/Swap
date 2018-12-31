@@ -23,12 +23,17 @@ struct ModelSpecification
    NormalGenerationMode normalGenerationMode = NormalGenerationMode::Smooth;
    std::vector<ShaderSpecification> shaderSpecifications;
    LoadedTextureParameters textureParams;
+   bool cache = true;
+   bool cacheTextures = true;
 
    bool operator==(const ModelSpecification& other) const
    {
-      return path == other.path && normalGenerationMode == other.normalGenerationMode
+      return path == other.path
+         && normalGenerationMode == other.normalGenerationMode
          && shaderSpecifications == other.shaderSpecifications
-         && textureParams == other.textureParams;
+         && textureParams == other.textureParams
+         && cache == other.cache
+         && cacheTextures == other.cacheTextures;
    }
 };
 
@@ -45,7 +50,8 @@ namespace std
 class ModelLoader
 {
 public:
-   SPtr<Model> loadModel(ModelSpecification specification, ShaderLoader& shaderLoader, TextureLoader& textureLoader);
+   SPtr<Model> loadModel(const ModelSpecification& specification, ShaderLoader& shaderLoader,
+      TextureLoader& textureLoader);
 
    void clearCachedData();
 
