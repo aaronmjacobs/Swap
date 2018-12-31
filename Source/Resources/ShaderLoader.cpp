@@ -5,6 +5,7 @@
 #include "Platform/IOUtils.h"
 
 #include <algorithm>
+#include <cctype>
 #include <unordered_set>
 
 #if SWAP_DEBUG
