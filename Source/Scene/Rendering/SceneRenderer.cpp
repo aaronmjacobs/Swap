@@ -2,9 +2,10 @@
 
 #include "Core/Assert.h"
 #include "Math/MathUtils.h"
+#include "Scene/Components/CameraComponent.h"
+#include "Scene/Scene.h"
 
 #include <glad/glad.h>
-#include <glm/glm.hpp>
 
 #include <array>
 
@@ -46,7 +47,10 @@ namespace
 }
 
 SceneRenderer::SceneRenderer(int initialWidth, int initialHeight)
-   : width(glm::max(initialWidth, 1)), height(glm::max(initialHeight, 1)), nearPlaneDistance(0.01f), farPlaneDistance(1000.0f)
+   : width(glm::max(initialWidth, 1))
+   , height(glm::max(initialHeight, 1))
+   , nearPlaneDistance(0.01f)
+   , farPlaneDistance(1000.0f)
 {
    ASSERT(initialWidth > 0 && initialHeight > 0, "Invalid framebuffer size");
 
@@ -72,7 +76,9 @@ void SceneRenderer::setNearPlaneDistance(float newNearPlaneDistance)
    ASSERT(newNearPlaneDistance >= MathUtils::kKindaSmallNumber);
    ASSERT(newNearPlaneDistance < farPlaneDistance);
 
-   nearPlaneDistance = glm::clamp(newNearPlaneDistance, MathUtils::kKindaSmallNumber, farPlaneDistance - MathUtils::kKindaSmallNumber);
+   nearPlaneDistance = glm::clamp(newNearPlaneDistance,
+                                  MathUtils::kKindaSmallNumber,
+                                  farPlaneDistance - MathUtils::kKindaSmallNumber);
 }
 
 void SceneRenderer::setFarPlaneDistance(float newFarPlaneDistance)
@@ -80,4 +86,26 @@ void SceneRenderer::setFarPlaneDistance(float newFarPlaneDistance)
    ASSERT(newFarPlaneDistance > nearPlaneDistance);
 
    farPlaneDistance = glm::max(newFarPlaneDistance, nearPlaneDistance + MathUtils::kKindaSmallNumber);
+}
+
+bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const
+{
+   const CameraComponent* activeCamera = scene.getActiveCameraComponent();
+   if (!activeCamera)
+   {
+      return false;
+   }
+
+   ASSERT(getWidth() > 0 && getHeight() > 0, "Invalid framebuffer size");
+   float aspectRatio = static_cast<float>(getWidth()) / getHeight();
+   perspectiveInfo.projectionMatrix = glm::perspective(glm::radians(activeCamera->getFieldOfView()), aspectRatio,
+      getNearPlaneDistance(), getFarPlaneDistance());
+
+   Transform cameraTransform = activeCamera->getAbsoluteTransform();
+   perspectiveInfo.viewMatrix = glm::lookAt(cameraTransform.position,
+      cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
+
+   perspectiveInfo.cameraPosition = cameraTransform.position;
+
+   return true;
 }

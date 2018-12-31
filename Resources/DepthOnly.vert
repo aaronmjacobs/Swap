@@ -1,4 +1,4 @@
-#version 410 core
+#include "Version.glsl"
 
 uniform mat4 uProjectionMatrix;
 uniform mat4 uViewMatrix;

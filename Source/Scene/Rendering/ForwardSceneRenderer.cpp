@@ -115,8 +115,8 @@ namespace
 ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples,
    const SPtr<ResourceManager>& inResourceManager)
    : SceneRenderer(initialWidth, initialHeight)
-   , mainPassFramebuffer(getMainPassFramebufferSpecification(getWidth(), getHeight(), numSamples))
    , resourceManager(inResourceManager)
+   , mainPassFramebuffer(getMainPassFramebufferSpecification(getWidth(), getHeight(), numSamples))
 {
    ASSERT(resourceManager);
 
@@ -150,28 +150,6 @@ void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
    SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
 
    mainPassFramebuffer.updateResolution(getWidth(), getHeight());
-}
-
-bool ForwardSceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const
-{
-   const CameraComponent* activeCamera = scene.getActiveCameraComponent();
-   if (!activeCamera)
-   {
-      return false;
-   }
-
-   ASSERT(getWidth() > 0 && getHeight() > 0, "Invalid framebuffer size");
-   float aspectRatio = static_cast<float>(getWidth()) / getHeight();
-   perspectiveInfo.projectionMatrix = glm::perspective(glm::radians(activeCamera->getFieldOfView()), aspectRatio,
-      getNearPlaneDistance(), getFarPlaneDistance());
-
-   Transform cameraTransform = activeCamera->getAbsoluteTransform();
-   perspectiveInfo.viewMatrix = glm::lookAt(cameraTransform.position,
-      cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
-
-   perspectiveInfo.cameraPosition = cameraTransform.position;
-
-   return true;
 }
 
 void ForwardSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)

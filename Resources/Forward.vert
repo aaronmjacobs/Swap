@@ -1,3 +1,5 @@
+#include "Version.glsl"
+
 #include "ForwardCommon.glsl"
 
 uniform mat4 uProjectionMatrix;

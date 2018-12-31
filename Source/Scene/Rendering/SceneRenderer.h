@@ -2,7 +2,16 @@
 
 #include "Graphics/Mesh.h"
 
+#include <glm/glm.hpp>
+
 class Scene;
+
+struct PerspectiveInfo
+{
+   glm::mat4 projectionMatrix;
+   glm::mat4 viewMatrix;
+   glm::vec3 cameraPosition;
+};
 
 class SceneRenderer
 {
@@ -18,6 +27,8 @@ public:
    void setFarPlaneDistance(float newFarPlaneDistance);
 
 protected:
+   bool getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const;
+
    int getWidth() const
    {
       return width;

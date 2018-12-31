@@ -1,4 +1,4 @@
-#version 410 core
+#include "Version.glsl"
 
 void main()
 {
