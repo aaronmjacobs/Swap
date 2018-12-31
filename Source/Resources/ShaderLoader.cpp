@@ -86,6 +86,79 @@ namespace
       return true;
    }
 
+   bool findDefault(const std::string& source, std::size_t& defaultStartPos, std::size_t& defaultEndPos,
+                    std::size_t& nameStartPos, std::size_t& nameEndPos, std::size_t& lineEndPos)
+   {
+      static const char* kDefault = "#default";
+      static const std::size_t kDefaultLen = std::strlen(kDefault);
+
+      defaultStartPos = defaultEndPos = nameStartPos = nameEndPos = lineEndPos = std::string::npos;
+
+      defaultStartPos = source.find(kDefault);
+      if (defaultStartPos == std::string::npos)
+      {
+         return false;
+      }
+
+      defaultEndPos = defaultStartPos + kDefaultLen;
+
+      lineEndPos = source.find('\n', defaultStartPos + 1);
+      if (lineEndPos == std::string::npos)
+      {
+         return false;
+      }
+
+      auto whitespaceLoc = std::find_if(source.begin() + defaultStartPos, source.end(), [](char c) { return std::isblank(c); });
+      if (whitespaceLoc == source.end())
+      {
+         return false;
+      }
+
+      auto nameStartLoc = std::find_if(whitespaceLoc, source.end(), [](char c) { return !std::isblank(c); });
+      if (nameStartLoc == source.end())
+      {
+         return false;
+      }
+
+      auto nameEndLoc = std::find_if(nameStartLoc, source.end(), [](char c) { return std::isspace(c); });
+      if (nameEndLoc == source.end() || nameEndLoc == nameStartLoc)
+      {
+         return false;
+      }
+
+      nameStartPos = nameStartLoc - source.begin();
+      nameEndPos = nameEndLoc - source.begin();
+
+      return true;
+   }
+
+   void handleDefaults(const ShaderDefinitions& definitions, std::string& source)
+   {
+      static const char* kDefine = "#define";
+      static const std::size_t kDefineLen = std::strlen(kDefine);
+
+      std::size_t defaultStartPos = 0;
+      std::size_t defaultEndPos = 0;
+      std::size_t nameStartPos = 0;
+      std::size_t nameEndPos = 0;
+      std::size_t lineEndPos = 0;
+      while (findDefault(source, defaultStartPos, defaultEndPos, nameStartPos, nameEndPos, lineEndPos))
+      {
+         std::string name = source.substr(nameStartPos, nameEndPos - nameStartPos);
+
+         if (definitions.count(name) > 0)
+         {
+            // We have a provided definition, clear the default
+            source.erase(defaultStartPos, (lineEndPos - defaultStartPos) + 1);
+         }
+         else
+         {
+            // We don't have a provided definition, use the default
+            source.replace(defaultStartPos, defaultEndPos - defaultStartPos, kDefine, kDefineLen);
+         }
+      }
+   }
+
    bool loadSourceRecursive(const std::string& path, std::string& source, ShaderSourceMap& shaderSourceMap,
       bool forceLoadFromDisk, std::unordered_set<std::string>& loadedFilePaths)
    {
@@ -122,7 +195,10 @@ namespace
       }
 
       // Recursively handle all #include directives
-      std::size_t includeStartPos, includeEndPos, pathStartPos, pathEndPos;
+      std::size_t includeStartPos = 0;
+      std::size_t includeEndPos = 0;
+      std::size_t pathStartPos = 0;
+      std::size_t pathEndPos = 0;
       while (findInclude(source, includeStartPos, includeEndPos, pathStartPos, pathEndPos))
       {
          std::string includePath = directory + '/' + source.substr(pathStartPos, (pathEndPos - pathStartPos) + 1);
@@ -136,8 +212,9 @@ namespace
       }
 
       // Clean up extra #version directives
-      std::size_t versionPos = source.find("#version");
-      while ((versionPos = source.find("#version", versionPos + 1)) != std::string::npos)
+      static const char* kVersion = "#version";
+      std::size_t versionPos = source.find(kVersion);
+      while ((versionPos = source.find(kVersion, versionPos + 1)) != std::string::npos)
       {
          std::size_t endOfLinePos = source.find('\n', versionPos);
          if (endOfLinePos == std::string::npos)
@@ -158,6 +235,8 @@ namespace
       std::unordered_set<std::string> loadedFilePaths;
       if (loadSourceRecursive(path, source, shaderSourceMap, forceLoadFromDisk, loadedFilePaths))
       {
+         handleDefaults(definitions, source);
+
          // Replace all defined values
          for (const auto& pair : definitions)
          {
