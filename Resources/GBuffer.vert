@@ -1,6 +1,6 @@
 #include "Version.glsl"
 
-#include "ForwardCommon.glsl"
+#include "GBufferCommon.glsl"
 
 uniform mat4 uProjectionMatrix;
 uniform mat4 uViewMatrix;

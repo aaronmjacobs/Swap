@@ -1,8 +1,8 @@
 #include "Version.glsl"
 
-#define DIRECTIONAL_LIGHT_TYPE 0
-#define POINT_LIGHT_TYPE 1
-#define SPOT_LIGHT_TYPE 2
+#define DIRECTIONAL_LIGHT 0
+#define POINT_LIGHT 1
+#define SPOT_LIGHT 2
 
 struct DirectionalLight
 {
