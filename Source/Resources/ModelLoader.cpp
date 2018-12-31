@@ -108,7 +108,7 @@ namespace
       }
 
       std::vector<GLfloat> texCoords;
-      if (assimpMesh.mTextureCoords && assimpMesh.mTextureCoords[0])
+      if (assimpMesh.mTextureCoords && assimpMesh.mTextureCoords[0] && assimpMesh.mNumUVComponents[0] == 2)
       {
          texCoords.resize(assimpMesh.mNumVertices * 2);
 
