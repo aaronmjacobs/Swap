@@ -245,8 +245,6 @@ void ShaderProgram::detach(const SPtr<Shader>& shader)
 
 bool ShaderProgram::link()
 {
-   ASSERT(shaders.size() >= 2, "Need at least two shaders to link (currently have %lu)", shaders.size());
-
 #if SWAP_DEBUG
    uniforms.clear();
 #else // SWAP_DEBUG
