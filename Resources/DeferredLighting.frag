@@ -6,7 +6,6 @@ uniform sampler2D uPosition;
 uniform sampler2D uNormalShininess;
 uniform sampler2D uAlbedo;
 uniform sampler2D uSpecular;
-uniform sampler2D uEmissive;
 
 uniform vec3 uCameraPos;
 uniform vec4 uViewport;
@@ -29,7 +28,6 @@ vec3 calcLighting()
    vec4 normalShininess = texture(uNormalShininess, texCoord);
    vec4 albedo = texture(uAlbedo, texCoord);
    vec4 specular = texture(uSpecular, texCoord);
-   vec3 emissive = texture(uEmissive, texCoord).rgb;
 
    vec3 lighting = vec3(0.0);
 
@@ -40,8 +38,6 @@ vec3 calcLighting()
 #elif LIGHT_TYPE == SPOT_LIGHT
    lighting += calcSpotLighting(uSpotLight, albedo.rgb, specular.rgb, normalShininess.a, position, normalShininess.rgb, uCameraPos);
 #endif
-
-   lighting += emissive;
 
    return lighting;
 }

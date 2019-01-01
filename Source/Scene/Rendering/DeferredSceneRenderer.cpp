@@ -59,7 +59,6 @@ namespace
       shaderProgram.setUniformValue("uNormalShininess", 1);
       shaderProgram.setUniformValue("uAlbedo", 2);
       shaderProgram.setUniformValue("uSpecular", 3);
-      shaderProgram.setUniformValue("uEmissive", 4);
    }
 }
 
@@ -224,6 +223,13 @@ void DeferredSceneRenderer::renderLightingPass(const Scene& scene, const Perspec
    glBlendFunc(GL_ONE, GL_ONE);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+   // Blit the emissive color
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.getId());
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+   glReadBuffer(GL_COLOR_ATTACHMENT4);
+   glDrawBuffer(GL_BACK);
+   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
    GLint attachmentIndex = 0;
    for (const SPtr<Texture>& colorAttachment : gBuffer.getColorAttachments())
    {
@@ -302,7 +308,7 @@ void DeferredSceneRenderer::renderLightingPass(const Scene& scene, const Perspec
       spotLightingProgram->commit();
       coneMesh.draw();
    }
-   
+
    glCullFace(GL_BACK);
    glDisable(GL_BLEND);
 }
