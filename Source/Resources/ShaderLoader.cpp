@@ -323,6 +323,11 @@ namespace
    bool linkProgram(ShaderProgram& shaderProgram, ShaderSourceMap& shaderSourceMap,
       const InverseShaderMap& inverseShaderMap)
    {
+      if (shaderProgram.getAttachedShaders().empty())
+      {
+         return false;
+      }
+
       bool giveUp = false;
       while (!giveUp)
       {
