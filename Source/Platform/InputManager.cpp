@@ -253,32 +253,35 @@ void InputManager::onMouseButtonEvent(int button, int action, int mods)
    broadcastEvent(mouseButtonMappings, buttonBindings, mouseButtonChord, pressed);
 }
 
-void InputManager::onCursorPosChanged(double xPos, double yPos)
+void InputManager::onCursorPosChanged(double xPos, double yPos, bool broadcast)
 {
    static const double kMouseSensitivity = 0.1;
 
-   cursorAxisDelegate.broadcast(xPos, yPos);
+   if (broadcast)
+   {
+      cursorAxisDelegate.broadcast(xPos, yPos);
 
-   float xDiff = static_cast<float>((xPos - lastMouseX) * kMouseSensitivity);
-   float yDiff = static_cast<float>((lastMouseY - yPos) * kMouseSensitivity);
+      float xDiff = static_cast<float>((xPos - lastMouseX) * kMouseSensitivity);
+      float yDiff = static_cast<float>((lastMouseY - yPos) * kMouseSensitivity);
 
-   CursorAxisChord xAxisChord;
-   xAxisChord.cursorAxis = CursorAxis::X;
+      CursorAxisChord xAxisChord;
+      xAxisChord.cursorAxis = CursorAxis::X;
 
-   xAxisChord.invert = false;
-   broadcastEvent(cursorAxisMappings, axisBindings, xAxisChord, xDiff);
+      xAxisChord.invert = false;
+      broadcastEvent(cursorAxisMappings, axisBindings, xAxisChord, xDiff);
 
-   xAxisChord.invert = true;
-   broadcastEvent(cursorAxisMappings, axisBindings, xAxisChord, -xDiff);
+      xAxisChord.invert = true;
+      broadcastEvent(cursorAxisMappings, axisBindings, xAxisChord, -xDiff);
 
-   CursorAxisChord yAxisChord;
-   yAxisChord.cursorAxis = CursorAxis::Y;
+      CursorAxisChord yAxisChord;
+      yAxisChord.cursorAxis = CursorAxis::Y;
 
-   yAxisChord.invert = false;
-   broadcastEvent(cursorAxisMappings, axisBindings, yAxisChord, yDiff);
+      yAxisChord.invert = false;
+      broadcastEvent(cursorAxisMappings, axisBindings, yAxisChord, yDiff);
 
-   yAxisChord.invert = true;
-   broadcastEvent(cursorAxisMappings, axisBindings, yAxisChord, -yDiff);
+      yAxisChord.invert = true;
+      broadcastEvent(cursorAxisMappings, axisBindings, yAxisChord, -yDiff);
+   }
 
    lastMouseX = xPos;
    lastMouseY = yPos;

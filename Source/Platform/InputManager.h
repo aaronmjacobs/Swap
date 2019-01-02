@@ -68,7 +68,7 @@ private:
 
    void onKeyEvent(int key, int scancode, int action, int mods);
    void onMouseButtonEvent(int button, int action, int mods);
-   void onCursorPosChanged(double xPos, double yPos);
+   void onCursorPosChanged(double xPos, double yPos, bool broadcast);
 
    void pollEvents();
    void pollGamepad(int gamepadId);

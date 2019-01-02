@@ -23,10 +23,7 @@ void WindowCallbackHelper::framebufferSizeCallback(GLFWwindow* glfwWindow, int w
    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
    ASSERT(window);
 
-   if (window->onFramebufferSizeChanged.isBound())
-   {
-      window->onFramebufferSizeChanged.execute(width, height);
-   }
+   window->onFramebufferSizeChanged(width, height);
 }
 
 // static
@@ -35,10 +32,7 @@ void WindowCallbackHelper::windowRefreshCallback(GLFWwindow* glfwWindow)
    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
    ASSERT(window);
 
-   if (window->onWindowRefreshRequested.isBound())
-   {
-      window->onWindowRefreshRequested.execute(*window);
-   }
+   window->onWindowRefreshRequested();
 }
 
 // static
@@ -47,10 +41,7 @@ void WindowCallbackHelper::windowFocusCallback(GLFWwindow* glfwWindow, int focus
    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
    ASSERT(window);
 
-   if (window->onWindowFocusChanged.isBound())
-   {
-      window->onWindowFocusChanged.execute(focused == GLFW_TRUE);
-   }
+   window->onWindowFocusChanged(focused == GLFW_TRUE);
 }
 
 // static
@@ -95,10 +86,14 @@ UPtr<Window> Window::create(int width, int height, const char* title)
 
 Window::Window(GLFWwindow* internalWindow)
    : glfwWindow(internalWindow)
+   , hasFocus(true)
+   , consumeCursorInput(true)
 {
    ASSERT(glfwWindow);
 
    glfwSetWindowUserPointer(glfwWindow, this);
+
+   setConsumeCursorInput(true);
 
    double cursorX = 0.0;
    double cursorY = 0.0;
@@ -146,32 +141,79 @@ void Window::getFramebufferSize(int& width, int& height)
 
 DelegateHandle Window::bindOnFramebufferSizeChanged(FramebufferSizeChangedDelegate::FuncType&& func)
 {
-   return onFramebufferSizeChanged.bind(std::move(func));
+   return framebufferSizeChangedDelegate.bind(std::move(func));
 }
 
 void Window::unbindOnFramebufferSizeChanged()
 {
-   onFramebufferSizeChanged.unbind();
+   framebufferSizeChangedDelegate.unbind();
 }
 
 DelegateHandle Window::bindOnWindowRefreshRequested(WindowRefreshRequestedDelegate::FuncType&& func)
 {
-   return onWindowRefreshRequested.bind(std::move(func));
+   return windowRefreshRequestedDelegate.bind(std::move(func));
 }
 
 void Window::unbindOnWindowRefreshRequested()
 {
-   onWindowRefreshRequested.unbind();
+   windowRefreshRequestedDelegate.unbind();
 }
 
 DelegateHandle Window::bindOnWindowFocusChanged(WindowFocusDelegate::FuncType&& func)
 {
-   return onWindowFocusChanged.bind(std::move(func));
+   return windowFocusChangedDelegate.bind(std::move(func));
 }
 
 void Window::unbindOnWindowFocusChanged()
 {
-   onWindowFocusChanged.unbind();
+   windowFocusChangedDelegate.unbind();
+}
+
+void Window::onFramebufferSizeChanged(int width, int height)
+{
+   if (framebufferSizeChangedDelegate.isBound())
+   {
+      framebufferSizeChangedDelegate.execute(width, height);
+   }
+}
+
+void Window::onWindowRefreshRequested()
+{
+   if (windowRefreshRequestedDelegate.isBound())
+   {
+      windowRefreshRequestedDelegate.execute(*this);
+   }
+}
+
+void Window::onWindowFocusChanged(bool focused)
+{
+   hasFocus = focused;
+
+   if (focused)
+   {
+      double cursorX = 0.0;
+      double cursorY = 0.0;
+      glfwGetCursorPos(glfwWindow, &cursorX, &cursorY);
+
+      int width = 0;
+      int height = 0;
+      glfwGetWindowSize(glfwWindow, &width, &height);
+
+      // Ignore the event if the cursor isn't within the bounds of the window
+      if (cursorX >= 0.0 && cursorX <= width && cursorY >= 0.0 && cursorY <= height)
+      {
+         setConsumeCursorInput(true);
+      }
+   }
+   else
+   {
+      setConsumeCursorInput(false);
+   }
+
+   if (windowFocusChangedDelegate.isBound())
+   {
+      windowFocusChangedDelegate.execute(focused);
+   }
 }
 
 void Window::onKeyEvent(int key, int scancode, int action, int mods)
@@ -181,10 +223,22 @@ void Window::onKeyEvent(int key, int scancode, int action, int mods)
 
 void Window::onCursorPosChanged(double xPos, double yPos)
 {
-   inputManager.onCursorPosChanged(xPos, yPos);
+   inputManager.onCursorPosChanged(xPos, yPos, consumeCursorInput);
+
+   if (hasFocus && !consumeCursorInput)
+   {
+      // Cursor is now within the window bounds
+      setConsumeCursorInput(true);
+   }
 }
 
 void Window::onMouseButtonEvent(int button, int action, int mods)
 {
    inputManager.onMouseButtonEvent(button, action, mods);
+}
+
+void Window::setConsumeCursorInput(bool consume)
+{
+   consumeCursorInput = consume;
+   glfwSetInputMode(glfwWindow, GLFW_CURSOR, consume ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 }

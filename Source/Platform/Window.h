@@ -45,14 +45,22 @@ public:
 private:
    friend class WindowCallbackHelper;
 
+   void onFramebufferSizeChanged(int width, int height);
+   void onWindowRefreshRequested();
+   void onWindowFocusChanged(bool focused);
    void onKeyEvent(int key, int scancode, int action, int mods);
    void onCursorPosChanged(double xPos, double yPos);
    void onMouseButtonEvent(int button, int action, int mods);
 
+   void setConsumeCursorInput(bool consume);
+
    GLFWwindow* glfwWindow;
    InputManager inputManager;
 
-   FramebufferSizeChangedDelegate onFramebufferSizeChanged;
-   WindowRefreshRequestedDelegate onWindowRefreshRequested;
-   WindowFocusDelegate onWindowFocusChanged;
+   FramebufferSizeChangedDelegate framebufferSizeChangedDelegate;
+   WindowRefreshRequestedDelegate windowRefreshRequestedDelegate;
+   WindowFocusDelegate windowFocusChangedDelegate;
+
+   bool hasFocus;
+   bool consumeCursorInput;
 };
