@@ -86,6 +86,113 @@ namespace
       return window;
    }
 
+   void bindInputs(InputManager& inputManager, Scene& scene)
+   {
+      {
+         KeyAxisChord moveForwardKeyAxisChord;
+         moveForwardKeyAxisChord.keyChord.key = Key::W;
+         GamepadAxisChord moveForwardGamepadAxisChord;
+         moveForwardGamepadAxisChord.axis = GamepadAxis::LeftY;
+         moveForwardGamepadAxisChord.gamepadId = 0;
+         inputManager.createAxisMapping("MoveForward", &moveForwardKeyAxisChord, nullptr, &moveForwardGamepadAxisChord);
+
+         KeyAxisChord moveBackwardKeyAxisChord;
+         moveBackwardKeyAxisChord.keyChord.key = Key::S;
+         moveBackwardKeyAxisChord.invert = true;
+         inputManager.createAxisMapping("MoveForward", &moveBackwardKeyAxisChord, nullptr, nullptr);
+
+         KeyAxisChord moveRightKeyAxisChord;
+         moveRightKeyAxisChord.keyChord.key = Key::D;
+         GamepadAxisChord moveRightGamepadAxisChord;
+         moveRightGamepadAxisChord.axis = GamepadAxis::LeftX;
+         moveRightGamepadAxisChord.gamepadId = 0;
+         inputManager.createAxisMapping("MoveRight", &moveRightKeyAxisChord, nullptr, &moveRightGamepadAxisChord);
+
+         KeyAxisChord moveLeftKeyAxisChord;
+         moveLeftKeyAxisChord.keyChord.key = Key::A;
+         moveLeftKeyAxisChord.invert = true;
+         inputManager.createAxisMapping("MoveRight", &moveLeftKeyAxisChord, nullptr, nullptr);
+
+         KeyAxisChord moveUpKeyAxisChord;
+         moveUpKeyAxisChord.keyChord.key = Key::LeftShift;
+         GamepadAxisChord moveUpGamepadAxisChord;
+         moveUpGamepadAxisChord.axis = GamepadAxis::RightTrigger;
+         moveUpGamepadAxisChord.gamepadId = 0;
+         inputManager.createAxisMapping("MoveUp", &moveUpKeyAxisChord, nullptr, &moveUpGamepadAxisChord);
+
+         KeyAxisChord moveDownKeyAxisChord;
+         moveDownKeyAxisChord.keyChord.key = Key::LeftControl;
+         moveDownKeyAxisChord.invert = true;
+         GamepadAxisChord moveDownGamepadAxisChord;
+         moveDownGamepadAxisChord.axis = GamepadAxis::LeftTrigger;
+         moveDownGamepadAxisChord.gamepadId = 0;
+         moveDownGamepadAxisChord.invert = true;
+         inputManager.createAxisMapping("MoveUp", &moveDownKeyAxisChord, nullptr, &moveDownGamepadAxisChord);
+
+         CursorAxisChord lookUpCursorAxisChord;
+         lookUpCursorAxisChord.cursorAxis = CursorAxis::Y;
+         GamepadAxisChord lookUpGamepadAxisChord;
+         lookUpGamepadAxisChord.axis = GamepadAxis::RightY;
+         lookUpGamepadAxisChord.gamepadId = 0;
+         inputManager.createAxisMapping("LookUp", nullptr, &lookUpCursorAxisChord, &lookUpGamepadAxisChord);
+
+         CursorAxisChord lookRightCursorAxisChord;
+         lookRightCursorAxisChord.cursorAxis = CursorAxis::X;
+         GamepadAxisChord lookRightGamepadAxisChord;
+         lookRightGamepadAxisChord.axis = GamepadAxis::RightX;
+         lookRightGamepadAxisChord.gamepadId = 0;
+         inputManager.createAxisMapping("LookRight", nullptr, &lookRightCursorAxisChord, &lookRightGamepadAxisChord);
+      }
+
+      {
+         static const float kLookSpeed = 3.0f;
+
+         inputManager.bindAxisMapping("LookUp", [&scene](float value)
+         {
+            if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
+            {
+               activeCameraComponent->rotate(0.0f, -value * scene.getDeltaTime() * kLookSpeed);
+            }
+         });
+
+         inputManager.bindAxisMapping("LookRight", [&scene](float value)
+         {
+            if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
+            {
+               activeCameraComponent->rotate(value * scene.getDeltaTime() * kLookSpeed, 0.0f);
+            }
+         });
+      }
+
+      {
+         static const float kMoveSpeed = 20.0f;
+
+         inputManager.bindAxisMapping("MoveForward", [&scene](float value)
+         {
+            if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
+            {
+               activeCameraComponent->moveForward(value * scene.getDeltaTime() * kMoveSpeed);
+            }
+         });
+
+         inputManager.bindAxisMapping("MoveRight", [&scene](float value)
+         {
+            if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
+            {
+               activeCameraComponent->moveRight(value * scene.getDeltaTime() * kMoveSpeed);
+            }
+         });
+
+         inputManager.bindAxisMapping("MoveUp", [&scene](float value)
+         {
+            if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
+            {
+               activeCameraComponent->moveUp(value * scene.getDeltaTime() * kMoveSpeed);
+            }
+         });
+      }
+   }
+
    void loadTestScene(ResourceManager& resourceManager, Scene& scene)
    {
       std::vector<ShaderSpecification> shaderSpecifications;
@@ -259,6 +366,7 @@ int main(int argc, char* argv[])
       });
 #endif // SWAP_DEBUG
 
+      bindInputs(window->getInputManager(), scene);
       loadTestScene(*resourceManager, scene);
 
       double lastTime = glfwGetTime();
