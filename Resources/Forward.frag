@@ -37,6 +37,22 @@ in mat3 vTBN;
 
 layout(location = 0) out vec4 color;
 
+LightingParams calcLightingParams(MaterialSampleParams materialSampleParams)
+{
+   LightingParams lightingParams;
+
+   lightingParams.diffuseColor = calcMaterialDiffuseColor(uMaterial, materialSampleParams).rgb;
+   lightingParams.specularColor = calcMaterialSpecularColor(uMaterial, materialSampleParams).rgb;
+   lightingParams.shininess = calcMaterialShininess(uMaterial, materialSampleParams);
+
+   lightingParams.surfacePosition = vPosition;
+   lightingParams.surfaceNormal = calcMaterialSurfaceNormal(uMaterial, materialSampleParams);
+
+   lightingParams.cameraPosition = uCameraPos;
+
+   return lightingParams;
+}
+
 vec3 calcLighting()
 {
    MaterialSampleParams materialSampleParams;
@@ -49,31 +65,26 @@ vec3 calcLighting()
    materialSampleParams.normal = vNormal;
 #endif
 
-   vec3 surfaceNormal = calcMaterialSurfaceNormal(uMaterial, materialSampleParams);
-
-   vec4 diffuseColor = calcMaterialDiffuseColor(uMaterial, materialSampleParams);
-   vec4 specularColor = calcMaterialSpecularColor(uMaterial, materialSampleParams);
-   float shininess = calcMaterialShininess(uMaterial, materialSampleParams);
-   vec3 emissiveColor = calcMaterialEmissiveColor(uMaterial, materialSampleParams);
+   LightingParams lightingParams = calcLightingParams(materialSampleParams);
 
    vec3 lighting = vec3(0.0);
 
    for (int i = 0; i < uNumDirectionalLights; ++i)
    {
-      lighting += calcDirectionalLighting(uDirectionalLights[i], diffuseColor.rgb, specularColor.rgb, shininess, vPosition, surfaceNormal, uCameraPos);
+      lighting += calcDirectionalLighting(uDirectionalLights[i], lightingParams);
    }
 
    for (int i = 0; i < uNumPointLights; ++i)
    {
-      lighting += calcPointLighting(uPointLights[i], diffuseColor.rgb, specularColor.rgb, shininess, vPosition, surfaceNormal, uCameraPos);
+      lighting += calcPointLighting(uPointLights[i], lightingParams);
    }
 
    for (int i = 0; i < uNumSpotLights; ++i)
    {
-      lighting += calcSpotLighting(uSpotLights[i], diffuseColor.rgb, specularColor.rgb, shininess, vPosition, surfaceNormal, uCameraPos);
+      lighting += calcSpotLighting(uSpotLights[i], lightingParams);
    }
 
-   lighting += emissiveColor;
+   lighting += calcMaterialEmissiveColor(uMaterial, materialSampleParams);
 
    return lighting;
 }

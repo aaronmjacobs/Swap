@@ -20,23 +20,37 @@ uniform SpotLight uSpotLight;
 
 layout(location = 0) out vec4 color;
 
-vec3 calcLighting()
+LightingParams sampleLightingParams()
 {
    vec2 texCoord = gl_FragCoord.xy * uViewport.zw;
-
-   vec3 position = texture(uPosition, texCoord).rgb;
    vec4 normalShininess = texture(uNormalShininess, texCoord);
-   vec4 albedo = texture(uAlbedo, texCoord);
-   vec4 specular = texture(uSpecular, texCoord);
+
+   LightingParams lightingParams;
+
+   lightingParams.diffuseColor = texture(uAlbedo, texCoord).rgb;
+   lightingParams.specularColor = texture(uSpecular, texCoord).rgb;
+   lightingParams.shininess = normalShininess.a;
+
+   lightingParams.surfacePosition = texture(uPosition, texCoord).rgb;
+   lightingParams.surfaceNormal = normalShininess.rgb;
+
+   lightingParams.cameraPosition = uCameraPos;
+
+   return lightingParams;
+}
+
+vec3 calcLighting()
+{
+   LightingParams lightingParams = sampleLightingParams();
 
    vec3 lighting = vec3(0.0);
 
 #if LIGHT_TYPE == DIRECTIONAL_LIGHT
-   lighting += calcDirectionalLighting(uDirectionalLight, albedo.rgb, specular.rgb, normalShininess.a, position, normalShininess.rgb, uCameraPos);
+   lighting += calcDirectionalLighting(uDirectionalLight, lightingParams);
 #elif LIGHT_TYPE == POINT_LIGHT
-   lighting += calcPointLighting(uPointLight, albedo.rgb, specular.rgb, normalShininess.a, position, normalShininess.rgb, uCameraPos);
+   lighting += calcPointLighting(uPointLight, lightingParams);
 #elif LIGHT_TYPE == SPOT_LIGHT
-   lighting += calcSpotLighting(uSpotLight, albedo.rgb, specular.rgb, normalShininess.a, position, normalShininess.rgb, uCameraPos);
+   lighting += calcSpotLighting(uSpotLight, lightingParams);
 #endif
 
    return lighting;

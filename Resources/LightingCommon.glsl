@@ -27,6 +27,18 @@ struct SpotLight
    float cutoffAngle;
 };
 
+struct LightingParams
+{
+   vec3 diffuseColor;
+   vec3 specularColor;
+   float shininess;
+
+   vec3 surfacePosition;
+   vec3 surfaceNormal;
+
+   vec3 cameraPosition;
+};
+
 float calcAttenuation(vec3 toLight, float radius)
 {
    const float kMinLightBrightness = 0.01;
@@ -39,14 +51,14 @@ float calcAttenuation(vec3 toLight, float radius)
 
 vec3 calcAmbient(vec3 lightColor, vec3 diffuseColor)
 {
-   return lightColor * diffuseColor * 0.05;
+   return lightColor * diffuseColor * 0.3;
 }
 
 vec3 calcDiffuse(vec3 lightColor, vec3 diffuseColor, vec3 surfaceNormal, vec3 toLightDirection)
 {
    float diffuseAmount = max(0.0, dot(surfaceNormal, toLightDirection));
 
-   return lightColor * (diffuseColor * diffuseAmount);
+   return lightColor * (diffuseColor * diffuseAmount) * 0.7;
 }
 
 vec3 calcSpecular(vec3 lightColor, vec3 specularColor, float shininess, vec3 surfacePosition, vec3 surfaceNormal, vec3 toLightDirection, vec3 cameraPosition)
@@ -60,37 +72,37 @@ vec3 calcSpecular(vec3 lightColor, vec3 specularColor, float shininess, vec3 sur
    return lightColor * (specularColor * specularAmount);
 }
 
-vec3 calcDirectionalLighting(DirectionalLight directionalLight, vec3 diffuseColor, vec3 specularColor, float shininess, vec3 surfacePosition, vec3 surfaceNormal, vec3 cameraPosition)
+vec3 calcDirectionalLighting(DirectionalLight directionalLight, LightingParams lightingParams)
 {
-   vec3 ambient = calcAmbient(directionalLight.color, diffuseColor);
-   vec3 diffuse = calcDiffuse(directionalLight.color, diffuseColor, surfaceNormal, -directionalLight.direction);
-   vec3 specular = calcSpecular(directionalLight.color, specularColor, shininess, surfacePosition, surfaceNormal, -directionalLight.direction, cameraPosition);
+   vec3 ambient = calcAmbient(directionalLight.color, lightingParams.diffuseColor);
+   vec3 diffuse = calcDiffuse(directionalLight.color, lightingParams.diffuseColor, lightingParams.surfaceNormal, -directionalLight.direction);
+   vec3 specular = calcSpecular(directionalLight.color, lightingParams.specularColor, lightingParams.shininess, lightingParams.surfacePosition, lightingParams.surfaceNormal, -directionalLight.direction, lightingParams.cameraPosition);
 
    return ambient + diffuse + specular;
 }
 
-vec3 calcPointLighting(PointLight pointLight, vec3 diffuseColor, vec3 specularColor, float shininess, vec3 surfacePosition, vec3 surfaceNormal, vec3 cameraPosition)
+vec3 calcPointLighting(PointLight pointLight, LightingParams lightingParams)
 {
-   vec3 toLight = pointLight.position - surfacePosition;
+   vec3 toLight = pointLight.position - lightingParams.surfacePosition;
    vec3 toLightDirection = normalize(toLight);
 
-   vec3 ambient = calcAmbient(pointLight.color, diffuseColor);
-   vec3 diffuse = calcDiffuse(pointLight.color, diffuseColor, surfaceNormal, toLightDirection);
-   vec3 specular = calcSpecular(pointLight.color, specularColor, shininess, surfacePosition, surfaceNormal, toLightDirection, cameraPosition);
+   vec3 ambient = calcAmbient(pointLight.color, lightingParams.diffuseColor);
+   vec3 diffuse = calcDiffuse(pointLight.color, lightingParams.diffuseColor, lightingParams.surfaceNormal, toLightDirection);
+   vec3 specular = calcSpecular(pointLight.color, lightingParams.specularColor, lightingParams.shininess, lightingParams.surfacePosition, lightingParams.surfaceNormal, toLightDirection, lightingParams.cameraPosition);
 
    float attenuation = calcAttenuation(toLight, pointLight.radius);
 
    return (ambient + diffuse + specular) * attenuation;
 }
 
-vec3 calcSpotLighting(SpotLight spotLight, vec3 diffuseColor, vec3 specularColor, float shininess, vec3 surfacePosition, vec3 surfaceNormal, vec3 cameraPosition)
+vec3 calcSpotLighting(SpotLight spotLight, LightingParams lightingParams)
 {
-   vec3 toLight = spotLight.position - surfacePosition;
+   vec3 toLight = spotLight.position - lightingParams.surfacePosition;
    vec3 toLightDirection = normalize(toLight);
 
-   vec3 ambient = calcAmbient(spotLight.color, diffuseColor);
-   vec3 diffuse = calcDiffuse(spotLight.color, diffuseColor, surfaceNormal, toLightDirection);
-   vec3 specular = calcSpecular(spotLight.color, specularColor, shininess, surfacePosition, surfaceNormal, toLightDirection, cameraPosition);
+   vec3 ambient = calcAmbient(spotLight.color, lightingParams.diffuseColor);
+   vec3 diffuse = calcDiffuse(spotLight.color, lightingParams.diffuseColor, lightingParams.surfaceNormal, toLightDirection);
+   vec3 specular = calcSpecular(spotLight.color, lightingParams.specularColor, lightingParams.shininess, lightingParams.surfacePosition, lightingParams.surfaceNormal, toLightDirection, lightingParams.cameraPosition);
 
    float attenuation = calcAttenuation(toLight, spotLight.radius);
 
