@@ -1,6 +1,7 @@
 #include "Graphics/Texture.h"
 
 #include "Core/Assert.h"
+#include "Graphics/DrawingContext.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -291,6 +292,16 @@ void Texture::release()
    {
       glDeleteTextures(1, &id);
    }
+}
+
+int Texture::activateAndBind(DrawingContext& context)
+{
+   int textureUnit = context.textureUnitCounter++;
+
+   glActiveTexture(GL_TEXTURE0 + textureUnit);
+   bind();
+
+   return textureUnit;
 }
 
 void Texture::bind()

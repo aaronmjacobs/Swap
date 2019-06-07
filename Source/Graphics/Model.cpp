@@ -1,11 +1,28 @@
 #include "Graphics/Model.h"
 
-void Model::draw()
+#include "Graphics/DrawingContext.h"
+#include "Graphics/ShaderProgram.h"
+
+void ModelSection::draw(DrawingContext& context, bool applyMaterial)
+{
+   ASSERT(context.program);
+
+   DrawingContext localContext = context;
+   if (applyMaterial)
+   {
+      material.apply(localContext);
+   }
+
+   localContext.program->commit();
+
+   mesh.draw();
+}
+
+void Model::draw(DrawingContext& context, bool applyMaterials)
 {
    for (ModelSection& section : sections)
    {
-      section.material.commit();
-      section.mesh.draw();
+      section.draw(context, applyMaterials);
    }
 }
 

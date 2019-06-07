@@ -6,74 +6,58 @@
 #endif // SWAP_DEBUG
 #include "Core/Pointers.h"
 #include "Graphics/MaterialParameter.h"
+#include "Graphics/Uniform.h"
 
+#include <array>
 #include <string>
 #include <unordered_map>
 
-class ShaderProgram;
+struct DrawingContext;
+
+enum class CommonMaterialParameter : uint8_t
+{
+   DiffuseTexture,
+   SpecularTexture,
+   NormalTexture
+};
+
+namespace CommonMaterialParameterNames
+{
+   const std::string& get(CommonMaterialParameter parameter);
+}
 
 class Material
 {
 public:
-   Material(const SPtr<ShaderProgram>& program);
-   Material(const Material& other) = delete;
-   Material(Material&& other);
-   ~Material();
-   Material& operator=(const Material& other) = delete;
-   Material& operator=(Material&& other);
-
-private:
-   void move(Material&& other);
-   void release();
-
-public:
-   void commit();
+   void apply(DrawingContext& context);
 
    template<typename T>
-   bool setParameter(const std::string& name, const T& value, bool assertOnFailure = true)
+   bool setParameter(const std::string& name, const T& value)
    {
-      bool success = false;
+      auto location = findOrCreateParameter(name, getUniformType<T>());
+      ASSERT(location != parameters.end());
 
-      auto location = parameters.find(name);
-      if (location != parameters.end())
-      {
-         success = location->second->setValue(value);
-      }
-
-      ASSERT(success || !assertOnFailure, "Material parameter with given name doesn't exist: %s", name.c_str());
-
-      return success;
+      return location->second->setValue(value);;
    }
 
    bool isParameterEnabled(const std::string& name) const;
    void setParameterEnabled(const std::string& name, bool enabled);
-
-   ShaderProgram& getShaderProgram()
-   {
-      ASSERT(shaderProgram);
-      return *shaderProgram;
-   }
-
-   int consumeTextureUnit()
-   {
-      ASSERT(textureUnitCounter >= 0 && textureUnitCounter < 16);
-      return textureUnitCounter++;
-   }
 
    bool hasParameter(const std::string& name) const
    {
       return parameters.count(name) > 0;
    }
 
+   bool hasCommonParameter(CommonMaterialParameter parameter) const
+   {
+      return commonMaterialParameterUsage[static_cast<uint8_t>(parameter)];
+   }
+
 private:
-   void generateParameters();
+   using ParameterMap = std::unordered_map<std::string, UPtr<MaterialParameterBase>>;
 
-#if SWAP_DEBUG
-   void bindOnLinkDelegate();
-   DelegateHandle onLinkDelegateHandle;
-#endif // SWAP_DEBUG
+   ParameterMap::iterator findOrCreateParameter(const std::string& name, UniformType type);
 
-   std::unordered_map<std::string, UPtr<MaterialParameterBase>> parameters;
-   SPtr<ShaderProgram> shaderProgram;
-   int textureUnitCounter;
+   ParameterMap parameters;
+   std::array<bool, 3> commonMaterialParameterUsage = {};
 };

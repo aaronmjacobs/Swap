@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+struct DrawingContext;
+
 struct ModelSection
 {
    ModelSection(Mesh&& inMesh, Material&& inMaterial)
@@ -13,6 +15,8 @@ struct ModelSection
       , material(std::move(inMaterial))
    {
    }
+
+   void draw(DrawingContext& context, bool applyMaterial);
 
    Mesh mesh;
    Material material;
@@ -28,16 +32,16 @@ public:
    Model& operator=(const Model& other) = delete;
    Model& operator=(Model&& other) = default;
 
-   void draw();
+   void draw(DrawingContext& context, bool applyMaterials);
 
    template<typename T>
-   bool setMaterialParameter(const std::string& name, const T& value, bool assertOnFailure = true)
+   bool setMaterialParameter(const std::string& name, const T& value)
    {
       bool success = true;
 
       for (ModelSection& section : sections)
       {
-         success &= section.material.setParameter(name, value, assertOnFailure);
+         success &= section.material.setParameter(name, value);
       }
 
       return success;

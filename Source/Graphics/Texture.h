@@ -5,6 +5,8 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
+struct DrawingContext;
+
 class Texture
 {
 public:
@@ -20,6 +22,7 @@ private:
    void release();
 
 public:
+   int activateAndBind(DrawingContext& context);
    void bind();
 
    void updateSpecification(const Tex::Specification& textureSpecification);

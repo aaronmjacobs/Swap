@@ -6,8 +6,19 @@
 
 #include <glm/glm.hpp>
 
-class ResourceManager;
-class ShaderProgram;
+class Material;
+class Model;
+
+enum class GBufferTarget
+{
+   DepthStencil,
+
+   Position,
+   NormalShininess,
+   Albedo,
+   Specular,
+   Emissive
+};
 
 class DeferredSceneRenderer : public SceneRenderer
 {
@@ -24,14 +35,21 @@ private:
    void renderLightingPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
    void renderPostProcessPasses(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
 
-   SPtr<ResourceManager> resourceManager;
+   const SPtr<Texture>& getGBufferTexture(GBufferTarget target) const;
+
+   void loadGBufferProgramPermutations();
+   SPtr<ShaderProgram>& selectGBufferPermutation(const Material& material);
 
    Framebuffer gBuffer;
 
-   Mesh sphereMesh;
-   Mesh coneMesh;
+   SPtr<Model> sphereModel;
+   SPtr<Model> coneModel;
 
    SPtr<ShaderProgram> depthOnlyProgram;
+
+   std::array<SPtr<ShaderProgram>, 8> gBufferProgramPermutations;
+
+   Material lightingMaterial;
    SPtr<ShaderProgram> directionalLightingProgram;
    SPtr<ShaderProgram> pointLightingProgram;
    SPtr<ShaderProgram> spotLightingProgram;

@@ -6,6 +6,7 @@ uniform sampler2D uPosition;
 uniform sampler2D uNormalShininess;
 uniform sampler2D uAlbedo;
 uniform sampler2D uSpecular;
+uniform sampler2D uAmbientOcclusion;
 
 uniform vec3 uCameraPos;
 uniform vec4 uViewport;
@@ -30,6 +31,7 @@ LightingParams sampleLightingParams()
    lightingParams.diffuseColor = texture(uAlbedo, texCoord).rgb;
    lightingParams.specularColor = texture(uSpecular, texCoord).rgb;
    lightingParams.shininess = normalShininess.a;
+   lightingParams.ambientOcclusion = texture(uAmbientOcclusion, texCoord).r;
 
    lightingParams.surfacePosition = texture(uPosition, texCoord).rgb;
    lightingParams.surfaceNormal = normalShininess.rgb;

@@ -9,6 +9,7 @@
 
 class Material;
 class Texture;
+struct DrawingContext;
 
 class MaterialParameterBase
 {
@@ -31,7 +32,7 @@ public:
       enabled = newEnabled;
    }
 
-   virtual void commit(Material& owningMaterial) = 0;
+   virtual void apply(DrawingContext& context) = 0;
 
 #define DECLARE_SET_VALUE(uniform_type, data_type, param_type)\
    virtual bool setValue(param_type newValue) { return typeError(#data_type); }
@@ -62,7 +63,7 @@ public:\
    {\
    }\
 \
-   void commit(Material& owningMaterial) override;\
+   void apply(DrawingContext& context) override;\
 \
    bool setValue(param_type newValue) override\
    {\

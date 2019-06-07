@@ -1,10 +1,14 @@
 #pragma once
 
+#include "Core/Pointers.h"
+
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
 #include <cstdint>
 #include <string>
+
+class Texture;
 
 enum class UniformType : uint8_t
 {
@@ -43,6 +47,17 @@ enum class UniformType : uint8_t
 
    Texture
 };
+
+template<typename T>
+constexpr inline UniformType getUniformType();
+
+#define UNIFORM_TYPE_SPECIALIZATION(uniform_type, data_type, param_type) template<> constexpr inline UniformType getUniformType<data_type>() { return UniformType::uniform_type; }
+
+#define FOR_EACH_UNIFORM_TYPE UNIFORM_TYPE_SPECIALIZATION
+#include "ForEachUniformType.inl"
+#undef FOR_EACH_UNIFORM_TYPE
+
+#undef UNIFORM_TYPE_SPECIALIZATION
 
 class Uniform
 {

@@ -26,6 +26,8 @@ public:
    void pollEvents();
    bool shouldClose() const;
 
+   void setTitle(const char* title);
+
    InputManager& getInputManager()
    {
       return inputManager;

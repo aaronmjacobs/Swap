@@ -1,10 +1,10 @@
 #include "Resources/ModelLoader.h"
 
+#include "Core/Hash.h"
 #include "Core/Log.h"
 #include "Graphics/Material.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
-#include "Graphics/ShaderProgram.h"
 #include "Platform/IOUtils.h"
 #include "Resources/TextureLoader.h"
 
@@ -38,14 +38,15 @@ namespace
       return nullptr;
    }
 
-   Material processAssimpMaterial(const aiMaterial& assimpMaterial,
-      const ModelSpecification& specification, const std::string& directory,
-      ShaderLoader& shaderLoader, TextureLoader& textureLoader)
+   Material processAssimpMaterial(const aiMaterial& assimpMaterial, const ModelSpecification& specification,
+      const std::string& directory, TextureLoader& textureLoader)
    {
       const LoadedTextureParameters& textureParams = specification.textureParams;
       bool cache = specification.cacheTextures;
 
       SPtr<Texture> diffuseTexture = loadMaterialTexture(assimpMaterial, aiTextureType_DIFFUSE, textureParams,
+         directory, cache, textureLoader);
+      SPtr<Texture> specularTexture = loadMaterialTexture(assimpMaterial, aiTextureType_SPECULAR, textureParams,
          directory, cache, textureLoader);
       SPtr<Texture> normalTexture = loadMaterialTexture(assimpMaterial, aiTextureType_NORMALS, textureParams,
          directory, cache, textureLoader);
@@ -54,31 +55,20 @@ namespace
          normalTexture = loadMaterialTexture(assimpMaterial, aiTextureType_HEIGHT, textureParams, directory,
             cache, textureLoader);
       }
-      SPtr<Texture> specularTexture = loadMaterialTexture(assimpMaterial, aiTextureType_SPECULAR, textureParams,
-         directory, cache, textureLoader);
 
-      std::vector<ShaderSpecification> localSpecifications = specification.shaderSpecifications;
-      for (ShaderSpecification& shaderSpecification : localSpecifications)
-      {
-         shaderSpecification.definitions["WITH_DIFFUSE_TEXTURE"] = diffuseTexture ? "1" : "0";
-         shaderSpecification.definitions["WITH_NORMAL_TEXTURE"] = normalTexture ? "1" : "0";
-         shaderSpecification.definitions["WITH_SPECULAR_TEXTURE"] = specularTexture ? "1" : "0";
-      }
+      Material material;
 
-      SPtr<ShaderProgram> shaderProgram = shaderLoader.loadShaderProgram(localSpecifications);
-      Material material(shaderProgram);
-
-      if (diffuseTexture && material.hasParameter("uMaterial.diffuseTexture"))
+      if (diffuseTexture)
       {
-         material.setParameter("uMaterial.diffuseTexture", diffuseTexture);
+         material.setParameter(CommonMaterialParameterNames::get(CommonMaterialParameter::DiffuseTexture), diffuseTexture);
       }
-      if (normalTexture && material.hasParameter("uMaterial.normalTexture"))
+      if (specularTexture)
       {
-         material.setParameter("uMaterial.normalTexture", normalTexture);
+         material.setParameter(CommonMaterialParameterNames::get(CommonMaterialParameter::SpecularTexture), specularTexture);
       }
-      if (specularTexture && material.hasParameter("uMaterial.specularTexture"))
+      if (normalTexture)
       {
-         material.setParameter("uMaterial.specularTexture", specularTexture);
+         material.setParameter(CommonMaterialParameterNames::get(CommonMaterialParameter::NormalTexture), normalTexture);
       }
 
       return material;
@@ -151,29 +141,26 @@ namespace
    }
 
    void processAssimpNode(Model& model, const aiScene& assimpScene, const aiNode& assimpNode,
-      const ModelSpecification& specification, const std::string& directory,
-      ShaderLoader& shaderLoader, TextureLoader& textureLoader)
+      const ModelSpecification& specification, const std::string& directory, TextureLoader& textureLoader)
    {
       for (unsigned int i = 0; i < assimpNode.mNumMeshes; ++i)
       {
          const aiMesh& assimpMesh = *assimpScene.mMeshes[assimpNode.mMeshes[i]];
 
          Mesh mesh = processAssimpMesh(assimpMesh);
-         Material material = processAssimpMaterial(*assimpScene.mMaterials[assimpMesh.mMaterialIndex],
-            specification, directory, shaderLoader, textureLoader);
+         Material material = processAssimpMaterial(*assimpScene.mMaterials[assimpMesh.mMaterialIndex], specification,
+            directory, textureLoader);
 
          model.addSection(ModelSection(std::move(mesh), std::move(material)));
       }
 
       for (unsigned int i = 0; i < assimpNode.mNumChildren; ++i)
       {
-         processAssimpNode(model, assimpScene, *assimpNode.mChildren[i], specification, directory, shaderLoader,
-            textureLoader);
+         processAssimpNode(model, assimpScene, *assimpNode.mChildren[i], specification, directory, textureLoader);
       }
    }
 
-   SPtr<Model> loadModelFromFile(const ModelSpecification& specification, ShaderLoader& shaderLoader,
-      TextureLoader& textureLoader)
+   SPtr<Model> loadModelFromFile(const ModelSpecification& specification, TextureLoader& textureLoader)
    {
       std::string directory;
       if (!IOUtils::getSanitizedDirectory(specification.path, directory))
@@ -205,8 +192,7 @@ namespace
       }
 
       SPtr<Model> model(new Model);
-      processAssimpNode(*model, *assimpScene, *assimpScene->mRootNode, specification, directory,
-         shaderLoader, textureLoader);
+      processAssimpNode(*model, *assimpScene, *assimpScene->mRootNode, specification, directory, textureLoader);
 
       return model;
    }
@@ -220,11 +206,6 @@ namespace std
 
       Hash::combine(seed, specification.path);
 
-      for (const auto& shaderSpecification : specification.shaderSpecifications)
-      {
-         Hash::combine(seed, shaderSpecification);
-      }
-
       Hash::combine(seed, specification.textureParams.wrap);
       Hash::combine(seed, specification.textureParams.minFilter);
       Hash::combine(seed, specification.textureParams.magFilter);
@@ -233,8 +214,7 @@ namespace std
    }
 }
 
-SPtr<Model> ModelLoader::loadModel(const ModelSpecification& specification, ShaderLoader& shaderLoader,
-   TextureLoader& textureLoader)
+SPtr<Model> ModelLoader::loadModel(const ModelSpecification& specification, TextureLoader& textureLoader)
 {
    if (specification.cache)
    {
@@ -249,7 +229,7 @@ SPtr<Model> ModelLoader::loadModel(const ModelSpecification& specification, Shad
       }
    }
 
-   SPtr<Model> model = loadModelFromFile(specification, shaderLoader, textureLoader);
+   SPtr<Model> model = loadModelFromFile(specification, textureLoader);
    if (model && specification.cache)
    {
       modelMap.emplace(specification, WPtr<Model>(model));

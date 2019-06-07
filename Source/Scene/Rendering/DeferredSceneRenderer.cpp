@@ -1,6 +1,8 @@
 #include "Scene/Rendering/DeferredSceneRenderer.h"
 
 #include "Core/Assert.h"
+#include "Graphics/DrawingContext.h"
+#include "Graphics/Material.h"
 #include "Graphics/ShaderProgram.h"
 #include "Graphics/Texture.h"
 #include "Platform/IOUtils.h"
@@ -15,14 +17,6 @@
 
 namespace
 {
-   const char* kProjectionMatrix = "uProjectionMatrix";
-   const char* kViewMatrix = "uViewMatrix";
-   const char* kModelMatrix = "uModelMatrix";
-   const char* kNormalMatrix = "uNormalMatrix";
-
-   const char* kCameraPos = "uCameraPos";
-   const char* kViewport = "uViewport";
-
    Fb::Specification getGBufferSpecification(int width, int height)
    {
       static const std::array<Tex::InternalFormat, 5> kColorAttachmentFormats =
@@ -52,24 +46,13 @@ namespace
 
       return specification;
    }
-
-   void setGBufferUniforms(ShaderProgram& shaderProgram)
-   {
-      shaderProgram.setUniformValue("uPosition", 0);
-      shaderProgram.setUniformValue("uNormalShininess", 1);
-      shaderProgram.setUniformValue("uAlbedo", 2);
-      shaderProgram.setUniformValue("uSpecular", 3);
-   }
 }
 
 DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight,
    const SPtr<ResourceManager>& inResourceManager)
-   : SceneRenderer(initialWidth, initialHeight)
-   , resourceManager(inResourceManager)
+   : SceneRenderer(initialWidth, initialHeight, inResourceManager, true)
    , gBuffer(getGBufferSpecification(getWidth(), getHeight()))
 {
-   ASSERT(resourceManager);
-
    {
       ModelSpecification sphereSpecification;
       IOUtils::getAbsoluteResourcePath("Sphere.obj", sphereSpecification.path);
@@ -77,11 +60,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       sphereSpecification.cache = false;
       sphereSpecification.cacheTextures = false;
 
-      SPtr<Model> sphereModel = resourceManager->loadModel(sphereSpecification);
-      if (sphereModel->getSections().size() > 0)
-      {
-         sphereMesh = std::move(sphereModel->getSections()[0].mesh);
-      }
+      sphereModel = getResourceManager().loadModel(sphereSpecification);
    }
 
    {
@@ -91,11 +70,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       coneSpecification.cache = false;
       coneSpecification.cacheTextures = false;
 
-      SPtr<Model> coneModel = resourceManager->loadModel(coneSpecification);
-      if (coneModel->getSections().size() > 0)
-      {
-         coneMesh = std::move(coneModel->getSections()[0].mesh);
-      }
+      coneModel = getResourceManager().loadModel(coneSpecification);
    }
 
    {
@@ -106,8 +81,10 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       IOUtils::getAbsoluteResourcePath("DepthOnly.vert", shaderSpecifications[0].path);
       IOUtils::getAbsoluteResourcePath("DepthOnly.frag", shaderSpecifications[1].path);
 
-      depthOnlyProgram = resourceManager->loadShaderProgram(shaderSpecifications);
+      depthOnlyProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
    }
+
+   loadGBufferProgramPermutations();
 
    {
       std::vector<ShaderSpecification> shaderSpecifications;
@@ -119,19 +96,27 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
-      directionalLightingProgram = resourceManager->loadShaderProgram(shaderSpecifications);
-      setGBufferUniforms(*directionalLightingProgram);
+      directionalLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "POINT_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "POINT_LIGHT";
-      pointLightingProgram = resourceManager->loadShaderProgram(shaderSpecifications);
-      setGBufferUniforms(*pointLightingProgram);
+      pointLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "SPOT_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "SPOT_LIGHT";
-      spotLightingProgram = resourceManager->loadShaderProgram(shaderSpecifications);
-      setGBufferUniforms(*spotLightingProgram);
+      spotLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
    }
+
+   {
+      lightingMaterial.setParameter("uPosition", getGBufferTexture(GBufferTarget::Position));
+      lightingMaterial.setParameter("uNormalShininess", getGBufferTexture(GBufferTarget::NormalShininess));
+      lightingMaterial.setParameter("uAlbedo", getGBufferTexture(GBufferTarget::Albedo));
+      lightingMaterial.setParameter("uSpecular", getGBufferTexture(GBufferTarget::Specular));
+
+      lightingMaterial.setParameter("uAmbientOcclusion", getSSAOBlurTexture());
+   }
+
+   setSSAOTextures(nullptr, getGBufferTexture(GBufferTarget::Position), getGBufferTexture(GBufferTarget::NormalShininess));
 }
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
@@ -144,6 +129,7 @@ void DeferredSceneRenderer::renderScene(const Scene& scene)
 
    renderPrePass(scene, perspectiveInfo);
    renderBasePass(scene, perspectiveInfo);
+   renderSSAOPass(perspectiveInfo);
    renderLightingPass(scene, perspectiveInfo);
    renderPostProcessPasses(scene, perspectiveInfo);
 }
@@ -165,8 +151,8 @@ void DeferredSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveI
 
    gBuffer.setColorAttachmentsEnabled(false);
 
-   depthOnlyProgram->setUniformValue(kProjectionMatrix, perspectiveInfo.projectionMatrix);
-   depthOnlyProgram->setUniformValue(kViewMatrix, perspectiveInfo.viewMatrix);
+   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
+   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
 
    for (const ModelComponent* modelComponent : scene.getModelComponents())
    {
@@ -177,13 +163,10 @@ void DeferredSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveI
          Transform transform = modelComponent->getAbsoluteTransform();
          glm::mat4 modelMatrix = transform.toMatrix();
 
-         depthOnlyProgram->setUniformValue(kModelMatrix, modelMatrix);
-         depthOnlyProgram->commit();
+         depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
 
-         for (ModelSection& modelSection : model->getSections())
-         {
-            modelSection.mesh.draw();
-         }
+         DrawingContext context(depthOnlyProgram.get());
+         model->draw(context, false);
       }
    }
 }
@@ -193,6 +176,12 @@ void DeferredSceneRenderer::renderBasePass(const Scene& scene, const Perspective
    glDepthFunc(GL_LEQUAL);
 
    gBuffer.setColorAttachmentsEnabled(true);
+
+   for (SPtr<ShaderProgram>& gBufferProgramPermutation : gBufferProgramPermutations)
+   {
+      gBufferProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
+      gBufferProgramPermutation->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
+   }
 
    for (const ModelComponent* modelComponent : scene.getModelComponents())
    {
@@ -204,12 +193,16 @@ void DeferredSceneRenderer::renderBasePass(const Scene& scene, const Perspective
          glm::mat4 modelMatrix = transform.toMatrix();
          glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
 
-         model->setMaterialParameter(kProjectionMatrix, perspectiveInfo.projectionMatrix, false);
-         model->setMaterialParameter(kViewMatrix, perspectiveInfo.viewMatrix, false);
-         model->setMaterialParameter(kModelMatrix, modelMatrix, false);
-         model->setMaterialParameter(kNormalMatrix, normalMatrix, false);
+         for (ModelSection& section : model->getSections())
+         {
+            SPtr<ShaderProgram>& gBufferProgramPermutation = selectGBufferPermutation(section.material);
 
-         model->draw();
+            gBufferProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
+            gBufferProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
+
+            DrawingContext context(gBufferProgramPermutation.get());
+            section.draw(context, true);
+         }
       }
    }
 }
@@ -230,39 +223,28 @@ void DeferredSceneRenderer::renderLightingPass(const Scene& scene, const Perspec
    glDrawBuffer(GL_BACK);
    glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-   GLint attachmentIndex = 0;
-   for (const SPtr<Texture>& colorAttachment : gBuffer.getColorAttachments())
-   {
-      glActiveTexture(GL_TEXTURE0 + attachmentIndex);
-      colorAttachment->bind();
-
-      ++attachmentIndex;
-   }
-
-#if SWAP_DEBUG
-   setGBufferUniforms(*directionalLightingProgram);
-   setGBufferUniforms(*pointLightingProgram);
-   setGBufferUniforms(*spotLightingProgram);
-#endif
-
    glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
 
-   directionalLightingProgram->setUniformValue(kCameraPos, perspectiveInfo.cameraPosition);
-   directionalLightingProgram->setUniformValue(kViewport, viewport);
+   directionalLightingProgram->setUniformValue(UniformNames::kCameraPos, perspectiveInfo.cameraPosition);
+   directionalLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
    for (const DirectionalLightComponent* directionalLightComponent : scene.getDirectionalLightComponents())
    {
       directionalLightingProgram->setUniformValue("uDirectionalLight.color", directionalLightComponent->getColor());
       directionalLightingProgram->setUniformValue("uDirectionalLight.direction",
          directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
 
-      directionalLightingProgram->commit();
+      DrawingContext context;
+      context.program = directionalLightingProgram.get();
+      lightingMaterial.apply(context);
+
+      context.program->commit();
       getScreenMesh().draw();
    }
-   
+
    glCullFace(GL_FRONT);
 
-   pointLightingProgram->setUniformValue(kCameraPos, perspectiveInfo.cameraPosition);
-   pointLightingProgram->setUniformValue(kViewport, viewport);
+   pointLightingProgram->setUniformValue(UniformNames::kCameraPos, perspectiveInfo.cameraPosition);
+   pointLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
    for (const PointLightComponent* pointLightComponent : scene.getPointLightComponents())
    {
       Transform transform = pointLightComponent->getAbsoluteTransform();
@@ -278,12 +260,15 @@ void DeferredSceneRenderer::renderLightingPass(const Scene& scene, const Perspec
       pointLightingProgram->setUniformValue("uPointLight.position", transform.position);
       pointLightingProgram->setUniformValue("uPointLight.radius", radiusScale);
 
-      pointLightingProgram->commit();
-      sphereMesh.draw();
+      DrawingContext context;
+      context.program = pointLightingProgram.get();
+      lightingMaterial.apply(context);
+
+      sphereModel->draw(context, false);
    }
 
-   spotLightingProgram->setUniformValue(kCameraPos, perspectiveInfo.cameraPosition);
-   spotLightingProgram->setUniformValue(kViewport, viewport);
+   spotLightingProgram->setUniformValue(UniformNames::kCameraPos, perspectiveInfo.cameraPosition);
+   spotLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
    for (const SpotLightComponent* spotLightComponent : scene.getSpotLightComponents())
    {
       Transform transform = spotLightComponent->getAbsoluteTransform();
@@ -305,8 +290,11 @@ void DeferredSceneRenderer::renderLightingPass(const Scene& scene, const Perspec
       spotLightingProgram->setUniformValue("uSpotLight.beamAngle", beamAngle);
       spotLightingProgram->setUniformValue("uSpotLight.cutoffAngle", cutoffAngle);
 
-      spotLightingProgram->commit();
-      coneMesh.draw();
+      DrawingContext context;
+      context.program = spotLightingProgram.get();
+      lightingMaterial.apply(context);
+
+      coneModel->draw(context, false);
    }
 
    glCullFace(GL_BACK);
@@ -319,4 +307,52 @@ void DeferredSceneRenderer::renderPostProcessPasses(const Scene& scene, const Pe
    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
    glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);*/
+}
+
+const SPtr<Texture>& DeferredSceneRenderer::getGBufferTexture(GBufferTarget target) const
+{
+   switch (target)
+   {
+   case GBufferTarget::DepthStencil:
+      return gBuffer.getDepthStencilAttachment();
+   default:
+   {
+      const std::vector<SPtr<Texture>>& colorAttachments = gBuffer.getColorAttachments();
+      int index = static_cast<int>(target) - 1;
+
+      ASSERT(index >= 0 && index < colorAttachments.size());
+      return colorAttachments[index];
+   }
+   }
+}
+
+void DeferredSceneRenderer::loadGBufferProgramPermutations()
+{
+   std::vector<ShaderSpecification> shaderSpecifications;
+   shaderSpecifications.resize(2);
+   shaderSpecifications[0].type = ShaderType::Vertex;
+   shaderSpecifications[1].type = ShaderType::Fragment;
+   IOUtils::getAbsoluteResourcePath("GBuffer.vert", shaderSpecifications[0].path);
+   IOUtils::getAbsoluteResourcePath("GBuffer.frag", shaderSpecifications[1].path);
+
+   for (int i = 0; i < gBufferProgramPermutations.size(); ++i)
+   {
+      for (ShaderSpecification& shaderSpecification : shaderSpecifications)
+      {
+         shaderSpecification.definitions["WITH_DIFFUSE_TEXTURE"] = i & 0b001 ? "1" : "0";
+         shaderSpecification.definitions["WITH_SPECULAR_TEXTURE"] = i & 0b010 ? "1" : "0";
+         shaderSpecification.definitions["WITH_NORMAL_TEXTURE"] = i & 0b100 ? "1" : "0";
+      }
+
+      gBufferProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
+   }
+}
+
+SPtr<ShaderProgram>& DeferredSceneRenderer::selectGBufferPermutation(const Material& material)
+{
+   int index = material.hasCommonParameter(CommonMaterialParameter::DiffuseTexture) * 0b001
+      + material.hasCommonParameter(CommonMaterialParameter::SpecularTexture) * 0b010
+      + material.hasCommonParameter(CommonMaterialParameter::NormalTexture) * 0b100;
+
+   return gBufferProgramPermutations[index];
 }

@@ -20,6 +20,9 @@ uniform SpotLight uSpotLights[kMaxSpotLights];
 uniform int uNumSpotLights;
 
 uniform vec3 uCameraPos;
+uniform vec4 uViewport;
+
+uniform sampler2D uAmbientOcclusion;
 
 in vec3 vPosition;
 
@@ -35,15 +38,18 @@ in vec2 vTexCoord;
 in mat3 vTBN;
 #endif
 
-layout(location = 0) out vec4 color;
+layout(location = 1) out vec4 color;
 
 LightingParams calcLightingParams(MaterialSampleParams materialSampleParams)
 {
+   vec2 texCoord = gl_FragCoord.xy * uViewport.zw;
+
    LightingParams lightingParams;
 
    lightingParams.diffuseColor = calcMaterialDiffuseColor(uMaterial, materialSampleParams).rgb;
    lightingParams.specularColor = calcMaterialSpecularColor(uMaterial, materialSampleParams).rgb;
    lightingParams.shininess = calcMaterialShininess(uMaterial, materialSampleParams);
+   lightingParams.ambientOcclusion = texture(uAmbientOcclusion, texCoord).r;
 
    lightingParams.surfacePosition = vPosition;
    lightingParams.surfaceNormal = calcMaterialSurfaceNormal(uMaterial, materialSampleParams);

@@ -6,6 +6,7 @@
 
 #include <glm/glm.hpp>
 
+class Material;
 class ResourceManager;
 class ShaderProgram;
 
@@ -21,12 +22,22 @@ public:
 
 private:
    void renderPrePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
+   void renderNormalPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
    void renderMainPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
    void renderPostProcessPasses(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
 
-   SPtr<ResourceManager> resourceManager;
+   void loadNormalProgramPermutations();
+   SPtr<ShaderProgram>& selectNormalPermutation(const Material& material);
+
+   void loadForwardProgramPermutations();
+   SPtr<ShaderProgram>& selectForwardPermutation(const Material& material);
 
    Framebuffer mainPassFramebuffer;
 
    SPtr<ShaderProgram> depthOnlyProgram;
+
+   std::array<SPtr<ShaderProgram>, 2> normalProgramPermutations;
+
+   Material forwardMaterial;
+   std::array<SPtr<ShaderProgram>, 8> forwardProgramPermutations;
 };

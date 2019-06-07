@@ -2,7 +2,7 @@
 
 SPtr<Model> ResourceManager::loadModel(const ModelSpecification& specification)
 {
-   return modelLoader.loadModel(specification, shaderLoader, textureLoader);
+   return modelLoader.loadModel(specification, textureLoader);
 }
 
 SPtr<Shader> ResourceManager::loadShader(const ShaderSpecification& specification)

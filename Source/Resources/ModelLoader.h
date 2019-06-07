@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Pointers.h"
-#include "Resources/ShaderLoader.h"
 #include "Resources/TextureLoader.h"
 
 #include <cstdint>
@@ -21,7 +20,6 @@ struct ModelSpecification
 {
    std::string path;
    NormalGenerationMode normalGenerationMode = NormalGenerationMode::Smooth;
-   std::vector<ShaderSpecification> shaderSpecifications;
    LoadedTextureParameters textureParams;
    bool cache = true;
    bool cacheTextures = true;
@@ -30,14 +28,13 @@ struct ModelSpecification
    {
       return path == other.path
          && normalGenerationMode == other.normalGenerationMode
-         && shaderSpecifications == other.shaderSpecifications
          && textureParams == other.textureParams
          && cache == other.cache
          && cacheTextures == other.cacheTextures;
    }
 };
 
-// Provide a template specialization to allow using ShaderSpecification as a key in std::unordered_map
+// Provide a template specialization to allow using ModelSpecification as a key in std::unordered_map
 namespace std
 {
    template<>
@@ -50,8 +47,7 @@ namespace std
 class ModelLoader
 {
 public:
-   SPtr<Model> loadModel(const ModelSpecification& specification, ShaderLoader& shaderLoader,
-      TextureLoader& textureLoader);
+   SPtr<Model> loadModel(const ModelSpecification& specification, TextureLoader& textureLoader);
 
    void clearCachedData();
 

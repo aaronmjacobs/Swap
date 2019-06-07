@@ -1,18 +1,74 @@
-#version 410 core
+#include "Version.glsl"
 
-uniform sampler2D uSceneColorTexture;
-uniform sampler2D uSceneDepthTexture;
+#default WITH_POSITION_BUFFER 1
+
+#if WITH_POSITION_BUFFER
+uniform sampler2D uPosition;
+#else
+uniform sampler2D uDepth;
+#endif // WITH_POSITION_BUFFER
+
+uniform sampler2D uNormal;
+uniform sampler2D uNoise;
+
+uniform mat4 uProjectionMatrix;
+uniform mat4 uViewMatrix;
+
+#if !WITH_POSITION_BUFFER
+uniform mat4 uInverseProjectionMatrix;
+uniform mat4 uInverseViewMatrix;
+#endif // !WITH_POSITION_BUFFER
+
+uniform vec4 uViewport;
+uniform vec3 uSamples[64];
 
 in vec2 vTexCoord;
 
-out vec4 color;
+out float ambientOcclusion;
+
+vec3 loadPosition(vec2 texCoord)
+{
+#if WITH_POSITION_BUFFER
+   return texture(uPosition, texCoord).xyz;
+#else
+   float depth = texture(uDepth, texCoord).r;
+   float z = depth * 2.0 - 1.0;
+
+   vec4 clipPosition = vec4(texCoord * 2.0 - 1.0, z, 1.0);
+   vec4 viewPosition = uInverseProjectionMatrix * clipPosition;
+   viewPosition /= viewPosition.w;
+
+   vec4 worldPosition = uInverseViewMatrix * viewPosition;
+   return worldPosition.xyz;
+#endif
+}
 
 void main()
 {
-	vec4 sceneColor = texture(uSceneColorTexture, vTexCoord);
-	float sceneDepth = texture(uSceneDepthTexture, vTexCoord).r;
+   vec2 noiseScale = uViewport.xy / textureSize(uNoise, 0);
 
-	float depthAmount = 1.0 - ((sceneDepth * 100.0) - 99.0);
+   vec3 position = (uViewMatrix * vec4(loadPosition(vTexCoord), 1.0)).xyz;
+   vec3 normal = (uViewMatrix * vec4(texture(uNormal, vTexCoord).xyz, 0.0)).xyz;
+   vec3 randomVec = texture(uNoise, vTexCoord * noiseScale).xyz;
 
-	color = vec4(sceneColor.rgb * depthAmount, 1.0);
+   vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+   vec3 bitangent = cross(normal, tangent);
+   mat3 tbn = mat3(tangent, bitangent, normal);
+
+   ambientOcclusion = 0.0;
+   for (int i = 0; i < 64; ++i)
+   {
+      float radius = 1.0;
+      vec3 samplePosition = position + (tbn * uSamples[i]) * radius;
+
+      vec4 offset = uProjectionMatrix * vec4(samplePosition, 1.0);
+      offset.xyz = (offset.xyz / offset.w) * 0.5 + 0.5;
+      float sampleDepth = (uViewMatrix * vec4(loadPosition(offset.xy), 1.0)).z;
+
+      float rangeCheck = smoothstep(0.0, 1.0, radius / abs(position.z - sampleDepth));
+      float bias = 0.025;
+      ambientOcclusion += (sampleDepth >= samplePosition.z + bias ? 1.0 : 0.0) * rangeCheck;
+   }
+
+   ambientOcclusion = pow(1.0 - (ambientOcclusion / 64), 2.0);
 }
