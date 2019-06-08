@@ -47,6 +47,16 @@ struct Transform
       multiply(*this, *this, other);
    }
 
+   glm::vec3 transformPosition(const glm::vec3& p) const
+   {
+      return orientation * (scale * p) + position;
+   }
+
+   glm::vec3 transformVector(const glm::vec3& v) const
+   {
+      return orientation * (scale * v);
+   }
+
 private:
    static void multiply(Transform& result, const Transform& first, const Transform& second)
    {

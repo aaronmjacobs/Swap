@@ -11,7 +11,6 @@
 #include "Scene/Components/Lights/PointLightComponent.h"
 #include "Scene/Components/Lights/SpotLightComponent.h"
 #include "Scene/Components/ModelComponent.h"
-#include "Scene/Scene.h"
 
 #include <vector>
 
@@ -60,7 +59,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       sphereSpecification.cache = false;
       sphereSpecification.cacheTextures = false;
 
-      sphereModel = getResourceManager().loadModel(sphereSpecification);
+      sphereMesh = getResourceManager().loadModel(sphereSpecification).getMesh();
    }
 
    {
@@ -70,7 +69,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       coneSpecification.cache = false;
       coneSpecification.cacheTextures = false;
 
-      coneModel = getResourceManager().loadModel(coneSpecification);
+      coneMesh = getResourceManager().loadModel(coneSpecification).getMesh();
    }
 
    {
@@ -121,17 +120,17 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
 {
-   PerspectiveInfo perspectiveInfo;
-   if (!getPerspectiveInfo(scene, perspectiveInfo))
+   SceneRenderInfo sceneRenderInfo;
+   if (!calcSceneRenderInfo(scene, sceneRenderInfo))
    {
       return;
    }
 
-   renderPrePass(scene, perspectiveInfo);
-   renderBasePass(scene, perspectiveInfo);
-   renderSSAOPass(perspectiveInfo);
-   renderLightingPass(scene, perspectiveInfo);
-   renderPostProcessPasses(scene, perspectiveInfo);
+   renderPrePass(sceneRenderInfo);
+   renderBasePass(sceneRenderInfo);
+   renderSSAOPass(sceneRenderInfo);
+   renderLightingPass(sceneRenderInfo);
+   renderPostProcessPasses(sceneRenderInfo);
 }
 
 void DeferredSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
@@ -141,7 +140,7 @@ void DeferredSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight
    gBuffer.updateResolution(getWidth(), getHeight());
 }
 
-void DeferredSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void DeferredSceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
 {
    gBuffer.bind();
 
@@ -151,27 +150,29 @@ void DeferredSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveI
 
    gBuffer.setColorAttachmentsEnabled(false);
 
-   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
-   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
+   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
 
-   for (const ModelComponent* modelComponent : scene.getModelComponents())
+   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
-      ASSERT(modelComponent);
+      ASSERT(modelRenderInfo.model);
 
-      if (const SPtr<Model>& model = modelComponent->getModel())
+      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
+      depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
+
+      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
-         Transform transform = modelComponent->getAbsoluteTransform();
-         glm::mat4 modelMatrix = transform.toMatrix();
-
-         depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-
-         DrawingContext context(depthOnlyProgram.get());
-         model->draw(context, false);
+         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
+         if (visible)
+         {
+            DrawingContext context(depthOnlyProgram.get());
+            modelRenderInfo.model->getMeshSection(i).draw(context);
+         }
       }
    }
 }
 
-void DeferredSceneRenderer::renderBasePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInfo)
 {
    glDepthFunc(GL_LEQUAL);
 
@@ -179,35 +180,39 @@ void DeferredSceneRenderer::renderBasePass(const Scene& scene, const Perspective
 
    for (SPtr<ShaderProgram>& gBufferProgramPermutation : gBufferProgramPermutations)
    {
-      gBufferProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
-      gBufferProgramPermutation->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
+      gBufferProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+      gBufferProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
    }
 
-   for (const ModelComponent* modelComponent : scene.getModelComponents())
+   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
-      ASSERT(modelComponent);
+      ASSERT(modelRenderInfo.model);
 
-      if (const SPtr<Model>& model = modelComponent->getModel())
+      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+
+      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
-         Transform transform = modelComponent->getAbsoluteTransform();
-         glm::mat4 modelMatrix = transform.toMatrix();
-         glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+         const MeshSection& section = modelRenderInfo.model->getMeshSection(i);
+         const Material& material = modelRenderInfo.model->getMaterial(i);
 
-         for (ModelSection& section : model->getSections())
+         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
+         if (visible)
          {
-            SPtr<ShaderProgram>& gBufferProgramPermutation = selectGBufferPermutation(section.material);
+            SPtr<ShaderProgram>& gBufferProgramPermutation = selectGBufferPermutation(material);
 
             gBufferProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
             gBufferProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
 
             DrawingContext context(gBufferProgramPermutation.get());
-            section.draw(context, true);
+            material.apply(context);
+            section.draw(context);
          }
       }
    }
 }
 
-void DeferredSceneRenderer::renderLightingPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRenderInfo)
 {
    Framebuffer::bindDefault();
 
@@ -225,83 +230,75 @@ void DeferredSceneRenderer::renderLightingPass(const Scene& scene, const Perspec
 
    glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
 
-   directionalLightingProgram->setUniformValue(UniformNames::kCameraPos, perspectiveInfo.cameraPosition);
+   directionalLightingProgram->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
    directionalLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
-   for (const DirectionalLightComponent* directionalLightComponent : scene.getDirectionalLightComponents())
+   for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
    {
       directionalLightingProgram->setUniformValue("uDirectionalLight.color", directionalLightComponent->getColor());
       directionalLightingProgram->setUniformValue("uDirectionalLight.direction",
          directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
 
-      DrawingContext context;
-      context.program = directionalLightingProgram.get();
+      DrawingContext context(directionalLightingProgram.get());
       lightingMaterial.apply(context);
-
-      context.program->commit();
-      getScreenMesh().draw();
+      getScreenMesh().draw(context);
    }
 
    glCullFace(GL_FRONT);
 
-   pointLightingProgram->setUniformValue(UniformNames::kCameraPos, perspectiveInfo.cameraPosition);
+   pointLightingProgram->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
    pointLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
-   for (const PointLightComponent* pointLightComponent : scene.getPointLightComponents())
+   for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
    {
       Transform transform = pointLightComponent->getAbsoluteTransform();
 
-      float maxScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
-      float radiusScale = pointLightComponent->getRadius() * maxScale;
-      transform.scale = glm::vec3(radiusScale);
+      float scaledRadius = pointLightComponent->getScaledRadius();
+      transform.scale = glm::vec3(scaledRadius);
 
       pointLightingProgram->setUniformValue("uModelViewProjectionMatrix",
-         perspectiveInfo.projectionMatrix * perspectiveInfo.viewMatrix * transform.toMatrix());
+         sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
 
       pointLightingProgram->setUniformValue("uPointLight.color", pointLightComponent->getColor());
       pointLightingProgram->setUniformValue("uPointLight.position", transform.position);
-      pointLightingProgram->setUniformValue("uPointLight.radius", radiusScale);
+      pointLightingProgram->setUniformValue("uPointLight.radius", scaledRadius);
 
-      DrawingContext context;
-      context.program = pointLightingProgram.get();
+      DrawingContext context(pointLightingProgram.get());
       lightingMaterial.apply(context);
-
-      sphereModel->draw(context, false);
+      sphereMesh->draw(context);
    }
 
-   spotLightingProgram->setUniformValue(UniformNames::kCameraPos, perspectiveInfo.cameraPosition);
+   spotLightingProgram->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
    spotLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
-   for (const SpotLightComponent* spotLightComponent : scene.getSpotLightComponents())
+   for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
    {
       Transform transform = spotLightComponent->getAbsoluteTransform();
 
       float beamAngle = glm::radians(spotLightComponent->getBeamAngle());
       float cutoffAngle = glm::radians(spotLightComponent->getCutoffAngle());
 
-      float radiusScale = spotLightComponent->getRadius() * transform.scale.z;
-      float widthScale = glm::tan(cutoffAngle) * radiusScale * 2.0f;
-      transform.scale = glm::vec3(widthScale, widthScale, radiusScale);
+      float scaledRadius = spotLightComponent->getScaledRadius();
+      float widthScale = glm::tan(cutoffAngle) * scaledRadius * 2.0f;
+      transform.scale = glm::vec3(widthScale, widthScale, scaledRadius);
 
       spotLightingProgram->setUniformValue("uModelViewProjectionMatrix",
-         perspectiveInfo.projectionMatrix * perspectiveInfo.viewMatrix * transform.toMatrix());
+         sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
 
       spotLightingProgram->setUniformValue("uSpotLight.color", spotLightComponent->getColor());
       spotLightingProgram->setUniformValue("uSpotLight.direction", transform.orientation * MathUtils::kForwardVector);
       spotLightingProgram->setUniformValue("uSpotLight.position", transform.position);
-      spotLightingProgram->setUniformValue("uSpotLight.radius", radiusScale);
+      spotLightingProgram->setUniformValue("uSpotLight.radius", scaledRadius);
       spotLightingProgram->setUniformValue("uSpotLight.beamAngle", beamAngle);
       spotLightingProgram->setUniformValue("uSpotLight.cutoffAngle", cutoffAngle);
 
-      DrawingContext context;
-      context.program = spotLightingProgram.get();
+      DrawingContext context(spotLightingProgram.get());
       lightingMaterial.apply(context);
-
-      coneModel->draw(context, false);
+      coneMesh->draw(context);
    }
 
    glCullFace(GL_BACK);
    glDisable(GL_BLEND);
 }
 
-void DeferredSceneRenderer::renderPostProcessPasses(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void DeferredSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
 {
    /*glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.getId());
    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -335,7 +332,7 @@ void DeferredSceneRenderer::loadGBufferProgramPermutations()
    IOUtils::getAbsoluteResourcePath("GBuffer.vert", shaderSpecifications[0].path);
    IOUtils::getAbsoluteResourcePath("GBuffer.frag", shaderSpecifications[1].path);
 
-   for (int i = 0; i < gBufferProgramPermutations.size(); ++i)
+   for (std::size_t i = 0; i < gBufferProgramPermutations.size(); ++i)
    {
       for (ShaderSpecification& shaderSpecification : shaderSpecifications)
       {

@@ -8,6 +8,9 @@
 #include "Platform/IOUtils.h"
 #include "Resources/ResourceManager.h"
 #include "Scene/Components/CameraComponent.h"
+#include "Scene/Components/Lights/PointLightComponent.h"
+#include "Scene/Components/Lights/SpotLightComponent.h"
+#include "Scene/Components/ModelComponent.h"
 #include "Scene/Scene.h"
 
 #include <glad/glad.h>
@@ -46,7 +49,7 @@ namespace
       return specification;
    }
 
-   void setScreenMeshData(Mesh& screenMesh)
+   Mesh generateScreenMesh()
    {
       MeshData screenMeshData;
 
@@ -77,7 +80,88 @@ namespace
       screenMeshData.texCoords.values = texCoords;
       screenMeshData.texCoords.valueSize = 2;
 
-      screenMesh.setData(screenMeshData);
+      MeshSection meshSection;
+      meshSection.setData(screenMeshData);
+
+      std::vector<MeshSection> sections;
+      sections.push_back(std::move(meshSection));
+      return Mesh(std::move(sections));
+   }
+
+   std::array<glm::vec4, 6> computeFrustumPlanes(const glm::mat4& worldToClip)
+   {
+      std::array<glm::vec4, 6> frustumPlanes;
+
+      for (int i = 0; i < frustumPlanes.size(); ++i)
+      {
+         glm::vec4& frustumPlane = frustumPlanes[i];
+
+         int row = i / 2;
+         int sign = (i % 2) == 0 ? 1 : -1;
+
+         frustumPlane.x = worldToClip[0][3] + sign * worldToClip[0][row];
+         frustumPlane.y = worldToClip[1][3] + sign * worldToClip[1][row];
+         frustumPlane.z = worldToClip[2][3] + sign * worldToClip[2][row];
+         frustumPlane.w = worldToClip[3][3] + sign * worldToClip[3][row];
+
+         frustumPlane /= glm::length(glm::vec3(frustumPlane.x, frustumPlane.y, frustumPlane.z));
+      }
+
+      return frustumPlanes;
+   }
+
+   float signedPlaneDist(const glm::vec3& point, const glm::vec4& plane)
+   {
+      return plane.x * point.x + plane.y * point.y + plane.z * point.z + plane.w;
+   }
+
+   bool outside(const std::array<glm::vec3, 8>& points, const glm::vec4& plane)
+   {
+      for (const glm::vec3& point : points)
+      {
+         if (signedPlaneDist(point, plane) >= 0.0f)
+         {
+            return false;
+         }
+      }
+
+      return true;
+   }
+
+   bool frustumCull(const Bounds& bounds, const std::array<glm::vec4, 6>& frustumPlanes)
+   {
+      // First check if the bounding sphere is completely outside of any of the planes
+      for (const glm::vec4& plane : frustumPlanes)
+      {
+         if (signedPlaneDist(bounds.center, plane) < -bounds.radius)
+         {
+            return true;
+         }
+      }
+
+      // Next, check the bounding box
+      glm::vec3 min = bounds.getMin();
+      glm::vec3 max = bounds.getMax();
+      std::array<glm::vec3, 8> corners =
+      {
+         glm::vec3(min.x, min.y, min.z),
+         glm::vec3(min.x, min.y, max.z),
+         glm::vec3(min.x, max.y, min.z),
+         glm::vec3(min.x, max.y, max.z),
+         glm::vec3(max.x, min.y, min.z),
+         glm::vec3(max.x, min.y, max.z),
+         glm::vec3(max.x, max.y, min.z),
+         glm::vec3(max.x, max.y, max.z)
+      };
+      for (const glm::vec4& plane : frustumPlanes)
+      {
+         if (outside(corners, plane))
+         {
+            return true;
+         }
+      }
+
+      return false;
    }
 }
 
@@ -87,6 +171,7 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
    , nearPlaneDistance(0.01f)
    , farPlaneDistance(1000.0f)
    , resourceManager(inResourceManager)
+   , screenMesh(generateScreenMesh())
    , ssaoBuffer(getSSAOBufferSpecification(getWidth(), getHeight()))
    , ssaoBlurBuffer(getSSAOBufferSpecification(getWidth(), getHeight()))
 {
@@ -96,8 +181,6 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
    glViewport(0, 0, width, height);
    glEnable(GL_CULL_FACE);
    glCullFace(GL_BACK);
-
-   setScreenMeshData(screenMesh);
 
    {
       std::uniform_real_distribution<GLfloat> distribution(0.0f, 1.0f);
@@ -191,44 +274,104 @@ void SceneRenderer::setFarPlaneDistance(float newFarPlaneDistance)
    farPlaneDistance = glm::max(newFarPlaneDistance, nearPlaneDistance + MathUtils::kKindaSmallNumber);
 }
 
-void SceneRenderer::renderSSAOPass(const PerspectiveInfo& perspectiveInfo)
+bool SceneRenderer::calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sceneRenderInfo) const
 {
-   ssaoBuffer.bind();
+   if (!getPerspectiveInfo(scene, sceneRenderInfo.perspectiveInfo))
+   {
+      return false;
+   }
 
-   glDisable(GL_DEPTH_TEST);
+   glm::mat4 worldToClip = sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix;
+   std::array<glm::vec4, 6> frustumPlanes = computeFrustumPlanes(worldToClip);
 
-   glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
-   ssaoProgram->setUniformValue(UniformNames::kViewport, viewport);
-   ssaoProgram->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
-   ssaoProgram->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
-   ssaoProgram->setUniformValue("uInverseProjectionMatrix", glm::inverse(perspectiveInfo.projectionMatrix), false);
-   ssaoProgram->setUniformValue("uInverseViewMatrix", glm::inverse(perspectiveInfo.viewMatrix), false);
+   for (const ModelComponent* modelComponent : scene.getModelComponents())
+   {
+      ASSERT(modelComponent);
 
-   DrawingContext ssaoContext(ssaoProgram.get());
-   ssaoMaterial.apply(ssaoContext);
-   ssaoProgram->commit();
-   getScreenMesh().draw();
+      bool anySectionVisible = false;
 
-   ssaoBlurBuffer.bind();
+      ModelRenderInfo modelRenderInfo;
+      modelRenderInfo.model = &modelComponent->getModel();
+      modelRenderInfo.localToWorld = modelComponent->getAbsoluteTransform();
 
-   DrawingContext blurContext(ssaoBlurProgram.get());
-   ssaoBlurMaterial.apply(blurContext);
-   ssaoBlurProgram->commit();
-   getScreenMesh().draw();
-}
+      const Model& model = modelComponent->getModel();
+      if (const SPtr<Mesh>& mesh = model.getMesh())
+      {
+         for (std::size_t i = 0; i < model.getNumMeshSections(); ++i)
+         {
+            const MeshSection& section = model.getMeshSection(i);
+            const Bounds& localBounds = section.getBounds();
 
-void SceneRenderer::setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture)
-{
-   ssaoMaterial.setParameter("uDepth", depthTexture);
-   ssaoMaterial.setParameter("uPosition", positionTexture);
-   ssaoMaterial.setParameter("uNormal", normalTexture);
-}
+            Bounds worldBounds;
+            worldBounds.center = modelRenderInfo.localToWorld.transformPosition(localBounds.center);
+            worldBounds.extent = modelRenderInfo.localToWorld.transformVector(localBounds.extent);
+            worldBounds.radius = glm::max(glm::max(modelRenderInfo.localToWorld.scale.x, modelRenderInfo.localToWorld.scale.y), modelRenderInfo.localToWorld.scale.z) * localBounds.radius;
 
-const SPtr<Texture>& SceneRenderer::getSSAOBlurTexture() const
-{
-   ASSERT(ssaoBlurBuffer.getColorAttachments().size() == 1);
+            bool visible = !frustumCull(worldBounds, frustumPlanes);
 
-   return ssaoBlurBuffer.getColorAttachments()[0];
+            if (model.getNumMeshSections() > 1)
+            {
+               modelRenderInfo.visibilityMask.push_back(visible);
+            }
+
+            anySectionVisible |= visible;
+         }
+      }
+
+      if (anySectionVisible)
+      {
+         sceneRenderInfo.modelRenderInfo.push_back(modelRenderInfo);
+      }
+   }
+
+   // Everything the light touches is our kingdom
+   sceneRenderInfo.directionalLights.reserve(scene.getDirectionalLightComponents().size());
+   for (DirectionalLightComponent* directionalLight : scene.getDirectionalLightComponents())
+   {
+      ASSERT(directionalLight);
+
+      sceneRenderInfo.directionalLights.push_back(directionalLight);
+   }
+
+   for (PointLightComponent* pointLight : scene.getPointLightComponents())
+   {
+      ASSERT(pointLight);
+
+      Transform localToWorld = pointLight->getAbsoluteTransform();
+
+      Bounds worldBounds;
+      worldBounds.center = localToWorld.position;
+      worldBounds.radius = pointLight->getScaledRadius();
+      worldBounds.extent = glm::vec3(worldBounds.radius);
+
+      bool visible = !frustumCull(worldBounds, frustumPlanes);
+      if (visible)
+      {
+         sceneRenderInfo.pointLights.push_back(pointLight);
+      }
+   }
+
+   sceneRenderInfo.spotLights.reserve(scene.getSpotLightComponents().size());
+   for (SpotLightComponent* spotLight : scene.getSpotLightComponents())
+   {
+      ASSERT(spotLight);
+
+      Transform localToWorld = spotLight->getAbsoluteTransform();
+
+      // Set the radius to half that of the light, and center the bounds on the center of the light (not the origin)
+      Bounds worldBounds;
+      worldBounds.radius = spotLight->getScaledRadius() * 0.5f;
+      worldBounds.extent = glm::vec3(worldBounds.radius);
+      worldBounds.center = localToWorld.position + localToWorld.orientation * MathUtils::kForwardVector * worldBounds.radius;
+
+      bool visible = !frustumCull(worldBounds, frustumPlanes);
+      if (visible)
+      {
+         sceneRenderInfo.spotLights.push_back(spotLight);
+      }
+   }
+
+   return true;
 }
 
 bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const
@@ -251,4 +394,42 @@ bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& pers
    perspectiveInfo.cameraPosition = cameraTransform.position;
 
    return true;
+}
+
+void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
+{
+   ssaoBuffer.bind();
+
+   glDisable(GL_DEPTH_TEST);
+
+   glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
+   ssaoProgram->setUniformValue(UniformNames::kViewport, viewport);
+   ssaoProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+   ssaoProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
+   ssaoProgram->setUniformValue("uInverseProjectionMatrix", glm::inverse(sceneRenderInfo.perspectiveInfo.projectionMatrix), false);
+   ssaoProgram->setUniformValue("uInverseViewMatrix", glm::inverse(sceneRenderInfo.perspectiveInfo.viewMatrix), false);
+
+   DrawingContext ssaoContext(ssaoProgram.get());
+   ssaoMaterial.apply(ssaoContext);
+   getScreenMesh().draw(ssaoContext);
+
+   ssaoBlurBuffer.bind();
+
+   DrawingContext blurContext(ssaoBlurProgram.get());
+   ssaoBlurMaterial.apply(blurContext);
+   getScreenMesh().draw(blurContext);
+}
+
+void SceneRenderer::setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture)
+{
+   ssaoMaterial.setParameter("uDepth", depthTexture);
+   ssaoMaterial.setParameter("uPosition", positionTexture);
+   ssaoMaterial.setParameter("uNormal", normalTexture);
+}
+
+const SPtr<Texture>& SceneRenderer::getSSAOBlurTexture() const
+{
+   ASSERT(ssaoBlurBuffer.getColorAttachments().size() == 1);
+
+   return ssaoBlurBuffer.getColorAttachments()[0];
 }

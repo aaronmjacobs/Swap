@@ -16,6 +16,12 @@
 
 namespace
 {
+   struct ModelData
+   {
+      std::vector<MeshSection> meshSections;
+      std::vector<Material> materials;
+   };
+
    SPtr<Texture> loadMaterialTexture(const aiMaterial& assimpMaterial, aiTextureType textureType,
       const LoadedTextureParameters& textureParams, const std::string& directory, bool cache,
       TextureLoader& textureLoader)
@@ -74,7 +80,7 @@ namespace
       return material;
    }
 
-   Mesh processAssimpMesh(const aiMesh& assimpMesh)
+   MeshSection processAssimpMesh(const aiMesh& assimpMesh)
    {
       MeshData meshData;
 
@@ -134,39 +140,38 @@ namespace
          meshData.colors.valueSize = 4;
       }
 
-      Mesh mesh;
-      mesh.setData(meshData);
+      MeshSection meshSection;
+      meshSection.setData(meshData);
 
-      return mesh;
+      return meshSection;
    }
 
-   void processAssimpNode(Model& model, const aiScene& assimpScene, const aiNode& assimpNode,
+   void processAssimpNode(ModelData& data, const aiScene& assimpScene, const aiNode& assimpNode,
       const ModelSpecification& specification, const std::string& directory, TextureLoader& textureLoader)
    {
       for (unsigned int i = 0; i < assimpNode.mNumMeshes; ++i)
       {
          const aiMesh& assimpMesh = *assimpScene.mMeshes[assimpNode.mMeshes[i]];
 
-         Mesh mesh = processAssimpMesh(assimpMesh);
-         Material material = processAssimpMaterial(*assimpScene.mMaterials[assimpMesh.mMaterialIndex], specification,
-            directory, textureLoader);
-
-         model.addSection(ModelSection(std::move(mesh), std::move(material)));
+         data.meshSections.push_back(processAssimpMesh(assimpMesh));
+         data.materials.push_back(processAssimpMaterial(*assimpScene.mMaterials[assimpMesh.mMaterialIndex], specification, directory, textureLoader));
       }
 
       for (unsigned int i = 0; i < assimpNode.mNumChildren; ++i)
       {
-         processAssimpNode(model, assimpScene, *assimpNode.mChildren[i], specification, directory, textureLoader);
+         processAssimpNode(data, assimpScene, *assimpNode.mChildren[i], specification, directory, textureLoader);
       }
    }
 
-   SPtr<Model> loadModelFromFile(const ModelSpecification& specification, TextureLoader& textureLoader)
+   Model loadModelFromFile(const ModelSpecification& specification, TextureLoader& textureLoader)
    {
+      Model model;
+
       std::string directory;
       if (!IOUtils::getSanitizedDirectory(specification.path, directory))
       {
          LOG_ERROR("Unable to get directory from model file path: " << specification.path);
-         return nullptr;
+         return model;
       }
 
       unsigned int normalFlag = 0;
@@ -188,12 +193,15 @@ namespace
       if (!assimpScene || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !assimpScene->mRootNode)
       {
          LOG_ERROR("Unable to load model from file (" << specification.path << "): " << importer.GetErrorString());
-         return nullptr;
+         return model;
       }
 
-      SPtr<Model> model(new Model);
-      processAssimpNode(*model, *assimpScene, *assimpScene->mRootNode, specification, directory, textureLoader);
+      ModelData data;
+      processAssimpNode(data, *assimpScene, *assimpScene->mRootNode, specification, directory, textureLoader);
 
+      ASSERT(data.meshSections.size() == data.materials.size());
+
+      model.setMesh(SPtr<Mesh>(new Mesh(std::move(data.meshSections))), std::move(data.materials));
       return model;
    }
 }
@@ -205,34 +213,45 @@ namespace std
       size_t seed = 0;
 
       Hash::combine(seed, specification.path);
+      Hash::combine(seed, specification.normalGenerationMode);
 
       Hash::combine(seed, specification.textureParams.wrap);
       Hash::combine(seed, specification.textureParams.minFilter);
       Hash::combine(seed, specification.textureParams.magFilter);
+      Hash::combine(seed, specification.textureParams.flipVerticallyOnLoad);
 
       return seed;
    }
 }
 
-SPtr<Model> ModelLoader::loadModel(const ModelSpecification& specification, TextureLoader& textureLoader)
+ModelRef::ModelRef(const Model& model)
+   : mesh(WPtr<Mesh>(model.getMesh()))
+   , materials(model.getMaterials())
+{
+}
+
+Model ModelLoader::loadModel(const ModelSpecification& specification, TextureLoader& textureLoader)
 {
    if (specification.cache)
    {
       auto location = modelMap.find(specification);
       if (location != modelMap.end())
       {
-         SPtr<Model> model = location->second.lock();
-         if (model)
+         const ModelRef& ref = location->second;
+
+         if (SPtr<Mesh> mesh = ref.mesh.lock())
          {
+            Model model;
+            model.setMesh(std::move(mesh), ref.materials);
             return model;
          }
       }
    }
 
-   SPtr<Model> model = loadModelFromFile(specification, textureLoader);
-   if (model && specification.cache)
+   Model model = loadModelFromFile(specification, textureLoader);
+   if (model.getMesh() && specification.cache)
    {
-      modelMap.emplace(specification, WPtr<Model>(model));
+      modelMap.emplace(specification, ModelRef(model));
    }
 
    return model;

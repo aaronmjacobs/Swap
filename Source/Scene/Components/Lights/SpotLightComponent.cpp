@@ -28,6 +28,13 @@ SpotLightComponent::~SpotLightComponent()
    getScene().unregisterSpotLightComponent(this);
 }
 
+float SpotLightComponent::getScaledRadius() const
+{
+   Transform localToWorld = getAbsoluteTransform();
+
+   return radius * localToWorld.scale.z;
+}
+
 void SpotLightComponent::setRadius(float newRadius)
 {
    ASSERT(newRadius >= 0.0f);

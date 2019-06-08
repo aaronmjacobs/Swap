@@ -15,18 +15,18 @@ protected:
 public:
    ~ModelComponent();
 
-   const SPtr<Model>& getModel() const
+   const Model& getModel() const
    {
       return model;
    }
 
-   void setModel(const SPtr<Model>& newModel)
+   void setModel(Model newModel)
    {
-      model = newModel;
+      model = std::move(newModel);
    }
 
 private:
-   SPtr<Model> model;
+   Model model;
 };
 
 SWAP_REFERENCE_COMPONENT(ModelComponent)

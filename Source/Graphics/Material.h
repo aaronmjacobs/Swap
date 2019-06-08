@@ -29,7 +29,14 @@ namespace CommonMaterialParameterNames
 class Material
 {
 public:
-   void apply(DrawingContext& context);
+   Material() = default;
+   Material(const Material& other);
+   Material(Material&& other) = default;
+   ~Material() = default;
+   Material& operator=(const Material& other);
+   Material& operator=(Material&& other) = default;
+
+   void apply(DrawingContext& context) const;
 
    template<typename T>
    bool setParameter(const std::string& name, const T& value)

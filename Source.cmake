@@ -34,6 +34,8 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Graphics/Uniform.cpp"
    "${SRC_DIR}/Graphics/UniformTypes.h"
 
+   "${SRC_DIR}/Math/Bounds.h"
+   "${SRC_DIR}/Math/Bounds.cpp"
    "${SRC_DIR}/Math/MathUtils.h"
    "${SRC_DIR}/Math/Transform.h"
 

@@ -8,40 +8,22 @@
 
 struct DrawingContext;
 
-struct ModelSection
-{
-   ModelSection(Mesh&& inMesh, Material&& inMaterial)
-      : mesh(std::move(inMesh))
-      , material(std::move(inMaterial))
-   {
-   }
-
-   void draw(DrawingContext& context, bool applyMaterial);
-
-   Mesh mesh;
-   Material material;
-};
-
 class Model
 {
 public:
-   Model() = default;
-   Model(const Model& other) = delete;
-   Model(Model&& other) = default;
-   ~Model() = default;
-   Model& operator=(const Model& other) = delete;
-   Model& operator=(Model&& other) = default;
+   void draw(DrawingContext& context, bool applyMaterials) const;
 
-   void draw(DrawingContext& context, bool applyMaterials);
+   void setMesh(SPtr<Mesh> newMesh, std::vector<Material> newMaterials);
+   void setMesh(SPtr<Mesh> newMesh);
 
    template<typename T>
    bool setMaterialParameter(const std::string& name, const T& value)
    {
       bool success = true;
 
-      for (ModelSection& section : sections)
+      for (Material& material : materials)
       {
-         success &= section.material.setParameter(name, value);
+         success &= material.setParameter(name, value);
       }
 
       return success;
@@ -49,18 +31,37 @@ public:
 
    void setMaterialParameterEnabled(const std::string& name, bool enabled);
 
-   void addSection(ModelSection&& section);
-
-   std::vector<ModelSection>& getSections()
+   const SPtr<Mesh>& getMesh() const
    {
-      return sections;
+      return mesh;
    }
 
-   const std::vector<ModelSection>& getSections() const
+   const std::vector<Material>& getMaterials() const
    {
-      return sections;
+      return materials;
+   }
+
+   std::size_t getNumMeshSections() const
+   {
+      return materials.size();
+   }
+
+   const MeshSection& getMeshSection(std::size_t index) const
+   {
+      ASSERT(mesh);
+      ASSERT(index < mesh->getSections().size());
+
+      return mesh->getSections()[index];
+   }
+
+   const Material& getMaterial(std::size_t index) const
+   {
+      ASSERT(index < materials.size());
+
+      return materials[index];
    }
 
 private:
-   std::vector<ModelSection> sections;
+   SPtr<Mesh> mesh;
+   std::vector<Material> materials;
 };

@@ -35,7 +35,25 @@ namespace CommonMaterialParameterNames
    }
 }
 
-void Material::apply(DrawingContext& context)
+Material::Material(const Material& other)
+{
+   *this = other;
+}
+
+Material& Material::operator=(const Material& other)
+{
+   parameters.reserve(other.parameters.size());
+   for (const auto& pair : other.parameters)
+   {
+      parameters.emplace(pair.first, pair.second->clone());
+   }
+
+   commonMaterialParameterUsage = other.commonMaterialParameterUsage;
+
+   return *this;
+}
+
+void Material::apply(DrawingContext& context) const
 {
    for (auto& pair : parameters)
    {

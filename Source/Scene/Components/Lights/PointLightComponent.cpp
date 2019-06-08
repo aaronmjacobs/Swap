@@ -19,6 +19,14 @@ PointLightComponent::~PointLightComponent()
    getScene().unregisterPointLightComponent(this);
 }
 
+float PointLightComponent::getScaledRadius() const
+{
+   Transform localToWorld = getAbsoluteTransform();
+   float maxScale = glm::max(glm::max(localToWorld.scale.x, localToWorld.scale.y), localToWorld.scale.z);
+
+   return radius * maxScale;
+}
+
 void PointLightComponent::setRadius(float newRadius)
 {
    ASSERT(newRadius >= 0.0f);

@@ -1,40 +1,43 @@
 #include "Graphics/Model.h"
 
 #include "Graphics/DrawingContext.h"
-#include "Graphics/ShaderProgram.h"
+#include "Graphics/Mesh.h"
 
-void ModelSection::draw(DrawingContext& context, bool applyMaterial)
+void Model::draw(DrawingContext& context, bool applyMaterials) const
 {
-   ASSERT(context.program);
+   ASSERT(mesh);
+   ASSERT(mesh->getSections().size() == materials.size());
 
-   DrawingContext localContext = context;
-   if (applyMaterial)
+   for (std::size_t i = 0; i < mesh->getSections().size(); ++i)
    {
-      material.apply(localContext);
+      DrawingContext localContext = context;
+      if (applyMaterials)
+      {
+         materials[i].apply(localContext);
+      }
+
+      mesh->getSections()[i].draw(localContext);
    }
-
-   localContext.program->commit();
-
-   mesh.draw();
 }
 
-void Model::draw(DrawingContext& context, bool applyMaterials)
+void Model::setMesh(SPtr<Mesh> newMesh, std::vector<Material> newMaterials)
 {
-   for (ModelSection& section : sections)
-   {
-      section.draw(context, applyMaterials);
-   }
+   ASSERT((!newMesh && newMaterials.size() == 0) || (newMesh->getSections().size() == newMaterials.size()));
+
+   mesh = std::move(newMesh);
+   materials = std::move(newMaterials);
+}
+
+void Model::setMesh(SPtr<Mesh> newMesh)
+{
+   std::size_t numMaterials = newMesh ? newMesh->getSections().size() : 0;
+   setMesh(std::move(newMesh), std::vector<Material>(numMaterials));
 }
 
 void Model::setMaterialParameterEnabled(const std::string& name, bool enabled)
 {
-   for (ModelSection& section : sections)
+   for (Material& material : materials)
    {
-      section.material.setParameterEnabled(name, enabled);
+      material.setParameterEnabled(name, enabled);
    }
-}
-
-void Model::addSection(ModelSection&& section)
-{
-   sections.emplace_back(std::move(section));
 }

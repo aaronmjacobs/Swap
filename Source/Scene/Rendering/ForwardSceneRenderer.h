@@ -21,10 +21,10 @@ public:
    void onFramebufferSizeChanged(int newWidth, int newHeight) override;
 
 private:
-   void renderPrePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
-   void renderNormalPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
-   void renderMainPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
-   void renderPostProcessPasses(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
+   void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
+   void renderNormalPass(const SceneRenderInfo& sceneRenderInfo);
+   void renderMainPass(const SceneRenderInfo& sceneRenderInfo);
+   void renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo);
 
    void loadNormalProgramPermutations();
    SPtr<ShaderProgram>& selectNormalPermutation(const Material& material);

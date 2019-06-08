@@ -22,8 +22,8 @@ private:
    void release();
 
 public:
-   int activateAndBind(DrawingContext& context);
-   void bind();
+   int activateAndBind(DrawingContext& context) const;
+   void bind() const;
 
    void updateSpecification(const Tex::Specification& textureSpecification);
    void updateResolution(GLsizei width = -1, GLsizei height = -1, GLsizei depth = -1);

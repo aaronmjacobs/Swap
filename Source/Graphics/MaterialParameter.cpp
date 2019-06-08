@@ -12,7 +12,7 @@ bool MaterialParameterBase::typeError(const char* dataTypeName)
 }
 
 #define DEFINE_MATERIAL_PARAM_TYPE(uniform_type, data_type, param_type)\
-void uniform_type##MaterialParameter::apply(DrawingContext& context)\
+void uniform_type##MaterialParameter::apply(DrawingContext& context) const\
 {\
    ASSERT(context.program);\
 \
@@ -30,7 +30,7 @@ void uniform_type##MaterialParameter::apply(DrawingContext& context)\
 
 #undef DEFINE_MATERIAL_PARAM_TYPE
 
-void TextureMaterialParameter::apply(DrawingContext& context)
+void TextureMaterialParameter::apply(DrawingContext& context) const
 {
    ASSERT(context.program);
 

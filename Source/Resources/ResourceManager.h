@@ -7,7 +7,7 @@
 class ResourceManager
 {
 public:
-   SPtr<Model> loadModel(const ModelSpecification& specification);
+   Model loadModel(const ModelSpecification& specification);
 
    SPtr<Shader> loadShader(const ShaderSpecification& specification);
    SPtr<ShaderProgram> loadShaderProgram(const std::vector<ShaderSpecification>& specifications);

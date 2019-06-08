@@ -12,7 +12,6 @@
 #include "Scene/Components/Lights/PointLightComponent.h"
 #include "Scene/Components/Lights/SpotLightComponent.h"
 #include "Scene/Components/ModelComponent.h"
-#include "Scene/Scene.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -43,10 +42,10 @@ namespace
       return specification;
    }
 
-   void populateDirectionalLightUniforms(const Scene& scene, ShaderProgram& program)
+   void populateDirectionalLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
    {
       int directionalLightIndex = 0;
-      for (const DirectionalLightComponent* directionalLightComponent : scene.getDirectionalLightComponents())
+      for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
       {
          std::string directionalLightStr = "uDirectionalLights[" + std::to_string(directionalLightIndex) + "]";
 
@@ -56,13 +55,13 @@ namespace
 
          ++directionalLightIndex;
       }
-      program.setUniformValue("uNumDirectionalLights", static_cast<int>(scene.getDirectionalLightComponents().size()));
+      program.setUniformValue("uNumDirectionalLights", static_cast<int>(sceneRenderInfo.directionalLights.size()));
    }
 
-   void populatePointLightUniforms(const Scene& scene, ShaderProgram& program)
+   void populatePointLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
    {
       int pointLightIndex = 0;
-      for (const PointLightComponent* pointLightComponent : scene.getPointLightComponents())
+      for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
       {
          std::string pointLightStr = "uPointLights[" + std::to_string(pointLightIndex) + "]";
 
@@ -75,13 +74,13 @@ namespace
 
          ++pointLightIndex;
       }
-      program.setUniformValue("uNumPointLights", static_cast<int>(scene.getPointLightComponents().size()));
+      program.setUniformValue("uNumPointLights", static_cast<int>(sceneRenderInfo.pointLights.size()));
    }
 
-   void populateSpotLightUniforms(const Scene& scene, ShaderProgram& program)
+   void populateSpotLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
    {
       int spotLightIndex = 0;
-      for (const SpotLightComponent* spotLightComponent : scene.getSpotLightComponents())
+      for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
       {
          std::string spotLightStr = "uSpotLights[" + std::to_string(spotLightIndex) + "]";
 
@@ -97,14 +96,14 @@ namespace
 
          ++spotLightIndex;
       }
-      program.setUniformValue("uNumSpotLights", static_cast<int>(scene.getSpotLightComponents().size()));
+      program.setUniformValue("uNumSpotLights", static_cast<int>(sceneRenderInfo.spotLights.size()));
    }
 
-   void populateLightUniforms(const Scene& scene, ShaderProgram& program)
+   void populateLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
    {
-      populateDirectionalLightUniforms(scene, program);
-      populatePointLightUniforms(scene, program);
-      populateSpotLightUniforms(scene, program);
+      populateDirectionalLightUniforms(sceneRenderInfo, program);
+      populatePointLightUniforms(sceneRenderInfo, program);
+      populateSpotLightUniforms(sceneRenderInfo, program);
    }
 }
 
@@ -133,17 +132,17 @@ void ForwardSceneRenderer::renderScene(const Scene& scene)
 {
    // TODO Use uniform buffer objects
 
-   PerspectiveInfo perspectiveInfo;
-   if (!getPerspectiveInfo(scene, perspectiveInfo))
+   SceneRenderInfo sceneRenderInfo;
+   if (!calcSceneRenderInfo(scene, sceneRenderInfo))
    {
       return;
    }
 
-   renderPrePass(scene, perspectiveInfo);
-   renderNormalPass(scene, perspectiveInfo);
-   renderSSAOPass(perspectiveInfo);
-   renderMainPass(scene, perspectiveInfo);
-   renderPostProcessPasses(scene, perspectiveInfo);
+   renderPrePass(sceneRenderInfo);
+   renderNormalPass(sceneRenderInfo);
+   renderSSAOPass(sceneRenderInfo);
+   renderMainPass(sceneRenderInfo);
+   renderPostProcessPasses(sceneRenderInfo);
 }
 
 void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
@@ -153,7 +152,7 @@ void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
    mainPassFramebuffer.updateResolution(getWidth(), getHeight());
 }
 
-void ForwardSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void ForwardSceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
 {
    mainPassFramebuffer.bind();
 
@@ -163,27 +162,29 @@ void ForwardSceneRenderer::renderPrePass(const Scene& scene, const PerspectiveIn
 
    mainPassFramebuffer.setColorAttachmentsEnabled(false);
 
-   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
-   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
+   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
 
-   for (const ModelComponent* modelComponent : scene.getModelComponents())
+   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
-      ASSERT(modelComponent);
+      ASSERT(modelRenderInfo.model);
 
-      if (const SPtr<Model>& model = modelComponent->getModel())
+      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
+      depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
+
+      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
-         Transform transform = modelComponent->getAbsoluteTransform();
-         glm::mat4 modelMatrix = transform.toMatrix();
-
-         depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-
-         DrawingContext context(depthOnlyProgram.get());
-         model->draw(context, false);
+         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
+         if (visible)
+         {
+            DrawingContext context(depthOnlyProgram.get());
+            modelRenderInfo.model->getMeshSection(i).draw(context);
+         }
       }
    }
 }
 
-void ForwardSceneRenderer::renderNormalPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderInfo)
 {
    mainPassFramebuffer.setColorAttachmentsEnabled(true);
 
@@ -191,35 +192,39 @@ void ForwardSceneRenderer::renderNormalPass(const Scene& scene, const Perspectiv
 
    for (SPtr<ShaderProgram>& normalProgramPermutation : normalProgramPermutations)
    {
-      normalProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
-      normalProgramPermutation->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
+      normalProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+      normalProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
    }
 
-   for (const ModelComponent* modelComponent : scene.getModelComponents())
+   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
-      ASSERT(modelComponent);
+      ASSERT(modelRenderInfo.model);
 
-      if (const SPtr<Model>& model = modelComponent->getModel())
+      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+
+      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
-         Transform transform = modelComponent->getAbsoluteTransform();
-         glm::mat4 modelMatrix = transform.toMatrix();
-         glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+         const MeshSection& section = modelRenderInfo.model->getMeshSection(i);
+         const Material& material = modelRenderInfo.model->getMaterial(i);
 
-         for (ModelSection& section : model->getSections())
+         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
+         if (visible)
          {
-            SPtr<ShaderProgram>& normalProgramPermutation = selectNormalPermutation(section.material);
+            SPtr<ShaderProgram>& normalProgramPermutation = selectNormalPermutation(material);
 
             normalProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
             normalProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
 
             DrawingContext context(normalProgramPermutation.get());
-            section.draw(context, true);
+            material.apply(context);
+            section.draw(context);
          }
       }
    }
 }
 
-void ForwardSceneRenderer::renderMainPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo)
 {
    mainPassFramebuffer.bind();
    mainPassFramebuffer.setColorAttachmentsEnabled(true);
@@ -229,43 +234,47 @@ void ForwardSceneRenderer::renderMainPass(const Scene& scene, const PerspectiveI
 
    for (SPtr<ShaderProgram>& forwardProgramPermutation : forwardProgramPermutations)
    {
-      forwardProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, perspectiveInfo.projectionMatrix);
-      forwardProgramPermutation->setUniformValue(UniformNames::kViewMatrix, perspectiveInfo.viewMatrix);
+      forwardProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+      forwardProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
 
-      forwardProgramPermutation->setUniformValue(UniformNames::kCameraPos, perspectiveInfo.cameraPosition);
+      forwardProgramPermutation->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
 
       glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
       forwardProgramPermutation->setUniformValue(UniformNames::kViewport, viewport);
 
-      populateLightUniforms(scene, *forwardProgramPermutation);
+      populateLightUniforms(sceneRenderInfo, *forwardProgramPermutation);
    }
 
-   for (const ModelComponent* modelComponent : scene.getModelComponents())
+   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
-      ASSERT(modelComponent);
+      ASSERT(modelRenderInfo.model);
 
-      if (const SPtr<Model>& model = modelComponent->getModel())
+      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+
+      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
-         Transform transform = modelComponent->getAbsoluteTransform();
-         glm::mat4 modelMatrix = transform.toMatrix();
-         glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+         const MeshSection& section = modelRenderInfo.model->getMeshSection(i);
+         const Material& material = modelRenderInfo.model->getMaterial(i);
 
-         for (ModelSection& section : model->getSections())
+         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
+         if (visible)
          {
-            SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(section.material);
+            SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
 
             forwardProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
             forwardProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
 
             DrawingContext context(forwardProgramPermutation.get());
             forwardMaterial.apply(context);
-            section.draw(context, true);
+            material.apply(context);
+            section.draw(context);
          }
       }
    }
 }
 
-void ForwardSceneRenderer::renderPostProcessPasses(const Scene& scene, const PerspectiveInfo& perspectiveInfo)
+void ForwardSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
 {
    // TODO Eventually an actual set of render passes
 
@@ -287,7 +296,7 @@ void ForwardSceneRenderer::loadNormalProgramPermutations()
    IOUtils::getAbsoluteResourcePath("Normals.vert", shaderSpecifications[0].path);
    IOUtils::getAbsoluteResourcePath("Normals.frag", shaderSpecifications[1].path);
 
-   for (int i = 0; i < normalProgramPermutations.size(); ++i)
+   for (std::size_t i = 0; i < normalProgramPermutations.size(); ++i)
    {
       for (ShaderSpecification& shaderSpecification : shaderSpecifications)
       {
@@ -314,7 +323,7 @@ void ForwardSceneRenderer::loadForwardProgramPermutations()
    IOUtils::getAbsoluteResourcePath("Forward.vert", shaderSpecifications[0].path);
    IOUtils::getAbsoluteResourcePath("Forward.frag", shaderSpecifications[1].path);
 
-   for (int i = 0; i < forwardProgramPermutations.size(); ++i)
+   for (std::size_t i = 0; i < forwardProgramPermutations.size(); ++i)
    {
       for (ShaderSpecification& shaderSpecification : shaderSpecifications)
       {

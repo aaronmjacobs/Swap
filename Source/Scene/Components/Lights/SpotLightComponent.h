@@ -12,6 +12,8 @@ protected:
 public:
    ~SpotLightComponent();
 
+   float getScaledRadius() const;
+
    float getRadius() const
    {
       return radius;

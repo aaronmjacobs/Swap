@@ -1,13 +1,15 @@
 #pragma once
 
 #include "Core/Pointers.h"
+#include "Graphics/Material.h"
+#include "Graphics/Model.h"
 #include "Resources/TextureLoader.h"
 
 #include <cstdint>
 #include <string>
 #include <unordered_map>
 
-class Model;
+class Mesh;
 
 enum class NormalGenerationMode : uint8_t
 {
@@ -44,13 +46,21 @@ namespace std
    };
 }
 
+struct ModelRef
+{
+   ModelRef(const Model& model);
+
+   WPtr<Mesh> mesh;
+   std::vector<Material> materials;
+};
+
 class ModelLoader
 {
 public:
-   SPtr<Model> loadModel(const ModelSpecification& specification, TextureLoader& textureLoader);
+   Model loadModel(const ModelSpecification& specification, TextureLoader& textureLoader);
 
    void clearCachedData();
 
 private:
-   std::unordered_map<ModelSpecification, WPtr<Model>> modelMap;
+   std::unordered_map<ModelSpecification, ModelRef> modelMap;
 };

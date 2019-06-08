@@ -5,12 +5,19 @@
 #include "Graphics/Framebuffer.h"
 #include "Graphics/Material.h"
 #include "Graphics/Mesh.h"
+#include "Math/Transform.h"
 
 #include <glm/glm.hpp>
+#include <vector>
 
+class DirectionalLightComponent;
+class Model;
+class ModelComponent;
+class PointLightComponent;
 class ResourceManager;
 class Scene;
 class ShaderProgram;
+class SpotLightComponent;
 class Texture;
 struct DrawingContext;
 
@@ -30,6 +37,22 @@ struct PerspectiveInfo
    glm::mat4 projectionMatrix;
    glm::mat4 viewMatrix;
    glm::vec3 cameraPosition;
+};
+
+struct ModelRenderInfo
+{
+   Transform localToWorld;
+   std::vector<bool> visibilityMask;
+   const Model* model = nullptr;
+};
+
+struct SceneRenderInfo
+{
+   PerspectiveInfo perspectiveInfo;
+   std::vector<ModelRenderInfo> modelRenderInfo;
+   std::vector<const DirectionalLightComponent*> directionalLights;
+   std::vector<const PointLightComponent*> pointLights;
+   std::vector<const SpotLightComponent*> spotLights;
 };
 
 class SceneRenderer
@@ -53,11 +76,12 @@ protected:
       return *resourceManager;
    }
 
-   void renderSSAOPass(const PerspectiveInfo& perspectiveInfo);
+   bool calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sceneRenderInfo) const;
+   bool getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const;
+
+   void renderSSAOPass(const SceneRenderInfo& sceneRenderInfo);
    void setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture);
    const SPtr<Texture>& getSSAOBlurTexture() const;
-
-   bool getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const;
 
    int getWidth() const
    {

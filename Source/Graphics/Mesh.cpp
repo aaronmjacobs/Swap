@@ -1,10 +1,12 @@
 #include "Graphics/Mesh.h"
 
 #include "Core/Assert.h"
+#include "Graphics/DrawingContext.h"
+#include "Graphics/ShaderProgram.h"
 
 #include <utility>
 
-Mesh::Mesh()
+MeshSection::MeshSection()
    : vertexArrayObject(0)
    , positionBufferObject(VertexAttribute::Position)
    , normalBufferObject(VertexAttribute::Normal)
@@ -17,7 +19,7 @@ Mesh::Mesh()
    glGenVertexArrays(1, &vertexArrayObject);
 }
 
-Mesh::Mesh(Mesh&& other)
+MeshSection::MeshSection(MeshSection&& other)
    : vertexArrayObject(0)
    , positionBufferObject(VertexAttribute::Position)
    , normalBufferObject(VertexAttribute::Normal)
@@ -30,19 +32,19 @@ Mesh::Mesh(Mesh&& other)
    move(std::move(other));
 }
 
-Mesh::~Mesh()
+MeshSection::~MeshSection()
 {
    release();
 }
 
-Mesh& Mesh::operator=(Mesh&& other)
+MeshSection& MeshSection::operator=(MeshSection&& other)
 {
    release();
    move(std::move(other));
    return *this;
 }
 
-void Mesh::move(Mesh&& other)
+void MeshSection::move(MeshSection&& other)
 {
    vertexArrayObject = other.vertexArrayObject;
    other.vertexArrayObject = 0;
@@ -57,9 +59,12 @@ void Mesh::move(Mesh&& other)
 
    numIndices = other.numIndices;
    other.numIndices = 0;
+
+   bounds = other.bounds;
+   other.bounds = {};
 }
 
-void Mesh::release()
+void MeshSection::release()
 {
    elementBufferObject.release();
    positionBufferObject.release();
@@ -78,7 +83,7 @@ void Mesh::release()
    numIndices = 0;
 }
 
-void Mesh::setData(const MeshData& data)
+void MeshSection::setData(const MeshData& data)
 {
    ASSERT(data.indices.size() % 3 == 0);
    ASSERT(data.positions.valueSize >= 0 && data.positions.valueSize < 5
@@ -120,25 +125,51 @@ void Mesh::setData(const MeshData& data)
    unbind();
 
    numIndices = static_cast<GLsizei>(data.indices.size());
+
+   if (data.positions.valueSize == 3 && data.positions.values.size() >= 3)
+   {
+      gsl::span<glm::vec3> points(reinterpret_cast<glm::vec3*>(data.positions.values.data()), data.positions.values.size() / 3);
+      bounds = Bounds::fromPoints(points);
+   }
+   else
+   {
+      bounds = {};
+   }
 }
 
-void Mesh::draw() const
+void MeshSection::draw(const DrawingContext& context) const
 {
    ASSERT(numIndices > 0);
+   ASSERT(context.program);
+
+   context.program->commit();
 
    bind();
    glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
    unbind();
 }
 
-void Mesh::bind() const
+void MeshSection::bind() const
 {
    ASSERT(vertexArrayObject != 0);
 
    glBindVertexArray(vertexArrayObject);
 }
 
-void Mesh::unbind() const
+void MeshSection::unbind() const
 {
    glBindVertexArray(0);
+}
+
+Mesh::Mesh(std::vector<MeshSection>&& meshSections)
+   : sections(std::move(meshSections))
+{
+}
+
+void Mesh::draw(const DrawingContext& context) const
+{
+   for (const MeshSection& section : sections)
+   {
+      section.draw(context);
+   }
 }

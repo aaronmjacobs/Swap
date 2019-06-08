@@ -1,6 +1,6 @@
 #include "Resources/ResourceManager.h"
 
-SPtr<Model> ResourceManager::loadModel(const ModelSpecification& specification)
+Model ResourceManager::loadModel(const ModelSpecification& specification)
 {
    return modelLoader.loadModel(specification, textureLoader);
 }

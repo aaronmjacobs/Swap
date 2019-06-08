@@ -22,6 +22,8 @@ public:
 
    virtual ~MaterialParameterBase() = default;
 
+   virtual UPtr<MaterialParameterBase> clone() const = 0;
+
    bool isEnabled() const
    {
       return enabled;
@@ -32,7 +34,7 @@ public:
       enabled = newEnabled;
    }
 
-   virtual void apply(DrawingContext& context) = 0;
+   virtual void apply(DrawingContext& context) const = 0;
 
 #define DECLARE_SET_VALUE(uniform_type, data_type, param_type)\
    virtual bool setValue(param_type newValue) { return typeError(#data_type); }
@@ -63,7 +65,12 @@ public:\
    {\
    }\
 \
-   void apply(DrawingContext& context) override;\
+   UPtr<MaterialParameterBase> clone() const override\
+   {\
+      return std::make_unique<uniform_type##MaterialParameter>(*this);\
+   }\
+\
+   void apply(DrawingContext& context) const override;\
 \
    bool setValue(param_type newValue) override\
    {\

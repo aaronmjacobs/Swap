@@ -243,7 +243,7 @@ SPtr<Texture> TextureLoader::loadCubemap(const LoadedCubemapSpecification& speci
    stbi_set_flip_vertically_on_load(specification.params.flipVerticallyOnLoad);
 
    std::array<ImageInfo, 6> infos;
-   for (int i = 0; i < infos.size(); ++i)
+   for (std::size_t i = 0; i < infos.size(); ++i)
    {
       infos[i] = loadImage(specification.paths[i]);
    }

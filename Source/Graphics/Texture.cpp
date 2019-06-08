@@ -294,7 +294,7 @@ void Texture::release()
    }
 }
 
-int Texture::activateAndBind(DrawingContext& context)
+int Texture::activateAndBind(DrawingContext& context) const
 {
    int textureUnit = context.textureUnitCounter++;
 
@@ -304,7 +304,7 @@ int Texture::activateAndBind(DrawingContext& context)
    return textureUnit;
 }
 
-void Texture::bind()
+void Texture::bind() const
 {
    glBindTexture(static_cast<GLenum>(specification.target), id);
 }

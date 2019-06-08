@@ -30,10 +30,10 @@ public:
    void onFramebufferSizeChanged(int newWidth, int newHeight) override;
 
 private:
-   void renderPrePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
-   void renderBasePass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
-   void renderLightingPass(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
-   void renderPostProcessPasses(const Scene& scene, const PerspectiveInfo& perspectiveInfo);
+   void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
+   void renderBasePass(const SceneRenderInfo& sceneRenderInfo);
+   void renderLightingPass(const SceneRenderInfo& sceneRenderInfo);
+   void renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo);
 
    const SPtr<Texture>& getGBufferTexture(GBufferTarget target) const;
 
@@ -42,8 +42,8 @@ private:
 
    Framebuffer gBuffer;
 
-   SPtr<Model> sphereModel;
-   SPtr<Model> coneModel;
+   SPtr<Mesh> sphereMesh;
+   SPtr<Mesh> coneMesh;
 
    SPtr<ShaderProgram> depthOnlyProgram;
 
