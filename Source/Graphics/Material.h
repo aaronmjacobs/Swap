@@ -14,6 +14,12 @@
 
 struct DrawingContext;
 
+enum class BlendMode : uint8_t
+{
+   Opaque,
+   Translucent
+};
+
 enum class CommonMaterialParameter : uint8_t
 {
    DiffuseTexture,
@@ -60,6 +66,16 @@ public:
       return commonMaterialParameterUsage[static_cast<uint8_t>(parameter)];
    }
 
+   BlendMode getBlendMode() const
+   {
+      return blendMode;
+   }
+
+   void setBlendMode(BlendMode newBlendMode)
+   {
+      blendMode = newBlendMode;
+   }
+
 private:
    using ParameterMap = std::unordered_map<std::string, UPtr<MaterialParameterBase>>;
 
@@ -67,4 +83,5 @@ private:
 
    ParameterMap parameters;
    std::array<bool, 3> commonMaterialParameterUsage = {};
+   BlendMode blendMode = BlendMode::Opaque;
 };

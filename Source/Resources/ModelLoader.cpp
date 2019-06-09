@@ -5,6 +5,7 @@
 #include "Graphics/Material.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
+#include "Graphics/Texture.h"
 #include "Platform/IOUtils.h"
 #include "Resources/TextureLoader.h"
 
@@ -67,6 +68,11 @@ namespace
       if (diffuseTexture)
       {
          material.setParameter(CommonMaterialParameterNames::get(CommonMaterialParameter::DiffuseTexture), diffuseTexture);
+
+         if (diffuseTexture->hasAlpha())
+         {
+            material.setBlendMode(BlendMode::Translucent);
+         }
       }
       if (specularTexture)
       {

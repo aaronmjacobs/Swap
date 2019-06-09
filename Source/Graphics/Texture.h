@@ -47,6 +47,8 @@ public:
       return specification;
    }
 
+   bool hasAlpha() const;
+
 private:
    void assertBound() const;
 

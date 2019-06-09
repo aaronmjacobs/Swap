@@ -49,6 +49,7 @@ Material& Material::operator=(const Material& other)
    }
 
    commonMaterialParameterUsage = other.commonMaterialParameterUsage;
+   blendMode = other.blendMode;
 
    return *this;
 }

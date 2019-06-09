@@ -459,6 +459,41 @@ void Texture::generateMipMaps()
    glGenerateMipmap(static_cast<GLenum>(specification.target));
 }
 
+bool Texture::hasAlpha() const
+{
+   switch (specification.internalFormat)
+   {
+   case Tex::InternalFormat::RGBA8:
+   case Tex::InternalFormat::RGBA8UI:
+   case Tex::InternalFormat::RGBA8_SNorm:
+
+   case Tex::InternalFormat::RGBA16:
+   case Tex::InternalFormat::RGBA16F:
+   case Tex::InternalFormat::RGBA16I:
+   case Tex::InternalFormat::RGBA16UI:
+   case Tex::InternalFormat::RGBA16_SNorm:
+
+   case Tex::InternalFormat::RGBA32F:
+   case Tex::InternalFormat::RGBA32I:
+   case Tex::InternalFormat::RGBA32UI:
+
+
+   case Tex::InternalFormat::SRGB8_Alpha8:
+
+
+   case Tex::InternalFormat::CompressedRGBA:
+   case Tex::InternalFormat::CompressedSRGB_Alpha:
+
+
+   case Tex::InternalFormat::RGB10_A2:
+   case Tex::InternalFormat::RGB10_A2UI:
+      return true;
+
+   default:
+      return false;
+   }
+}
+
 void Texture::assertBound() const
 {
 #if SWAP_DEBUG
