@@ -5,11 +5,75 @@
 
 #include <utility>
 
-Framebuffer::Framebuffer(const Fb::Specification& specification)
+Fb::Attachments Fb::generateAttachments(const Specification& specification)
+{
+   Attachments attachments;
+
+   bool isMultisample = specification.samples > 0;
+   GLenum target = isMultisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+
+   if (specification.depthStencilType != DepthStencilType::None)
+   {
+      Tex::Specification depthStencilSpecification;
+
+      depthStencilSpecification.width = specification.width;
+      depthStencilSpecification.height = specification.height;
+
+      if (isMultisample)
+      {
+         depthStencilSpecification.target = Tex::Target::Texture2D_Multisample;
+         depthStencilSpecification.samples = specification.samples;
+      }
+
+      bool highPrecision = specification.depthStencilType == DepthStencilType::Depth32FStencil8;
+      depthStencilSpecification.internalFormat = highPrecision ? Tex::InternalFormat::Depth32FStencil8 : Tex::InternalFormat::Depth24Stencil8;
+      depthStencilSpecification.providedDataFormat = Tex::ProvidedDataFormat::DepthStencil;
+      depthStencilSpecification.providedDataType = Tex::ProvidedDataType::UnsignedInt_24_8;
+
+      attachments.depthStencilAttachment = std::make_shared<Texture>(depthStencilSpecification);
+
+      if (!isMultisample)
+      {
+         attachments.depthStencilAttachment->setParam(Tex::IntParam::TextureMinFilter, GL_NEAREST);
+         attachments.depthStencilAttachment->setParam(Tex::IntParam::TextureMagFilter, GL_NEAREST);
+         attachments.depthStencilAttachment->setParam(Tex::IntParam::TextureWrapS, GL_CLAMP_TO_EDGE);
+         attachments.depthStencilAttachment->setParam(Tex::IntParam::TextureWrapT, GL_CLAMP_TO_EDGE);
+      }
+   }
+
+   Tex::Specification colorSpecification;
+   colorSpecification.width = specification.width;
+   colorSpecification.height = specification.height;
+
+   if (isMultisample)
+   {
+      colorSpecification.target = Tex::Target::Texture2D_Multisample;
+      colorSpecification.samples = specification.samples;
+   }
+
+   attachments.colorAttachments.resize(specification.colorAttachmentFormats.size());
+   std::size_t attachmentIndex = 0;
+   for (SPtr<Texture>& colorAttachment : attachments.colorAttachments)
+   {
+      colorSpecification.internalFormat = specification.colorAttachmentFormats[attachmentIndex++];
+      colorAttachment = std::make_shared<Texture>(colorSpecification);
+
+      if (!isMultisample)
+      {
+         colorAttachment->setParam(Tex::IntParam::TextureMinFilter, GL_LINEAR);
+         colorAttachment->setParam(Tex::IntParam::TextureMagFilter, GL_LINEAR);
+         colorAttachment->setParam(Tex::IntParam::TextureWrapS, GL_CLAMP_TO_EDGE);
+         colorAttachment->setParam(Tex::IntParam::TextureWrapT, GL_CLAMP_TO_EDGE);
+      }
+   }
+
+   return attachments;
+}
+
+Framebuffer::Framebuffer()
    : id(0)
 {
    glGenFramebuffers(1, &id);
-   updateSpecification(specification);
 }
 
 Framebuffer::Framebuffer(Framebuffer&& other)
@@ -36,14 +100,12 @@ void Framebuffer::move(Framebuffer&& other)
    id = other.id;
    other.id = 0;
 
-   depthStencilAttachment = std::move(other.depthStencilAttachment);
-   colorAttachments = std::move(other.colorAttachments);
+   attachments = std::move(other.attachments);
 }
 
 void Framebuffer::release()
 {
-   depthStencilAttachment = nullptr;
-   colorAttachments.clear();
+   attachments = {};
 
    if (id != 0)
    {
@@ -65,75 +127,32 @@ void Framebuffer::bind()
    glBindFramebuffer(GL_FRAMEBUFFER, id);
 }
 
-void Framebuffer::updateSpecification(const Fb::Specification& framebufferSpecification)
+void Framebuffer::setAttachments(Fb::Attachments newAttachments)
 {
-   ASSERT(id != 0);
-
    bind();
 
-   bool isMultisample = framebufferSpecification.samples > 0;
+   attachments = std::move(newAttachments);
+
+   bool isMultisample = false;
+   if (attachments.depthStencilAttachment)
+   {
+      isMultisample = attachments.depthStencilAttachment->isMultisample();
+   }
+   else if (attachments.colorAttachments.size() > 0)
+   {
+      isMultisample = attachments.colorAttachments[0]->isMultisample();
+   }
    GLenum target = isMultisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
-   depthStencilAttachment = nullptr;
-   if (framebufferSpecification.depthStencilType != Fb::DepthStencilType::None)
+   if (attachments.depthStencilAttachment)
    {
-      Tex::Specification depthStencilSpecification;
-
-      depthStencilSpecification.width = framebufferSpecification.width;
-      depthStencilSpecification.height = framebufferSpecification.height;
-
-      if (isMultisample)
-      {
-         depthStencilSpecification.target = Tex::Target::Texture2D_Multisample;
-         depthStencilSpecification.samples = framebufferSpecification.samples;
-      }
-
-      bool highPrecision = framebufferSpecification.depthStencilType == Fb::DepthStencilType::Depth32FStencil8;
-      depthStencilSpecification.internalFormat = highPrecision ? Tex::InternalFormat::Depth32FStencil8 : Tex::InternalFormat::Depth24Stencil8;
-      depthStencilSpecification.providedDataFormat = Tex::ProvidedDataFormat::DepthStencil;
-      depthStencilSpecification.providedDataType = Tex::ProvidedDataType::UnsignedInt_24_8;
-
-      depthStencilAttachment = std::make_shared<Texture>(depthStencilSpecification);
-
-      if (!isMultisample)
-      {
-         depthStencilAttachment->setParam(Tex::IntParam::TextureMinFilter, GL_NEAREST);
-         depthStencilAttachment->setParam(Tex::IntParam::TextureMagFilter, GL_NEAREST);
-         depthStencilAttachment->setParam(Tex::IntParam::TextureWrapS, GL_CLAMP_TO_EDGE);
-         depthStencilAttachment->setParam(Tex::IntParam::TextureWrapT, GL_CLAMP_TO_EDGE);
-      }
-
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, target, depthStencilAttachment->getId(), 0);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, target, attachments.depthStencilAttachment->getId(), 0);
    }
 
-   colorAttachments.clear();
-   colorAttachments.resize(framebufferSpecification.colorAttachmentFormats.size());
-   std::vector<GLenum> drawBuffers(framebufferSpecification.colorAttachmentFormats.size());
-
-   Tex::Specification colorSpecification;
-   colorSpecification.width = framebufferSpecification.width;
-   colorSpecification.height = framebufferSpecification.height;
-
-   if (isMultisample)
-   {
-      colorSpecification.target = Tex::Target::Texture2D_Multisample;
-      colorSpecification.samples = framebufferSpecification.samples;
-   }
-
+   std::vector<GLenum> drawBuffers(attachments.colorAttachments.size());
    std::size_t attachmentIndex = 0;
-   for (SPtr<Texture>& colorAttachment : colorAttachments)
+   for (const SPtr<Texture>& colorAttachment : attachments.colorAttachments)
    {
-      colorSpecification.internalFormat = framebufferSpecification.colorAttachmentFormats[attachmentIndex];
-      colorAttachment = std::make_shared<Texture>(colorSpecification);
-
-      if (!isMultisample)
-      {
-         colorAttachment->setParam(Tex::IntParam::TextureMinFilter, GL_LINEAR);
-         colorAttachment->setParam(Tex::IntParam::TextureMagFilter, GL_LINEAR);
-         colorAttachment->setParam(Tex::IntParam::TextureWrapS, GL_CLAMP_TO_EDGE);
-         colorAttachment->setParam(Tex::IntParam::TextureWrapT, GL_CLAMP_TO_EDGE);
-      }
-
       drawBuffers[attachmentIndex] = static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + attachmentIndex);
       glFramebufferTexture2D(GL_FRAMEBUFFER, drawBuffers[attachmentIndex], target, colorAttachment->getId(), 0);
       ++attachmentIndex;
@@ -142,38 +161,4 @@ void Framebuffer::updateSpecification(const Fb::Specification& framebufferSpecif
 
    ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
    bindDefault();
-}
-
-void Framebuffer::updateResolution(GLsizei width, GLsizei height)
-{
-   ASSERT(id != 0);
-
-   if (depthStencilAttachment)
-   {
-      depthStencilAttachment->updateResolution(width, height);
-   }
-
-   for (SPtr<Texture>& colorAttachment : colorAttachments)
-   {
-      colorAttachment->updateResolution(width, height);
-   }
-}
-
-void Framebuffer::setColorAttachmentsEnabled(bool enabled)
-{
-   if (enabled)
-   {
-      std::vector<GLenum> drawBuffers(colorAttachments.size());
-
-      for (std::size_t i = 0; i < colorAttachments.size(); ++i)
-      {
-         drawBuffers[i] = static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + i);
-      }
-
-      glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
-   }
-   else
-   {
-      glDrawBuffers(0, nullptr);
-   }
 }

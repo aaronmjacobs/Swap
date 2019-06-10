@@ -79,9 +79,16 @@ protected:
    bool calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sceneRenderInfo) const;
    bool getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const;
 
+   void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
+   void setPrePassDepthAttachment(const SPtr<Texture>& depthAttachment);
+
    void renderSSAOPass(const SceneRenderInfo& sceneRenderInfo);
    void setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture);
-   const SPtr<Texture>& getSSAOBlurTexture() const;
+
+   const SPtr<Texture>& getSSAOBlurTexture() const
+   {
+      return ssaoBlurTexture;
+   }
 
    int getWidth() const
    {
@@ -118,12 +125,17 @@ private:
 
    Mesh screenMesh;
 
+   Framebuffer prePassFramebuffer;
+   SPtr<ShaderProgram> depthOnlyProgram;
+
    Framebuffer ssaoBuffer;
    Material ssaoMaterial;
    SPtr<ShaderProgram> ssaoProgram;
+   SPtr<Texture> ssaoTexture;
    SPtr<Texture> ssaoNoiseTexture;
 
    Framebuffer ssaoBlurBuffer;
    Material ssaoBlurMaterial;
    SPtr<ShaderProgram> ssaoBlurProgram;
+   SPtr<Texture> ssaoBlurTexture;
 };

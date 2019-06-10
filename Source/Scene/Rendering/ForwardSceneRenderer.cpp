@@ -20,28 +20,6 @@
 
 namespace
 {
-   Fb::Specification getMainPassFramebufferSpecification(int width, int height, int numSamples)
-   {
-      static const std::array<Tex::InternalFormat, 2> kColorAttachmentFormats =
-      {
-         // Normal
-         Tex::InternalFormat::RGB32F,
-
-         // Color
-         Tex::InternalFormat::RGBA8
-      };
-
-      Fb::Specification specification;
-
-      specification.width = width;
-      specification.height = height;
-      specification.samples = numSamples;
-      specification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
-      specification.colorAttachmentFormats = kColorAttachmentFormats;
-
-      return specification;
-   }
-
    void populateDirectionalLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
    {
       int directionalLightIndex = 0;
@@ -110,20 +88,47 @@ namespace
 ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples,
    const SPtr<ResourceManager>& inResourceManager)
    : SceneRenderer(initialWidth, initialHeight, inResourceManager, false)
-   , mainPassFramebuffer(getMainPassFramebufferSpecification(getWidth(), getHeight(), numSamples))
 {
-   std::vector<ShaderSpecification> depthShaderSpecifications;
-   depthShaderSpecifications.resize(2);
-   depthShaderSpecifications[0].type = ShaderType::Vertex;
-   depthShaderSpecifications[1].type = ShaderType::Fragment;
-   IOUtils::getAbsoluteResourcePath("DepthOnly.vert", depthShaderSpecifications[0].path);
-   IOUtils::getAbsoluteResourcePath("DepthOnly.frag", depthShaderSpecifications[1].path);
-   depthOnlyProgram = getResourceManager().loadShaderProgram(depthShaderSpecifications);
+   {
+      static const std::array<Tex::InternalFormat, 2> kColorAttachmentFormats =
+      {
+         // Color
+         Tex::InternalFormat::RGBA8,
+
+         // Normal
+         Tex::InternalFormat::RGB32F
+      };
+
+      Fb::Specification specification;
+      specification.width = getWidth();
+      specification.height = getHeight();
+      specification.samples = numSamples;
+      specification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
+      specification.colorAttachmentFormats = kColorAttachmentFormats;
+
+      Fb::Attachments attachments = Fb::generateAttachments(specification);
+      ASSERT(attachments.colorAttachments.size() == kColorAttachmentFormats.size());
+
+      depthStencilTexture = std::move(attachments.depthStencilAttachment);
+      colorTexture = std::move(attachments.colorAttachments[0]);
+      normalTexture = std::move(attachments.colorAttachments[1]);
+
+      Fb::Attachments normalPassAttachments;
+      normalPassAttachments.depthStencilAttachment = depthStencilTexture;
+      normalPassAttachments.colorAttachments.push_back(normalTexture);
+      normalPassFramebuffer.setAttachments(std::move(normalPassAttachments));
+
+      Fb::Attachments mainPassAttachments;
+      mainPassAttachments.depthStencilAttachment = depthStencilTexture;
+      mainPassAttachments.colorAttachments.push_back(colorTexture);
+      mainPassFramebuffer.setAttachments(std::move(mainPassAttachments));
+   }
 
    loadNormalProgramPermutations();
    loadForwardProgramPermutations();
 
-   setSSAOTextures(mainPassFramebuffer.getDepthStencilAttachment(), nullptr, mainPassFramebuffer.getColorAttachments()[0]);
+   setPrePassDepthAttachment(depthStencilTexture);
+   setSSAOTextures(depthStencilTexture, nullptr, normalTexture);
 
    forwardMaterial.setParameter("uAmbientOcclusion", getSSAOBlurTexture());
 }
@@ -149,46 +154,14 @@ void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
 {
    SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
 
-   mainPassFramebuffer.updateResolution(getWidth(), getHeight());
-}
-
-void ForwardSceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
-{
-   mainPassFramebuffer.bind();
-
-   glEnable(GL_DEPTH_TEST);
-   glDepthFunc(GL_LESS);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-   mainPassFramebuffer.setColorAttachmentsEnabled(false);
-
-   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
-
-   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
-   {
-      ASSERT(modelRenderInfo.model);
-
-      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
-      depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-
-      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
-      {
-         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
-         if (visible)
-         {
-            DrawingContext context(depthOnlyProgram.get());
-            modelRenderInfo.model->getMeshSection(i).draw(context);
-         }
-      }
-   }
+   depthStencilTexture->updateResolution(getWidth(), getHeight());
+   colorTexture->updateResolution(getWidth(), getHeight());
+   normalTexture->updateResolution(getWidth(), getHeight());
 }
 
 void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderInfo)
 {
-   mainPassFramebuffer.setColorAttachmentsEnabled(true);
-
-   glDepthFunc(GL_LEQUAL);
+   normalPassFramebuffer.bind();
 
    for (SPtr<ShaderProgram>& normalProgramPermutation : normalProgramPermutations)
    {
@@ -227,10 +200,6 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
 void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo)
 {
    mainPassFramebuffer.bind();
-   mainPassFramebuffer.setColorAttachmentsEnabled(true);
-
-   glEnable(GL_DEPTH_TEST);
-   glDepthFunc(GL_LEQUAL);
 
    for (SPtr<ShaderProgram>& forwardProgramPermutation : forwardProgramPermutations)
    {
@@ -281,7 +250,7 @@ void ForwardSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneR
    glBindFramebuffer(GL_READ_FRAMEBUFFER, mainPassFramebuffer.getId());
    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-   glReadBuffer(GL_COLOR_ATTACHMENT1);
+   glReadBuffer(GL_COLOR_ATTACHMENT0);
    glDrawBuffer(GL_BACK);
 
    glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);

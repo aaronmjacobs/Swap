@@ -32,23 +32,6 @@ namespace UniformNames
 
 namespace
 {
-   Fb::Specification getSSAOBufferSpecification(int width, int height)
-   {
-      static const std::array<Tex::InternalFormat, 1> kColorAttachmentFormats =
-      {
-         Tex::InternalFormat::R8
-      };
-
-      Fb::Specification specification;
-
-      specification.width = width;
-      specification.height = height;
-      specification.depthStencilType = Fb::DepthStencilType::None;
-      specification.colorAttachmentFormats = kColorAttachmentFormats;
-
-      return specification;
-   }
-
    Mesh generateScreenMesh()
    {
       MeshData screenMeshData;
@@ -172,8 +155,6 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
    , farPlaneDistance(1000.0f)
    , resourceManager(inResourceManager)
    , screenMesh(generateScreenMesh())
-   , ssaoBuffer(getSSAOBufferSpecification(getWidth(), getHeight()))
-   , ssaoBlurBuffer(getSSAOBufferSpecification(getWidth(), getHeight()))
 {
    ASSERT(initialWidth > 0 && initialHeight > 0, "Invalid framebuffer size");
    ASSERT(resourceManager);
@@ -181,6 +162,47 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
    glViewport(0, 0, width, height);
    glEnable(GL_CULL_FACE);
    glCullFace(GL_BACK);
+
+   {
+      std::vector<ShaderSpecification> depthShaderSpecifications;
+      depthShaderSpecifications.resize(2);
+      depthShaderSpecifications[0].type = ShaderType::Vertex;
+      depthShaderSpecifications[1].type = ShaderType::Fragment;
+      IOUtils::getAbsoluteResourcePath("DepthOnly.vert", depthShaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("DepthOnly.frag", depthShaderSpecifications[1].path);
+      depthOnlyProgram = getResourceManager().loadShaderProgram(depthShaderSpecifications);
+   }
+
+   {
+      static const std::array<Tex::InternalFormat, 2> kColorAttachmentFormats =
+      {
+         // SSAO
+         Tex::InternalFormat::R8,
+
+         // SSAO blur
+         Tex::InternalFormat::R8
+      };
+
+      Fb::Specification specification;
+      specification.width = getWidth();
+      specification.height = getHeight();
+      specification.depthStencilType = Fb::DepthStencilType::None;
+      specification.colorAttachmentFormats = kColorAttachmentFormats;
+
+      Fb::Attachments attachments = Fb::generateAttachments(specification);
+      ASSERT(attachments.colorAttachments.size() == kColorAttachmentFormats.size());
+
+      ssaoTexture = attachments.colorAttachments[0];
+      ssaoBlurTexture = attachments.colorAttachments[1];
+
+      Fb::Attachments ssaoAttachments;
+      ssaoAttachments.colorAttachments.push_back(ssaoTexture);
+      ssaoBuffer.setAttachments(std::move(ssaoAttachments));
+
+      Fb::Attachments ssaoBlurAttachments;
+      ssaoBlurAttachments.colorAttachments.push_back(ssaoBlurTexture);
+      ssaoBlurBuffer.setAttachments(std::move(ssaoBlurAttachments));
+   }
 
    {
       std::uniform_real_distribution<GLfloat> distribution(0.0f, 1.0f);
@@ -240,7 +262,7 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
 
       IOUtils::getAbsoluteResourcePath("SSAOBlur.frag", shaderSpecifications[1].path);
       ssaoBlurProgram = resourceManager->loadShaderProgram(shaderSpecifications);
-      ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoBuffer.getColorAttachments()[0]);
+      ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoTexture);
    }
 }
 
@@ -253,8 +275,8 @@ void SceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
 
    glViewport(0, 0, width, height);
 
-   ssaoBuffer.updateResolution(width, height);
-   ssaoBlurBuffer.updateResolution(width, height);
+   ssaoTexture->updateResolution(width, height);
+   ssaoBlurTexture->updateResolution(width, height);
 }
 
 void SceneRenderer::setNearPlaneDistance(float newNearPlaneDistance)
@@ -396,6 +418,49 @@ bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& pers
    return true;
 }
 
+void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
+{
+   prePassFramebuffer.bind();
+
+   glEnable(GL_DEPTH_TEST);
+   glDepthFunc(GL_LESS);
+   glDepthMask(GL_TRUE);
+
+   glClear(GL_DEPTH_BUFFER_BIT);
+
+   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
+
+   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
+   {
+      ASSERT(modelRenderInfo.model);
+
+      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
+      depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
+
+      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
+      {
+         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
+         if (visible)
+         {
+            DrawingContext context(depthOnlyProgram.get());
+            modelRenderInfo.model->getMeshSection(i).draw(context);
+         }
+      }
+   }
+
+   glDepthMask(GL_FALSE);
+   glDepthFunc(GL_LEQUAL);
+}
+
+void SceneRenderer::setPrePassDepthAttachment(const SPtr<Texture>& depthAttachment)
+{
+   Fb::Attachments attachments;
+   attachments.depthStencilAttachment = depthAttachment;
+
+   prePassFramebuffer.setAttachments(std::move(attachments));
+}
+
 void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
 {
    ssaoBuffer.bind();
@@ -418,6 +483,8 @@ void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
    DrawingContext blurContext(ssaoBlurProgram.get());
    ssaoBlurMaterial.apply(blurContext);
    getScreenMesh().draw(blurContext);
+
+   glEnable(GL_DEPTH_TEST);
 }
 
 void SceneRenderer::setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture)
@@ -425,11 +492,4 @@ void SceneRenderer::setSSAOTextures(const SPtr<Texture>& depthTexture, const SPt
    ssaoMaterial.setParameter("uDepth", depthTexture);
    ssaoMaterial.setParameter("uPosition", positionTexture);
    ssaoMaterial.setParameter("uNormal", normalTexture);
-}
-
-const SPtr<Texture>& SceneRenderer::getSSAOBlurTexture() const
-{
-   ASSERT(ssaoBlurBuffer.getColorAttachments().size() == 1);
-
-   return ssaoBlurBuffer.getColorAttachments()[0];
 }

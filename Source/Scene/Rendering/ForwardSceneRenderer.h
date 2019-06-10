@@ -21,7 +21,6 @@ public:
    void onFramebufferSizeChanged(int newWidth, int newHeight) override;
 
 private:
-   void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
    void renderNormalPass(const SceneRenderInfo& sceneRenderInfo);
    void renderMainPass(const SceneRenderInfo& sceneRenderInfo);
    void renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo);
@@ -32,12 +31,14 @@ private:
    void loadForwardProgramPermutations();
    SPtr<ShaderProgram>& selectForwardPermutation(const Material& material);
 
-   Framebuffer mainPassFramebuffer;
+   SPtr<Texture> depthStencilTexture;
+   SPtr<Texture> colorTexture;
+   SPtr<Texture> normalTexture;
 
-   SPtr<ShaderProgram> depthOnlyProgram;
-
+   Framebuffer normalPassFramebuffer;
    std::array<SPtr<ShaderProgram>, 2> normalProgramPermutations;
 
+   Framebuffer mainPassFramebuffer;
    Material forwardMaterial;
    std::array<SPtr<ShaderProgram>, 8> forwardProgramPermutations;
 };

@@ -9,17 +9,6 @@
 class Material;
 class Model;
 
-enum class GBufferTarget
-{
-   DepthStencil,
-
-   Position,
-   NormalShininess,
-   Albedo,
-   Specular,
-   Emissive
-};
-
 class DeferredSceneRenderer : public SceneRenderer
 {
 public:
@@ -30,27 +19,29 @@ public:
    void onFramebufferSizeChanged(int newWidth, int newHeight) override;
 
 private:
-   void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
    void renderBasePass(const SceneRenderInfo& sceneRenderInfo);
    void renderLightingPass(const SceneRenderInfo& sceneRenderInfo);
    void renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo);
 
-   const SPtr<Texture>& getGBufferTexture(GBufferTarget target) const;
-
    void loadGBufferProgramPermutations();
    SPtr<ShaderProgram>& selectGBufferPermutation(const Material& material);
 
-   Framebuffer gBuffer;
+   SPtr<Texture> depthStencilTexture;
+   SPtr<Texture> positionTexture;
+   SPtr<Texture> normalShininessTexture;
+   SPtr<Texture> albedoTexture;
+   SPtr<Texture> specularTexture;
+   SPtr<Texture> emissiveTexture;
+   SPtr<Texture> colorTexture;
 
-   SPtr<Mesh> sphereMesh;
-   SPtr<Mesh> coneMesh;
-
-   SPtr<ShaderProgram> depthOnlyProgram;
-
+   Framebuffer basePassFramebuffer;
    std::array<SPtr<ShaderProgram>, 8> gBufferProgramPermutations;
 
+   Framebuffer lightingPassFramebuffer;
    Material lightingMaterial;
    SPtr<ShaderProgram> directionalLightingProgram;
    SPtr<ShaderProgram> pointLightingProgram;
    SPtr<ShaderProgram> spotLightingProgram;
+   SPtr<Mesh> sphereMesh;
+   SPtr<Mesh> coneMesh;
 };

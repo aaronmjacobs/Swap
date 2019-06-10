@@ -38,7 +38,7 @@ in vec2 vTexCoord;
 in mat3 vTBN;
 #endif
 
-layout(location = 1) out vec4 color;
+layout(location = 0) out vec4 color;
 
 LightingParams calcLightingParams(MaterialSampleParams materialSampleParams)
 {

@@ -494,6 +494,22 @@ bool Texture::hasAlpha() const
    }
 }
 
+bool Texture::isMultisample() const
+{
+   switch (specification.target)
+   {
+   case Tex::Target::Texture2D_Multisample:
+   case Tex::Target::ProxyTexture2D_Multisample:
+
+   case Tex::Target::Texture2D_MultisampleArray:
+   case Tex::Target::ProxyTexture2D_MultisampleArray:
+      return true;
+
+   default:
+      return false;
+   }
+}
+
 void Texture::assertBound() const
 {
 #if SWAP_DEBUG

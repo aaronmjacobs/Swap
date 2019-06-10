@@ -30,12 +30,20 @@ namespace Fb
 
       gsl::span<const Tex::InternalFormat> colorAttachmentFormats;
    };
+
+   struct Attachments
+   {
+      SPtr<Texture> depthStencilAttachment;
+      std::vector<SPtr<Texture>> colorAttachments;
+   };
+
+   Attachments generateAttachments(const Specification& specification);
 }
 
 class Framebuffer
 {
 public:
-   Framebuffer(const Fb::Specification& specification);
+   Framebuffer();
    Framebuffer(const Framebuffer& other) = delete;
    Framebuffer(Framebuffer&& other);
    ~Framebuffer();
@@ -45,31 +53,22 @@ public:
    static void bindDefault();
    void bind();
 
-   void updateSpecification(const Fb::Specification& framebufferSpecification);
-   void updateResolution(GLsizei width, GLsizei height);
-   void setColorAttachmentsEnabled(bool enabled);
-
    GLuint getId() const
    {
       return id;
    }
 
-   const SPtr<Texture>& getDepthStencilAttachment() const
+   const Fb::Attachments& getAttachments() const
    {
-      return depthStencilAttachment;
+      return attachments;
    }
 
-   const std::vector<SPtr<Texture>>& getColorAttachments() const
-   {
-      return colorAttachments;
-   }
+   void setAttachments(Fb::Attachments newAttachments);
 
 private:
    void move(Framebuffer&& other);
    void release();
 
    GLuint id;
-
-   SPtr<Texture> depthStencilAttachment;
-   std::vector<SPtr<Texture>> colorAttachments;
+   Fb::Attachments attachments;
 };

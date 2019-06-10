@@ -14,11 +14,12 @@
 
 #include <vector>
 
-namespace
+DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight,
+   const SPtr<ResourceManager>& inResourceManager)
+   : SceneRenderer(initialWidth, initialHeight, inResourceManager, true)
 {
-   Fb::Specification getGBufferSpecification(int width, int height)
    {
-      static const std::array<Tex::InternalFormat, 5> kColorAttachmentFormats =
+      static const std::array<Tex::InternalFormat, 6> kColorAttachmentFormats =
       {
          // Position
          Tex::InternalFormat::RGB32F,
@@ -33,54 +34,41 @@ namespace
          Tex::InternalFormat::RGBA8,
 
          // Emissive
+         Tex::InternalFormat::RGB8,
+
+         // Color
          Tex::InternalFormat::RGB8
       };
 
       Fb::Specification specification;
-
-      specification.width = width;
-      specification.height = height;
+      specification.width = getWidth();
+      specification.height = getHeight();
       specification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
       specification.colorAttachmentFormats = kColorAttachmentFormats;
 
-      return specification;
-   }
-}
+      Fb::Attachments attachments = Fb::generateAttachments(specification);
+      ASSERT(attachments.colorAttachments.size() == kColorAttachmentFormats.size());
 
-DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight,
-   const SPtr<ResourceManager>& inResourceManager)
-   : SceneRenderer(initialWidth, initialHeight, inResourceManager, true)
-   , gBuffer(getGBufferSpecification(getWidth(), getHeight()))
-{
-   {
-      ModelSpecification sphereSpecification;
-      IOUtils::getAbsoluteResourcePath("Sphere.obj", sphereSpecification.path);
-      sphereSpecification.normalGenerationMode = NormalGenerationMode::None;
-      sphereSpecification.cache = false;
-      sphereSpecification.cacheTextures = false;
+      depthStencilTexture = attachments.depthStencilAttachment;
+      positionTexture = attachments.colorAttachments[0];
+      normalShininessTexture = attachments.colorAttachments[1];
+      albedoTexture = attachments.colorAttachments[2];
+      specularTexture = attachments.colorAttachments[3];
+      emissiveTexture = attachments.colorAttachments[4];
+      colorTexture = attachments.colorAttachments[5];
 
-      sphereMesh = getResourceManager().loadModel(sphereSpecification).getMesh();
-   }
+      Fb::Attachments basePassAttachments;
+      basePassAttachments.depthStencilAttachment = depthStencilTexture;
+      basePassAttachments.colorAttachments.push_back(positionTexture);
+      basePassAttachments.colorAttachments.push_back(normalShininessTexture);
+      basePassAttachments.colorAttachments.push_back(albedoTexture);
+      basePassAttachments.colorAttachments.push_back(specularTexture);
+      basePassAttachments.colorAttachments.push_back(emissiveTexture);
+      basePassFramebuffer.setAttachments(std::move(basePassAttachments));
 
-   {
-      ModelSpecification coneSpecification;
-      IOUtils::getAbsoluteResourcePath("Cone.obj", coneSpecification.path);
-      coneSpecification.normalGenerationMode = NormalGenerationMode::None;
-      coneSpecification.cache = false;
-      coneSpecification.cacheTextures = false;
-
-      coneMesh = getResourceManager().loadModel(coneSpecification).getMesh();
-   }
-
-   {
-      std::vector<ShaderSpecification> shaderSpecifications;
-      shaderSpecifications.resize(2);
-      shaderSpecifications[0].type = ShaderType::Vertex;
-      shaderSpecifications[1].type = ShaderType::Fragment;
-      IOUtils::getAbsoluteResourcePath("DepthOnly.vert", shaderSpecifications[0].path);
-      IOUtils::getAbsoluteResourcePath("DepthOnly.frag", shaderSpecifications[1].path);
-
-      depthOnlyProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+      Fb::Attachments lightingPassAttachments;
+      lightingPassAttachments.colorAttachments.push_back(colorTexture);
+      lightingPassFramebuffer.setAttachments(std::move(lightingPassAttachments));
    }
 
    loadGBufferProgramPermutations();
@@ -107,15 +95,36 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
    }
 
    {
-      lightingMaterial.setParameter("uPosition", getGBufferTexture(GBufferTarget::Position));
-      lightingMaterial.setParameter("uNormalShininess", getGBufferTexture(GBufferTarget::NormalShininess));
-      lightingMaterial.setParameter("uAlbedo", getGBufferTexture(GBufferTarget::Albedo));
-      lightingMaterial.setParameter("uSpecular", getGBufferTexture(GBufferTarget::Specular));
+      lightingMaterial.setParameter("uPosition", positionTexture);
+      lightingMaterial.setParameter("uNormalShininess", normalShininessTexture);
+      lightingMaterial.setParameter("uAlbedo", albedoTexture);
+      lightingMaterial.setParameter("uSpecular", specularTexture);
 
       lightingMaterial.setParameter("uAmbientOcclusion", getSSAOBlurTexture());
    }
 
-   setSSAOTextures(nullptr, getGBufferTexture(GBufferTarget::Position), getGBufferTexture(GBufferTarget::NormalShininess));
+   {
+      ModelSpecification sphereSpecification;
+      IOUtils::getAbsoluteResourcePath("Sphere.obj", sphereSpecification.path);
+      sphereSpecification.normalGenerationMode = NormalGenerationMode::None;
+      sphereSpecification.cache = false;
+      sphereSpecification.cacheTextures = false;
+
+      sphereMesh = getResourceManager().loadModel(sphereSpecification).getMesh();
+   }
+
+   {
+      ModelSpecification coneSpecification;
+      IOUtils::getAbsoluteResourcePath("Cone.obj", coneSpecification.path);
+      coneSpecification.normalGenerationMode = NormalGenerationMode::None;
+      coneSpecification.cache = false;
+      coneSpecification.cacheTextures = false;
+
+      coneMesh = getResourceManager().loadModel(coneSpecification).getMesh();
+   }
+
+   setPrePassDepthAttachment(depthStencilTexture);
+   setSSAOTextures(nullptr, positionTexture, normalShininessTexture);
 }
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
@@ -137,46 +146,18 @@ void DeferredSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight
 {
    SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
 
-   gBuffer.updateResolution(getWidth(), getHeight());
-}
-
-void DeferredSceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
-{
-   gBuffer.bind();
-
-   glEnable(GL_DEPTH_TEST);
-   glDepthFunc(GL_LESS);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-   gBuffer.setColorAttachmentsEnabled(false);
-
-   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
-
-   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
-   {
-      ASSERT(modelRenderInfo.model);
-
-      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
-      depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-
-      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
-      {
-         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
-         if (visible)
-         {
-            DrawingContext context(depthOnlyProgram.get());
-            modelRenderInfo.model->getMeshSection(i).draw(context);
-         }
-      }
-   }
+   depthStencilTexture->updateResolution(getWidth(), getHeight());
+   positionTexture->updateResolution(getWidth(), getHeight());
+   normalShininessTexture->updateResolution(getWidth(), getHeight());
+   albedoTexture->updateResolution(getWidth(), getHeight());
+   specularTexture->updateResolution(getWidth(), getHeight());
+   emissiveTexture->updateResolution(getWidth(), getHeight());
+   colorTexture->updateResolution(getWidth(), getHeight());
 }
 
 void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInfo)
 {
-   glDepthFunc(GL_LEQUAL);
-
-   gBuffer.setColorAttachmentsEnabled(true);
+   basePassFramebuffer.bind();
 
    for (SPtr<ShaderProgram>& gBufferProgramPermutation : gBufferProgramPermutations)
    {
@@ -214,19 +195,18 @@ void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInf
 
 void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRenderInfo)
 {
-   Framebuffer::bindDefault();
+   lightingPassFramebuffer.bind();
+
+   // Blit the emissive color
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, basePassFramebuffer.getId());
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, lightingPassFramebuffer.getId());
+   glReadBuffer(GL_COLOR_ATTACHMENT4);
+   glDrawBuffer(GL_COLOR_ATTACHMENT0);
+   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
    glDisable(GL_DEPTH_TEST);
    glEnable(GL_BLEND);
    glBlendFunc(GL_ONE, GL_ONE);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-   // Blit the emissive color
-   glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.getId());
-   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-   glReadBuffer(GL_COLOR_ATTACHMENT4);
-   glDrawBuffer(GL_BACK);
-   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
    glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
 
@@ -296,31 +276,22 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
 
    glCullFace(GL_BACK);
    glDisable(GL_BLEND);
+   glEnable(GL_DEPTH_TEST);
 }
 
 void DeferredSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
 {
-   /*glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.getId());
+   Framebuffer::bindDefault();
+
+   // TODO Eventually an actual set of render passes
+
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, lightingPassFramebuffer.getId());
    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);*/
-}
+   glReadBuffer(GL_COLOR_ATTACHMENT0);
+   glDrawBuffer(GL_BACK);
 
-const SPtr<Texture>& DeferredSceneRenderer::getGBufferTexture(GBufferTarget target) const
-{
-   switch (target)
-   {
-   case GBufferTarget::DepthStencil:
-      return gBuffer.getDepthStencilAttachment();
-   default:
-   {
-      const std::vector<SPtr<Texture>>& colorAttachments = gBuffer.getColorAttachments();
-      int index = static_cast<int>(target) - 1;
-
-      ASSERT(index >= 0 && index < colorAttachments.size());
-      return colorAttachments[index];
-   }
-   }
+   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 void DeferredSceneRenderer::loadGBufferProgramPermutations()

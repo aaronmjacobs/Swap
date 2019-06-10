@@ -48,6 +48,7 @@ public:
    }
 
    bool hasAlpha() const;
+   bool isMultisample() const;
 
 private:
    void assertBound() const;
