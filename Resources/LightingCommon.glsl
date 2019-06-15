@@ -33,6 +33,7 @@ struct LightingParams
    vec3 specularColor;
    float shininess;
    float ambientOcclusion;
+   float alpha;
 
    vec3 surfacePosition;
    vec3 surfaceNormal;

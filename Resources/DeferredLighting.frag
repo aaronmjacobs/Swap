@@ -32,6 +32,7 @@ LightingParams sampleLightingParams()
    lightingParams.specularColor = texture(uSpecular, texCoord).rgb;
    lightingParams.shininess = normalShininess.a;
    lightingParams.ambientOcclusion = texture(uAmbientOcclusion, texCoord).r;
+   lightingParams.alpha = 1.0;
 
    lightingParams.surfacePosition = texture(uPosition, texCoord).rgb;
    lightingParams.surfaceNormal = normalShininess.rgb;
@@ -41,7 +42,7 @@ LightingParams sampleLightingParams()
    return lightingParams;
 }
 
-vec3 calcLighting()
+vec4 calcLighting()
 {
    LightingParams lightingParams = sampleLightingParams();
 
@@ -55,10 +56,10 @@ vec3 calcLighting()
    lighting += calcSpotLighting(uSpotLight, lightingParams);
 #endif
 
-   return lighting;
+   return vec4(lighting, 1.0);
 }
 
 void main()
 {
-   color = vec4(calcLighting(), 1.0);
+   color = calcLighting();
 }

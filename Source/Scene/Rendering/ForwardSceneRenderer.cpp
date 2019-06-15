@@ -8,82 +8,12 @@
 #include "Platform/IOUtils.h"
 #include "Resources/ResourceManager.h"
 #include "Scene/Components/CameraComponent.h"
-#include "Scene/Components/Lights/DirectionalLightComponent.h"
-#include "Scene/Components/Lights/PointLightComponent.h"
-#include "Scene/Components/Lights/SpotLightComponent.h"
 #include "Scene/Components/ModelComponent.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
 #include <string>
-
-namespace
-{
-   void populateDirectionalLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
-   {
-      int directionalLightIndex = 0;
-      for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
-      {
-         std::string directionalLightStr = "uDirectionalLights[" + std::to_string(directionalLightIndex) + "]";
-
-         program.setUniformValue(directionalLightStr + ".color", directionalLightComponent->getColor());
-         program.setUniformValue(directionalLightStr + ".direction",
-            directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
-
-         ++directionalLightIndex;
-      }
-      program.setUniformValue("uNumDirectionalLights", static_cast<int>(sceneRenderInfo.directionalLights.size()));
-   }
-
-   void populatePointLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
-   {
-      int pointLightIndex = 0;
-      for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
-      {
-         std::string pointLightStr = "uPointLights[" + std::to_string(pointLightIndex) + "]";
-
-         Transform transform = pointLightComponent->getAbsoluteTransform();
-         float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
-
-         program.setUniformValue(pointLightStr + ".color", pointLightComponent->getColor());
-         program.setUniformValue(pointLightStr + ".position", transform.position);
-         program.setUniformValue(pointLightStr + ".radius", pointLightComponent->getRadius() * radiusScale);
-
-         ++pointLightIndex;
-      }
-      program.setUniformValue("uNumPointLights", static_cast<int>(sceneRenderInfo.pointLights.size()));
-   }
-
-   void populateSpotLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
-   {
-      int spotLightIndex = 0;
-      for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
-      {
-         std::string spotLightStr = "uSpotLights[" + std::to_string(spotLightIndex) + "]";
-
-         Transform transform = spotLightComponent->getAbsoluteTransform();
-         float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
-
-         program.setUniformValue(spotLightStr + ".color", spotLightComponent->getColor());
-         program.setUniformValue(spotLightStr + ".direction", transform.orientation * MathUtils::kForwardVector);
-         program.setUniformValue(spotLightStr + ".position", transform.position);
-         program.setUniformValue(spotLightStr + ".radius", spotLightComponent->getRadius() * radiusScale);
-         program.setUniformValue(spotLightStr + ".beamAngle", glm::radians(spotLightComponent->getBeamAngle()));
-         program.setUniformValue(spotLightStr + ".cutoffAngle", glm::radians(spotLightComponent->getCutoffAngle()));
-
-         ++spotLightIndex;
-      }
-      program.setUniformValue("uNumSpotLights", static_cast<int>(sceneRenderInfo.spotLights.size()));
-   }
-
-   void populateLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
-   {
-      populateDirectionalLightUniforms(sceneRenderInfo, program);
-      populatePointLightUniforms(sceneRenderInfo, program);
-      populateSpotLightUniforms(sceneRenderInfo, program);
-   }
-}
 
 ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples,
    const SPtr<ResourceManager>& inResourceManager)
@@ -125,12 +55,11 @@ ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, 
    }
 
    loadNormalProgramPermutations();
-   loadForwardProgramPermutations();
 
    setPrePassDepthAttachment(depthStencilTexture);
    setSSAOTextures(depthStencilTexture, nullptr, normalTexture);
 
-   forwardMaterial.setParameter("uAmbientOcclusion", getSSAOBlurTexture());
+   setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
 }
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
@@ -147,6 +76,7 @@ void ForwardSceneRenderer::renderScene(const Scene& scene)
    renderNormalPass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
    renderMainPass(sceneRenderInfo);
+   renderTranslucencyPass(sceneRenderInfo);
    renderPostProcessPasses(sceneRenderInfo);
 }
 
@@ -182,7 +112,7 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
          const Material& material = modelRenderInfo.model->getMaterial(i);
 
          bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
-         if (visible)
+         if (visible && material.getBlendMode() == BlendMode::Opaque)
          {
             SPtr<ShaderProgram>& normalProgramPermutation = selectNormalPermutation(material);
 
@@ -201,18 +131,7 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
 {
    mainPassFramebuffer.bind();
 
-   for (SPtr<ShaderProgram>& forwardProgramPermutation : forwardProgramPermutations)
-   {
-      forwardProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-      forwardProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
-
-      forwardProgramPermutation->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
-
-      glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
-      forwardProgramPermutation->setUniformValue(UniformNames::kViewport, viewport);
-
-      populateLightUniforms(sceneRenderInfo, *forwardProgramPermutation);
-   }
+   populateForwardUniforms(sceneRenderInfo);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
@@ -227,7 +146,7 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
          const Material& material = modelRenderInfo.model->getMaterial(i);
 
          bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
-         if (visible)
+         if (visible && material.getBlendMode() == BlendMode::Opaque)
          {
             SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
 
@@ -235,7 +154,7 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
             forwardProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
 
             DrawingContext context(forwardProgramPermutation.get());
-            forwardMaterial.apply(context);
+            getForwardMaterial().apply(context);
             material.apply(context);
             section.draw(context);
          }
@@ -281,35 +200,4 @@ SPtr<ShaderProgram>& ForwardSceneRenderer::selectNormalPermutation(const Materia
    int index = material.hasCommonParameter(CommonMaterialParameter::NormalTexture) * 0b001;
 
    return normalProgramPermutations[index];
-}
-
-void ForwardSceneRenderer::loadForwardProgramPermutations()
-{
-   std::vector<ShaderSpecification> shaderSpecifications;
-   shaderSpecifications.resize(2);
-   shaderSpecifications[0].type = ShaderType::Vertex;
-   shaderSpecifications[1].type = ShaderType::Fragment;
-   IOUtils::getAbsoluteResourcePath("Forward.vert", shaderSpecifications[0].path);
-   IOUtils::getAbsoluteResourcePath("Forward.frag", shaderSpecifications[1].path);
-
-   for (std::size_t i = 0; i < forwardProgramPermutations.size(); ++i)
-   {
-      for (ShaderSpecification& shaderSpecification : shaderSpecifications)
-      {
-         shaderSpecification.definitions["WITH_DIFFUSE_TEXTURE"] = i & 0b001 ? "1" : "0";
-         shaderSpecification.definitions["WITH_SPECULAR_TEXTURE"] = i & 0b010 ? "1" : "0";
-         shaderSpecification.definitions["WITH_NORMAL_TEXTURE"] = i & 0b100 ? "1" : "0";
-      }
-
-      forwardProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
-   }
-}
-
-SPtr<ShaderProgram>& ForwardSceneRenderer::selectForwardPermutation(const Material& material)
-{
-   int index = material.hasCommonParameter(CommonMaterialParameter::DiffuseTexture) * 0b001
-      + material.hasCommonParameter(CommonMaterialParameter::SpecularTexture) * 0b010
-      + material.hasCommonParameter(CommonMaterialParameter::NormalTexture) * 0b100;
-
-   return forwardProgramPermutations[index];
 }

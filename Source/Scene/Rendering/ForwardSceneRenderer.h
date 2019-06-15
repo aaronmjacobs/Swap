@@ -28,9 +28,6 @@ private:
    void loadNormalProgramPermutations();
    SPtr<ShaderProgram>& selectNormalPermutation(const Material& material);
 
-   void loadForwardProgramPermutations();
-   SPtr<ShaderProgram>& selectForwardPermutation(const Material& material);
-
    SPtr<Texture> depthStencilTexture;
    SPtr<Texture> colorTexture;
    SPtr<Texture> normalTexture;
@@ -39,6 +36,4 @@ private:
    std::array<SPtr<ShaderProgram>, 2> normalProgramPermutations;
 
    Framebuffer mainPassFramebuffer;
-   Material forwardMaterial;
-   std::array<SPtr<ShaderProgram>, 8> forwardProgramPermutations;
 };

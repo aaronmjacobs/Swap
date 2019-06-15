@@ -125,6 +125,8 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
 
    setPrePassDepthAttachment(depthStencilTexture);
    setSSAOTextures(nullptr, positionTexture, normalShininessTexture);
+
+   setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
 }
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
@@ -139,6 +141,7 @@ void DeferredSceneRenderer::renderScene(const Scene& scene)
    renderBasePass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
    renderLightingPass(sceneRenderInfo);
+   renderTranslucencyPass(sceneRenderInfo);
    renderPostProcessPasses(sceneRenderInfo);
 }
 
@@ -178,7 +181,7 @@ void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInf
          const Material& material = modelRenderInfo.model->getMaterial(i);
 
          bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
-         if (visible)
+         if (visible && material.getBlendMode() == BlendMode::Opaque)
          {
             SPtr<ShaderProgram>& gBufferProgramPermutation = selectGBufferPermutation(material);
 

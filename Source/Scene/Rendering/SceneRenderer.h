@@ -85,6 +85,9 @@ protected:
    void renderSSAOPass(const SceneRenderInfo& sceneRenderInfo);
    void setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture);
 
+   void renderTranslucencyPass(const SceneRenderInfo& sceneRenderInfo);
+   void setTranslucencyPassAttachments(const SPtr<Texture>& depthAttachment, const SPtr<Texture>& colorAttachment);
+
    const SPtr<Texture>& getSSAOBlurTexture() const
    {
       return ssaoBlurTexture;
@@ -115,6 +118,20 @@ protected:
       return screenMesh;
    }
 
+   void loadForwardProgramPermutations();
+   SPtr<ShaderProgram>& selectForwardPermutation(const Material& material);
+   void populateForwardUniforms(const SceneRenderInfo& sceneRenderInfo);
+
+   Material& getForwardMaterial()
+   {
+      return forwardMaterial;
+   }
+
+   std::array<SPtr<ShaderProgram>, 8>& getForwardProgramPermutations()
+   {
+      return forwardProgramPermutations;
+   }
+
 private:
    int width;
    int height;
@@ -138,4 +155,8 @@ private:
    Material ssaoBlurMaterial;
    SPtr<ShaderProgram> ssaoBlurProgram;
    SPtr<Texture> ssaoBlurTexture;
+
+   Framebuffer translucencyPassFramebuffer;
+   Material forwardMaterial;
+   std::array<SPtr<ShaderProgram>, 8> forwardProgramPermutations;
 };

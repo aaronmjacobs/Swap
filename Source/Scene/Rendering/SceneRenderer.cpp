@@ -8,6 +8,7 @@
 #include "Platform/IOUtils.h"
 #include "Resources/ResourceManager.h"
 #include "Scene/Components/CameraComponent.h"
+#include "Scene/Components/Lights/DirectionalLightComponent.h"
 #include "Scene/Components/Lights/PointLightComponent.h"
 #include "Scene/Components/Lights/SpotLightComponent.h"
 #include "Scene/Components/ModelComponent.h"
@@ -146,6 +147,70 @@ namespace
 
       return false;
    }
+
+   void populateDirectionalLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   {
+      int directionalLightIndex = 0;
+      for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
+      {
+         std::string directionalLightStr = "uDirectionalLights[" + std::to_string(directionalLightIndex) + "]";
+
+         program.setUniformValue(directionalLightStr + ".color", directionalLightComponent->getColor());
+         program.setUniformValue(directionalLightStr + ".direction",
+            directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
+
+         ++directionalLightIndex;
+      }
+      program.setUniformValue("uNumDirectionalLights", static_cast<int>(sceneRenderInfo.directionalLights.size()));
+   }
+
+   void populatePointLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   {
+      int pointLightIndex = 0;
+      for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
+      {
+         std::string pointLightStr = "uPointLights[" + std::to_string(pointLightIndex) + "]";
+
+         Transform transform = pointLightComponent->getAbsoluteTransform();
+         float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
+
+         program.setUniformValue(pointLightStr + ".color", pointLightComponent->getColor());
+         program.setUniformValue(pointLightStr + ".position", transform.position);
+         program.setUniformValue(pointLightStr + ".radius", pointLightComponent->getRadius() * radiusScale);
+
+         ++pointLightIndex;
+      }
+      program.setUniformValue("uNumPointLights", static_cast<int>(sceneRenderInfo.pointLights.size()));
+   }
+
+   void populateSpotLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   {
+      int spotLightIndex = 0;
+      for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
+      {
+         std::string spotLightStr = "uSpotLights[" + std::to_string(spotLightIndex) + "]";
+
+         Transform transform = spotLightComponent->getAbsoluteTransform();
+         float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
+
+         program.setUniformValue(spotLightStr + ".color", spotLightComponent->getColor());
+         program.setUniformValue(spotLightStr + ".direction", transform.orientation * MathUtils::kForwardVector);
+         program.setUniformValue(spotLightStr + ".position", transform.position);
+         program.setUniformValue(spotLightStr + ".radius", spotLightComponent->getRadius() * radiusScale);
+         program.setUniformValue(spotLightStr + ".beamAngle", glm::radians(spotLightComponent->getBeamAngle()));
+         program.setUniformValue(spotLightStr + ".cutoffAngle", glm::radians(spotLightComponent->getCutoffAngle()));
+
+         ++spotLightIndex;
+      }
+      program.setUniformValue("uNumSpotLights", static_cast<int>(sceneRenderInfo.spotLights.size()));
+   }
+
+   void populateLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   {
+      populateDirectionalLightUniforms(sceneRenderInfo, program);
+      populatePointLightUniforms(sceneRenderInfo, program);
+      populateSpotLightUniforms(sceneRenderInfo, program);
+   }
 }
 
 SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<ResourceManager>& inResourceManager, bool hasPositionBuffer)
@@ -264,6 +329,12 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
       ssaoBlurProgram = resourceManager->loadShaderProgram(shaderSpecifications);
       ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoTexture);
    }
+
+   {
+      forwardMaterial.setParameter("uAmbientOcclusion", ssaoBlurTexture);
+
+      loadForwardProgramPermutations();
+   }
 }
 
 void SceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
@@ -345,6 +416,13 @@ bool SceneRenderer::calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sce
          sceneRenderInfo.modelRenderInfo.push_back(modelRenderInfo);
       }
    }
+
+   // Sort back-to-front
+   std::sort(sceneRenderInfo.modelRenderInfo.begin(), sceneRenderInfo.modelRenderInfo.end(),
+      [cameraPosition = sceneRenderInfo.perspectiveInfo.cameraPosition](const ModelRenderInfo& first, const ModelRenderInfo& second)
+   {
+      return glm::distance2(first.localToWorld.position, cameraPosition) > glm::distance2(second.localToWorld.position, cameraPosition);
+   });
 
    // Everything the light touches is our kingdom
    sceneRenderInfo.directionalLights.reserve(scene.getDirectionalLightComponents().size());
@@ -440,11 +518,14 @@ void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
 
       for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
+         const MeshSection& section = modelRenderInfo.model->getMeshSection(i);
+         const Material& material = modelRenderInfo.model->getMaterial(i);
+
          bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
-         if (visible)
+         if (visible && material.getBlendMode() == BlendMode::Opaque)
          {
             DrawingContext context(depthOnlyProgram.get());
-            modelRenderInfo.model->getMeshSection(i).draw(context);
+            section.draw(context);
          }
       }
    }
@@ -492,4 +573,100 @@ void SceneRenderer::setSSAOTextures(const SPtr<Texture>& depthTexture, const SPt
    ssaoMaterial.setParameter("uDepth", depthTexture);
    ssaoMaterial.setParameter("uPosition", positionTexture);
    ssaoMaterial.setParameter("uNormal", normalTexture);
+}
+
+void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInfo)
+{
+   translucencyPassFramebuffer.bind();
+
+   glEnable(GL_BLEND);
+   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+   populateForwardUniforms(sceneRenderInfo);
+
+   for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
+   {
+      ASSERT(modelRenderInfo.model);
+
+      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+
+      for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
+      {
+         const MeshSection& section = modelRenderInfo.model->getMeshSection(i);
+         const Material& material = modelRenderInfo.model->getMaterial(i);
+
+         bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
+         if (visible && material.getBlendMode() == BlendMode::Translucent)
+         {
+            SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
+
+            forwardProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
+            forwardProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
+
+            DrawingContext context(forwardProgramPermutation.get());
+            forwardMaterial.apply(context);
+            material.apply(context);
+            section.draw(context);
+         }
+      }
+   }
+
+   glDisable(GL_BLEND);
+}
+
+void SceneRenderer::setTranslucencyPassAttachments(const SPtr<Texture>& depthAttachment, const SPtr<Texture>& colorAttachment)
+{
+   Fb::Attachments attachments;
+   attachments.depthStencilAttachment = depthAttachment;
+   attachments.colorAttachments.push_back(colorAttachment);
+
+   translucencyPassFramebuffer.setAttachments(std::move(attachments));
+}
+
+void SceneRenderer::loadForwardProgramPermutations()
+{
+   std::vector<ShaderSpecification> shaderSpecifications;
+   shaderSpecifications.resize(2);
+   shaderSpecifications[0].type = ShaderType::Vertex;
+   shaderSpecifications[1].type = ShaderType::Fragment;
+   IOUtils::getAbsoluteResourcePath("Forward.vert", shaderSpecifications[0].path);
+   IOUtils::getAbsoluteResourcePath("Forward.frag", shaderSpecifications[1].path);
+
+   for (std::size_t i = 0; i < forwardProgramPermutations.size(); ++i)
+   {
+      for (ShaderSpecification& shaderSpecification : shaderSpecifications)
+      {
+         shaderSpecification.definitions["WITH_DIFFUSE_TEXTURE"] = i & 0b001 ? "1" : "0";
+         shaderSpecification.definitions["WITH_SPECULAR_TEXTURE"] = i & 0b010 ? "1" : "0";
+         shaderSpecification.definitions["WITH_NORMAL_TEXTURE"] = i & 0b100 ? "1" : "0";
+      }
+
+      forwardProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
+   }
+}
+
+SPtr<ShaderProgram>& SceneRenderer::selectForwardPermutation(const Material& material)
+{
+   int index = material.hasCommonParameter(CommonMaterialParameter::DiffuseTexture) * 0b001
+      + material.hasCommonParameter(CommonMaterialParameter::SpecularTexture) * 0b010
+      + material.hasCommonParameter(CommonMaterialParameter::NormalTexture) * 0b100;
+
+   return forwardProgramPermutations[index];
+}
+
+void SceneRenderer::populateForwardUniforms(const SceneRenderInfo& sceneRenderInfo)
+{
+   for (SPtr<ShaderProgram>& forwardProgramPermutation : forwardProgramPermutations)
+   {
+      forwardProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
+      forwardProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
+
+      forwardProgramPermutation->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
+
+      glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
+      forwardProgramPermutation->setUniformValue(UniformNames::kViewport, viewport);
+
+      populateLightUniforms(sceneRenderInfo, *forwardProgramPermutation);
+   }
 }

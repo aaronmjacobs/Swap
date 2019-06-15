@@ -43,13 +43,15 @@ layout(location = 0) out vec4 color;
 LightingParams calcLightingParams(MaterialSampleParams materialSampleParams)
 {
    vec2 texCoord = gl_FragCoord.xy * uViewport.zw;
+   vec4 diffuseColor = calcMaterialDiffuseColor(uMaterial, materialSampleParams);
 
    LightingParams lightingParams;
 
-   lightingParams.diffuseColor = calcMaterialDiffuseColor(uMaterial, materialSampleParams).rgb;
+   lightingParams.diffuseColor = diffuseColor.rgb;
    lightingParams.specularColor = calcMaterialSpecularColor(uMaterial, materialSampleParams).rgb;
    lightingParams.shininess = calcMaterialShininess(uMaterial, materialSampleParams);
    lightingParams.ambientOcclusion = texture(uAmbientOcclusion, texCoord).r;
+   lightingParams.alpha = diffuseColor.a;
 
    lightingParams.surfacePosition = vPosition;
    lightingParams.surfaceNormal = calcMaterialSurfaceNormal(uMaterial, materialSampleParams);
@@ -59,7 +61,7 @@ LightingParams calcLightingParams(MaterialSampleParams materialSampleParams)
    return lightingParams;
 }
 
-vec3 calcLighting()
+vec4 calcLighting()
 {
    MaterialSampleParams materialSampleParams;
 #if VARYING_TEX_COORD
@@ -92,10 +94,10 @@ vec3 calcLighting()
 
    lighting += calcMaterialEmissiveColor(uMaterial, materialSampleParams);
 
-   return lighting;
+   return vec4(lighting, lightingParams.alpha);
 }
 
 void main()
 {
-   color = vec4(calcLighting(), 1.0);
+   color = calcLighting();
 }
