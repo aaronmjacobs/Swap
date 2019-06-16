@@ -4,6 +4,7 @@
 #include "Core/Pointers.h"
 #include "Platform/InputManager.h"
 
+class GraphicsContext;
 struct GLFWwindow;
 
 class Window
@@ -58,6 +59,7 @@ private:
 
    GLFWwindow* glfwWindow;
    InputManager inputManager;
+   UPtr<GraphicsContext> graphicsContext;
 
    FramebufferSizeChangedDelegate framebufferSizeChangedDelegate;
    WindowRefreshRequestedDelegate windowRefreshRequestedDelegate;

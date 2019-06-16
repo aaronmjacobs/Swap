@@ -15,6 +15,8 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Graphics/ForEachUniformType.inl"
    "${SRC_DIR}/Graphics/Framebuffer.h"
    "${SRC_DIR}/Graphics/Framebuffer.cpp"
+   "${SRC_DIR}/Graphics/GraphicsContext.h"
+   "${SRC_DIR}/Graphics/GraphicsContext.cpp"
    "${SRC_DIR}/Graphics/Material.h"
    "${SRC_DIR}/Graphics/Material.cpp"
    "${SRC_DIR}/Graphics/MaterialParameter.h"

@@ -1,6 +1,7 @@
 #include "Platform/Window.h"
 
 #include "Core/Assert.h"
+#include "Graphics/GraphicsContext.h"
 
 #include <GLFW/glfw3.h>
 
@@ -100,6 +101,8 @@ Window::Window(GLFWwindow* internalWindow)
    glfwGetCursorPos(glfwWindow, &cursorX, &cursorY);
    inputManager.init(cursorX, cursorY);
 
+   graphicsContext = std::make_unique<GraphicsContext>();
+
    glfwSetFramebufferSizeCallback(glfwWindow, WindowCallbackHelper::framebufferSizeCallback);
    glfwSetWindowRefreshCallback(glfwWindow, WindowCallbackHelper::windowRefreshCallback);
    glfwSetWindowFocusCallback(glfwWindow, WindowCallbackHelper::windowFocusCallback);
@@ -110,12 +113,14 @@ Window::Window(GLFWwindow* internalWindow)
 
 Window::~Window()
 {
+   graphicsContext = nullptr;
    glfwDestroyWindow(glfwWindow);
 }
 
 void Window::makeContextCurrent()
 {
    glfwMakeContextCurrent(glfwWindow);
+   graphicsContext->makeCurrent();
 }
 
 void Window::swapBuffers()

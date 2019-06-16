@@ -19,6 +19,13 @@ namespace Fb
       Depth32FStencil8
    };
 
+   enum class Target
+   {
+      Framebuffer = GL_FRAMEBUFFER,
+      ReadFramebuffer = GL_READ_FRAMEBUFFER,
+      DrawFramebuffer = GL_DRAW_FRAMEBUFFER
+   };
+
    struct Specification
    {
       GLsizei width = 0;
@@ -50,8 +57,8 @@ public:
    Framebuffer& operator=(const Framebuffer& other) = delete;
    Framebuffer& operator=(Framebuffer&& other);
 
-   static void bindDefault();
-   void bind();
+   static void bindDefault(Fb::Target target = Fb::Target::Framebuffer);
+   void bind(Fb::Target target = Fb::Target::Framebuffer);
 
    GLuint getId() const
    {

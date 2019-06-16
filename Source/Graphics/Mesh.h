@@ -54,7 +54,6 @@ public:
 
 private:
    void bind() const;
-   void unbind() const;
 
    GLuint vertexArrayObject;
 

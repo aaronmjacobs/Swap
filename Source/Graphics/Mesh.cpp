@@ -2,6 +2,7 @@
 
 #include "Core/Assert.h"
 #include "Graphics/DrawingContext.h"
+#include "Graphics/GraphicsContext.h"
 #include "Graphics/ShaderProgram.h"
 
 #include <utility>
@@ -76,6 +77,8 @@ void MeshSection::release()
 
    if (vertexArrayObject != 0)
    {
+      GraphicsContext::current().onVertexArrayDestroyed(vertexArrayObject);
+
       glDeleteVertexArrays(1, &vertexArrayObject);
       vertexArrayObject = 0;
    }
@@ -122,8 +125,6 @@ void MeshSection::setData(const MeshData& data)
    colorBufferObject.setData(data.colors.values.size_bytes(), data.colors.values.data(), BufferUsage::StaticDraw,
       data.colors.valueSize);
 
-   unbind();
-
    numIndices = static_cast<GLsizei>(data.indices.size());
 
    if (data.positions.valueSize == 3 && data.positions.values.size() >= 3)
@@ -146,19 +147,13 @@ void MeshSection::draw(const DrawingContext& context) const
 
    bind();
    glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
-   unbind();
 }
 
 void MeshSection::bind() const
 {
    ASSERT(vertexArrayObject != 0);
 
-   glBindVertexArray(vertexArrayObject);
-}
-
-void MeshSection::unbind() const
-{
-   glBindVertexArray(0);
+   GraphicsContext::current().bindVertexArray(vertexArrayObject);
 }
 
 Mesh::Mesh(std::vector<MeshSection>&& meshSections)

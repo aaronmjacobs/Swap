@@ -1,6 +1,7 @@
 #include "Graphics/Framebuffer.h"
 
 #include "Core/Assert.h"
+#include "Graphics/GraphicsContext.h"
 #include "Graphics/Texture.h"
 
 #include <utility>
@@ -109,22 +110,24 @@ void Framebuffer::release()
 
    if (id != 0)
    {
+      GraphicsContext::current().onFramebufferDestroyed(id);
+
       glDeleteFramebuffers(1, &id);
       id = 0;
    }
 }
 
 // static
-void Framebuffer::bindDefault()
+void Framebuffer::bindDefault(Fb::Target target)
 {
-   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   GraphicsContext::current().bindFramebuffer(target, 0);
 }
 
-void Framebuffer::bind()
+void Framebuffer::bind(Fb::Target target)
 {
    ASSERT(id != 0);
 
-   glBindFramebuffer(GL_FRAMEBUFFER, id);
+   GraphicsContext::current().bindFramebuffer(target, id);
 }
 
 void Framebuffer::setAttachments(Fb::Attachments newAttachments)

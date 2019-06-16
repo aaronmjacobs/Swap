@@ -2,6 +2,7 @@
 
 #include "Core/Assert.h"
 #include "Graphics/DrawingContext.h"
+#include "Graphics/GraphicsContext.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -290,7 +291,10 @@ void Texture::release()
 {
    if (id != 0)
    {
+      GraphicsContext::current().onTextureDestroyed(specification.target, id);
+
       glDeleteTextures(1, &id);
+      id = 0;
    }
 }
 
@@ -298,15 +302,14 @@ int Texture::activateAndBind(DrawingContext& context) const
 {
    int textureUnit = context.textureUnitCounter++;
 
-   glActiveTexture(GL_TEXTURE0 + textureUnit);
-   bind();
+   GraphicsContext::current().activateAndBindTexture(textureUnit, specification.target, id);
 
    return textureUnit;
 }
 
 void Texture::bind() const
 {
-   glBindTexture(static_cast<GLenum>(specification.target), id);
+   GraphicsContext::current().bindTexture(specification.target, id);
 }
 
 void Texture::updateSpecification(const Tex::Specification& textureSpecification)

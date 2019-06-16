@@ -2,6 +2,7 @@
 
 #include "Core/Assert.h"
 #include "Core/Log.h"
+#include "Graphics/GraphicsContext.h"
 #include "Graphics/Shader.h"
 #include "Graphics/UniformBufferObject.h"
 #include "Graphics/UniformTypes.h"
@@ -214,6 +215,8 @@ void ShaderProgram::release()
 {
    if (id != 0)
    {
+      GraphicsContext::current().onProgramDestroyed(id);
+
       glDeleteProgram(id);
       id = 0;
    }
@@ -286,7 +289,7 @@ bool ShaderProgram::link()
 
 void ShaderProgram::commit()
 {
-   glUseProgram(id);
+   GraphicsContext::current().useProgram(id);
 
    for (const auto& pair : uniforms)
    {

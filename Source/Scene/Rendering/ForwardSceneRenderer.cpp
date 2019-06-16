@@ -162,8 +162,8 @@ void ForwardSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneR
 {
    // TODO Eventually an actual set of render passes
 
-   glBindFramebuffer(GL_READ_FRAMEBUFFER, mainPassFramebuffer.getId());
-   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+   mainPassFramebuffer.bind(Fb::Target::ReadFramebuffer);
+   Framebuffer::bindDefault(Fb::Target::DrawFramebuffer);
 
    glReadBuffer(GL_COLOR_ATTACHMENT0);
    glDrawBuffer(GL_BACK);

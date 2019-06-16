@@ -200,8 +200,8 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
    lightingPassFramebuffer.bind();
 
    // Blit the emissive color
-   glBindFramebuffer(GL_READ_FRAMEBUFFER, basePassFramebuffer.getId());
-   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, lightingPassFramebuffer.getId());
+   basePassFramebuffer.bind(Fb::Target::ReadFramebuffer);
+   lightingPassFramebuffer.bind(Fb::Target::DrawFramebuffer);
    glReadBuffer(GL_COLOR_ATTACHMENT4);
    glDrawBuffer(GL_COLOR_ATTACHMENT0);
    glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -281,8 +281,8 @@ void DeferredSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& scene
 
    // TODO Eventually an actual set of render passes
 
-   glBindFramebuffer(GL_READ_FRAMEBUFFER, lightingPassFramebuffer.getId());
-   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+   lightingPassFramebuffer.bind(Fb::Target::ReadFramebuffer);
+   Framebuffer::bindDefault(Fb::Target::DrawFramebuffer);
 
    glReadBuffer(GL_COLOR_ATTACHMENT0);
    glDrawBuffer(GL_BACK);
