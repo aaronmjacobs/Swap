@@ -6,13 +6,7 @@
 #include <ctime>
 
 #ifdef __APPLE__
-#include <CoreServices/CoreServices.h>
-#include <mach-o/dyld.h>
-#include <stdlib.h>
-#include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 #endif // __APPLE__
 
 #ifdef __linux__
@@ -38,49 +32,6 @@
 
 namespace OSUtils
 {
-#ifdef __APPLE__
-   bool getExecutablePath(std::string& executablePath)
-   {
-      uint32_t size = MAXPATHLEN;
-      char rawPath[size];
-      if (_NSGetExecutablePath(rawPath, &size) != 0)
-      {
-         return false;
-      }
-
-      char realPath[size];
-      if (!realpath(rawPath, realPath))
-      {
-         return false;
-      }
-
-      executablePath = std::string(realPath);
-      return true;
-   }
-
-   bool getAppDataPath(const std::string& appName, std::string& appDataPath)
-   {
-      FSRef ref;
-      FSFindFolder(kUserDomain, kApplicationSupportFolderType, kCreateFolder, &ref);
-
-      char path[PATH_MAX];
-      FSRefMakePath(&ref, reinterpret_cast<UInt8*>(&path), PATH_MAX);
-
-      appDataPath = std::string(path) + "/" + appName;
-      return true;
-   }
-
-   bool setWorkingDirectory(const std::string& dir)
-   {
-      return chdir(dir.c_str()) == 0;
-   }
-
-   bool createDirectory(const std::string& dir)
-   {
-      return mkdir(dir.c_str(), 0755) == 0;
-   }
-#endif // __APPLE__
-
 #ifdef __linux__
    bool getExecutablePath(std::string& executablePath)
    {

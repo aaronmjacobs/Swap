@@ -91,6 +91,10 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Scene/Scene.cpp"
 )
 
+if(APPLE)
+   target_sources(${PROJECT_NAME} PRIVATE "${SRC_DIR}/Platform/MacOSUtils.mm")
+endif()
+
 target_include_directories(${PROJECT_NAME} PUBLIC "${SRC_DIR}")
 
 get_target_property(SOURCE_FILES ${PROJECT_NAME} SOURCES)
