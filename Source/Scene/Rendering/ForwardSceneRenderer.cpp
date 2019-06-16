@@ -64,8 +64,6 @@ ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, 
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
 {
-   // TODO Use uniform buffer objects
-
    SceneRenderInfo sceneRenderInfo;
    if (!calcSceneRenderInfo(scene, sceneRenderInfo))
    {

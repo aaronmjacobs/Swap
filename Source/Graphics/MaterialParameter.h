@@ -90,7 +90,7 @@ protected:\
    }\
 \
 private:\
-   data_type value;\
+   data_type value = {};\
 };
 
 #define FOR_EACH_UNIFORM_TYPE DECLARE_MATERIAL_PARAM_TYPE

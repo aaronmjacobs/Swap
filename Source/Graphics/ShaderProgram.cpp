@@ -130,7 +130,7 @@ namespace
       }
 
       ASSERT(length > 3 && nameBuf[length - 3] == '[' && nameBuf[length - 2] == '0' && nameBuf[length - 1] == ']');
-      std::string baseName(nameBuf, length - 3);
+      std::string baseName(nameBuf, static_cast<std::size_t>(length) - 3);
 
       std::vector<std::string> names(size);
       for (GLint i = 0; i < size; ++i)
@@ -326,9 +326,9 @@ std::string ShaderProgram::getInfoLog() const
       glGetProgramInfoLog(id, infoLogLength, nullptr, rawInfoLog.get());
 
       // If the log ends in a newline, nuke it
-      if (infoLogLength >= 2 && rawInfoLog[infoLogLength - 2] == '\n')
+      if (infoLogLength >= 2 && rawInfoLog[static_cast<std::size_t>(infoLogLength) - 2] == '\n')
       {
-         rawInfoLog[infoLogLength - 2] = '\0';
+         rawInfoLog[static_cast<std::size_t>(infoLogLength) - 2] = '\0';
       }
 
       infoLog = rawInfoLog.get();
