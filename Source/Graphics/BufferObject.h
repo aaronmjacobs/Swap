@@ -46,6 +46,13 @@ public:
    void release();
 
    void setData(BufferBindingTarget target, GLsizeiptr size, const GLvoid* data, BufferUsage usage);
+   void updateData(BufferBindingTarget target, GLintptr offset, GLsizeiptr size, const GLvoid* data);
+
+protected:
+   GLuint getId() const
+   {
+      return id;
+   }
 
 private:
    GLuint id;

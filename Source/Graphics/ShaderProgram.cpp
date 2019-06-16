@@ -3,6 +3,7 @@
 #include "Core/Assert.h"
 #include "Core/Log.h"
 #include "Graphics/Shader.h"
+#include "Graphics/UniformBufferObject.h"
 #include "Graphics/UniformTypes.h"
 
 #include <algorithm>
@@ -159,9 +160,10 @@ namespace
       for (const std::string& uniformName : uniformNames)
       {
          GLint location = glGetUniformLocation(program, uniformName.c_str());
-         ASSERT(location >= 0);
-
-         uniformMap.emplace(uniformName, createUniform(uniformName, location, type, program));
+         if (location >= 0) // Uniforms in blocks will not have a location, which is fine as they will be bound to uniform buffer objects
+         {
+            uniformMap.emplace(uniformName, createUniform(uniformName, location, type, program));
+         }
       }
    }
 
@@ -290,6 +292,20 @@ void ShaderProgram::commit()
    {
       pair.second->commit();
    }
+}
+
+void ShaderProgram::bindUniformBuffer(const UniformBufferObject& buffer)
+{
+   ASSERT(buffer.getBoundIndex() != GL_INVALID_INDEX);
+
+   GLuint blockIndex = glGetUniformBlockIndex(id, buffer.getBlockName().c_str());
+   if (blockIndex == GL_INVALID_INDEX)
+   {
+      LOG_WARNING("Uniform block not found: " << buffer.getBlockName());
+      return;
+   }
+
+   glUniformBlockBinding(id, blockIndex, buffer.getBoundIndex());
 }
 
 #if SWAP_DEBUG

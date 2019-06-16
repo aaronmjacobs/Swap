@@ -1,5 +1,7 @@
 #include "Graphics/BufferObject.h"
 
+#include "Core/Assert.h"
+
 #include <utility>
 
 BufferObject::BufferObject()
@@ -55,6 +57,15 @@ void BufferObject::setData(BufferBindingTarget target, GLsizeiptr size, const GL
    {
       release();
    }
+}
+
+void BufferObject::updateData(BufferBindingTarget target, GLintptr offset, GLsizeiptr size, const GLvoid* data)
+{
+   ASSERT(id != 0);
+   ASSERT(size > 0);
+
+   glBindBuffer(static_cast<GLenum>(target), id);
+   glBufferSubData(static_cast<GLenum>(target), offset, size, data);
 }
 
 VertexBufferObject::VertexBufferObject(VertexAttribute vertexAttribute)

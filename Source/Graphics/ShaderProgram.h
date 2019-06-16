@@ -14,6 +14,7 @@
 #include <vector>
 
 class Shader;
+class UniformBufferObject;
 
 class ShaderProgram
 {
@@ -58,6 +59,8 @@ public:
       ASSERT(!assertOnFailure, "Uniform with given name doesn't exist: %s", name.c_str());
       return false;
    }
+
+   void bindUniformBuffer(const UniformBufferObject& buffer);
 
    GLuint getId() const
    {
