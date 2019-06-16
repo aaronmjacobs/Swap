@@ -3,6 +3,7 @@
 #include "ForwardCommon.glsl"
 #include "LightingCommon.glsl"
 #include "MaterialCommon.glsl"
+#include "ViewCommon.glsl"
 
 uniform Material uMaterial;
 
@@ -18,9 +19,6 @@ uniform int uNumPointLights;
 
 uniform SpotLight uSpotLights[kMaxSpotLights];
 uniform int uNumSpotLights;
-
-uniform vec3 uCameraPos;
-uniform vec4 uViewport;
 
 uniform sampler2D uAmbientOcclusion;
 
@@ -56,7 +54,7 @@ LightingParams calcLightingParams(MaterialSampleParams materialSampleParams)
    lightingParams.surfacePosition = vPosition;
    lightingParams.surfaceNormal = calcMaterialSurfaceNormal(uMaterial, materialSampleParams);
 
-   lightingParams.cameraPosition = uCameraPos;
+   lightingParams.cameraPosition = uCameraPosition;
 
    return lightingParams;
 }

@@ -1,9 +1,8 @@
 #include "Version.glsl"
 
 #include "ForwardCommon.glsl"
+#include "ViewCommon.glsl"
 
-uniform mat4 uProjectionMatrix;
-uniform mat4 uViewMatrix;
 uniform mat4 uModelMatrix;
 uniform mat4 uNormalMatrix;
 
@@ -53,5 +52,5 @@ void main()
    vTBN = mat3(t, b, n);
 #endif
 
-   gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
+   gl_Position = uWorldToClip * worldPosition;
 }

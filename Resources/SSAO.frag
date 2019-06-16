@@ -1,5 +1,7 @@
 #include "Version.glsl"
 
+#include "ViewCommon.glsl"
+
 #default WITH_POSITION_BUFFER 1
 
 #if WITH_POSITION_BUFFER
@@ -11,15 +13,6 @@ uniform sampler2D uDepth;
 uniform sampler2D uNormal;
 uniform sampler2D uNoise;
 
-uniform mat4 uProjectionMatrix;
-uniform mat4 uViewMatrix;
-
-#if !WITH_POSITION_BUFFER
-uniform mat4 uInverseProjectionMatrix;
-uniform mat4 uInverseViewMatrix;
-#endif // !WITH_POSITION_BUFFER
-
-uniform vec4 uViewport;
 uniform vec3 uSamples[64];
 
 in vec2 vTexCoord;
@@ -35,10 +28,10 @@ vec3 loadPosition(vec2 texCoord)
    float z = depth * 2.0 - 1.0;
 
    vec4 clipPosition = vec4(texCoord * 2.0 - 1.0, z, 1.0);
-   vec4 viewPosition = uInverseProjectionMatrix * clipPosition;
+   vec4 viewPosition = uClipToView * clipPosition;
    viewPosition /= viewPosition.w;
 
-   vec4 worldPosition = uInverseViewMatrix * viewPosition;
+   vec4 worldPosition = uViewToWorld * viewPosition;
    return worldPosition.xyz;
 #endif
 }
@@ -47,8 +40,8 @@ void main()
 {
    vec2 noiseScale = uViewport.xy / textureSize(uNoise, 0);
 
-   vec3 position = (uViewMatrix * vec4(loadPosition(vTexCoord), 1.0)).xyz;
-   vec3 normal = (uViewMatrix * vec4(texture(uNormal, vTexCoord).xyz, 0.0)).xyz;
+   vec3 position = (uWorldToView * vec4(loadPosition(vTexCoord), 1.0)).xyz;
+   vec3 normal = (uWorldToView * vec4(texture(uNormal, vTexCoord).xyz, 0.0)).xyz;
    vec3 randomVec = texture(uNoise, vTexCoord * noiseScale).xyz;
 
    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
@@ -61,9 +54,9 @@ void main()
       float radius = 1.0;
       vec3 samplePosition = position + (tbn * uSamples[i]) * radius;
 
-      vec4 offset = uProjectionMatrix * vec4(samplePosition, 1.0);
+      vec4 offset = uViewToClip * vec4(samplePosition, 1.0);
       offset.xyz = (offset.xyz / offset.w) * 0.5 + 0.5;
-      float sampleDepth = (uViewMatrix * vec4(loadPosition(offset.xy), 1.0)).z;
+      float sampleDepth = (uWorldToView * vec4(loadPosition(offset.xy), 1.0)).z;
 
       float rangeCheck = smoothstep(0.0, 1.0, radius / abs(position.z - sampleDepth));
       float bias = 0.025;

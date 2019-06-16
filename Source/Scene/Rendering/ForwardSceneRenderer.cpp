@@ -72,6 +72,8 @@ void ForwardSceneRenderer::renderScene(const Scene& scene)
       return;
    }
 
+   populateViewUniforms(sceneRenderInfo.perspectiveInfo);
+
    renderPrePass(sceneRenderInfo);
    renderNormalPass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
@@ -92,12 +94,6 @@ void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
 void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderInfo)
 {
    normalPassFramebuffer.bind();
-
-   for (SPtr<ShaderProgram>& normalProgramPermutation : normalProgramPermutations)
-   {
-      normalProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-      normalProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
-   }
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
@@ -192,6 +188,7 @@ void ForwardSceneRenderer::loadNormalProgramPermutations()
       }
 
       normalProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
+      normalProgramPermutations[i]->bindUniformBuffer(getViewUniformBuffer());
    }
 }
 

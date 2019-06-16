@@ -5,6 +5,7 @@
 #include "Graphics/Framebuffer.h"
 #include "Graphics/Material.h"
 #include "Graphics/Mesh.h"
+#include "Graphics/UniformBufferObject.h"
 #include "Math/Transform.h"
 
 #include <glm/glm.hpp>
@@ -23,13 +24,8 @@ struct DrawingContext;
 
 namespace UniformNames
 {
-   extern const char* kProjectionMatrix;
-   extern const char* kViewMatrix;
    extern const char* kModelMatrix;
    extern const char* kNormalMatrix;
-
-   extern const char* kCameraPos;
-   extern const char* kViewport;
 }
 
 struct PerspectiveInfo
@@ -37,6 +33,7 @@ struct PerspectiveInfo
    glm::mat4 projectionMatrix;
    glm::mat4 viewMatrix;
    glm::vec3 cameraPosition;
+   glm::vec4 viewport;
 };
 
 struct ModelRenderInfo
@@ -79,6 +76,8 @@ protected:
    bool calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sceneRenderInfo) const;
    bool getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const;
 
+   void populateViewUniforms(const PerspectiveInfo& perspectiveInfo);
+
    void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
    void setPrePassDepthAttachment(const SPtr<Texture>& depthAttachment);
 
@@ -118,6 +117,11 @@ protected:
       return screenMesh;
    }
 
+   const UniformBufferObject& getViewUniformBuffer() const
+   {
+      return viewUniformBuffer;
+   }
+
    void loadForwardProgramPermutations();
    SPtr<ShaderProgram>& selectForwardPermutation(const Material& material);
    void populateForwardUniforms(const SceneRenderInfo& sceneRenderInfo);
@@ -141,6 +145,8 @@ private:
    SPtr<ResourceManager> resourceManager;
 
    Mesh screenMesh;
+
+   UniformBufferObject viewUniformBuffer;
 
    Framebuffer prePassFramebuffer;
    SPtr<ShaderProgram> depthOnlyProgram;

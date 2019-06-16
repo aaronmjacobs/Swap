@@ -1,15 +1,13 @@
 #include "Version.glsl"
 
 #include "LightingCommon.glsl"
+#include "ViewCommon.glsl"
 
 uniform sampler2D uPosition;
 uniform sampler2D uNormalShininess;
 uniform sampler2D uAlbedo;
 uniform sampler2D uSpecular;
 uniform sampler2D uAmbientOcclusion;
-
-uniform vec3 uCameraPos;
-uniform vec4 uViewport;
 
 #if LIGHT_TYPE == DIRECTIONAL_LIGHT
 uniform DirectionalLight uDirectionalLight;
@@ -37,7 +35,7 @@ LightingParams sampleLightingParams()
    lightingParams.surfacePosition = texture(uPosition, texCoord).rgb;
    lightingParams.surfaceNormal = normalShininess.rgb;
 
-   lightingParams.cameraPosition = uCameraPos;
+   lightingParams.cameraPosition = uCameraPosition;
 
    return lightingParams;
 }

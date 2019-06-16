@@ -1,7 +1,7 @@
 #include "Version.glsl"
 
-uniform mat4 uProjectionMatrix;
-uniform mat4 uViewMatrix;
+#include "ViewCommon.glsl"
+
 uniform mat4 uModelMatrix;
 
 layout(location = 0) in vec3 aPosition;
@@ -9,5 +9,5 @@ layout(location = 0) in vec3 aPosition;
 void main()
 {
    vec4 worldPosition = uModelMatrix * vec4(aPosition, 1.0);
-   gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
+   gl_Position = uWorldToClip * worldPosition;
 }

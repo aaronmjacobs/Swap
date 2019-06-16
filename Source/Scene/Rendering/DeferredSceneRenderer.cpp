@@ -84,14 +84,17 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
       directionalLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+      directionalLightingProgram->bindUniformBuffer(getViewUniformBuffer());
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "POINT_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "POINT_LIGHT";
       pointLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+      pointLightingProgram->bindUniformBuffer(getViewUniformBuffer());
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "SPOT_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "SPOT_LIGHT";
       spotLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+      spotLightingProgram->bindUniformBuffer(getViewUniformBuffer());
    }
 
    {
@@ -137,6 +140,8 @@ void DeferredSceneRenderer::renderScene(const Scene& scene)
       return;
    }
 
+   populateViewUniforms(sceneRenderInfo.perspectiveInfo);
+
    renderPrePass(sceneRenderInfo);
    renderBasePass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
@@ -161,12 +166,6 @@ void DeferredSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight
 void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInfo)
 {
    basePassFramebuffer.bind();
-
-   for (SPtr<ShaderProgram>& gBufferProgramPermutation : gBufferProgramPermutations)
-   {
-      gBufferProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-      gBufferProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
-   }
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
@@ -213,8 +212,6 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
 
    glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
 
-   directionalLightingProgram->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
-   directionalLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
    for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
    {
       directionalLightingProgram->setUniformValue("uDirectionalLight.color", directionalLightComponent->getColor());
@@ -228,8 +225,6 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
 
    glCullFace(GL_FRONT);
 
-   pointLightingProgram->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
-   pointLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
    for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
    {
       Transform transform = pointLightComponent->getAbsoluteTransform();
@@ -249,8 +244,6 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
       sphereMesh->draw(context);
    }
 
-   spotLightingProgram->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
-   spotLightingProgram->setUniformValue(UniformNames::kViewport, viewport);
    for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
    {
       Transform transform = spotLightComponent->getAbsoluteTransform();
@@ -316,6 +309,7 @@ void DeferredSceneRenderer::loadGBufferProgramPermutations()
       }
 
       gBufferProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
+      gBufferProgramPermutations[i]->bindUniformBuffer(getViewUniformBuffer());
    }
 }
 

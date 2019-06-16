@@ -22,17 +22,47 @@
 
 namespace UniformNames
 {
-   const char* kProjectionMatrix = "uProjectionMatrix";
-   const char* kViewMatrix = "uViewMatrix";
    const char* kModelMatrix = "uModelMatrix";
    const char* kNormalMatrix = "uNormalMatrix";
-
-   const char* kCameraPos = "uCameraPos";
-   const char* kViewport = "uViewport";
 }
 
 namespace
 {
+   using ViewUniforms = std::tuple<
+      glm::mat4, // uWorldToView
+      glm::mat4, // uViewToWorld
+
+      glm::mat4, // uViewToClip
+      glm::mat4, // uClipToView
+
+      glm::mat4, // uWorldToClip
+      glm::mat4, // uClipToWorld
+
+      glm::vec4, // uViewport
+
+      glm::vec3  // uCameraPosition
+   >;
+
+   ViewUniforms calcViewUniforms(const PerspectiveInfo& perspectiveInfo)
+   {
+      ViewUniforms viewUniforms;
+
+      std::get<0>(viewUniforms) = perspectiveInfo.viewMatrix;
+      std::get<1>(viewUniforms) = glm::inverse(std::get<0>(viewUniforms));
+
+      std::get<2>(viewUniforms) = perspectiveInfo.projectionMatrix;
+      std::get<3>(viewUniforms) = glm::inverse(std::get<2>(viewUniforms));
+
+      std::get<4>(viewUniforms) = perspectiveInfo.projectionMatrix * perspectiveInfo.viewMatrix;
+      std::get<5>(viewUniforms) = glm::inverse(std::get<4>(viewUniforms));
+
+      std::get<6>(viewUniforms) = perspectiveInfo.viewport;
+
+      std::get<7>(viewUniforms) = perspectiveInfo.cameraPosition;
+
+      return viewUniforms;
+   }
+
    Mesh generateScreenMesh()
    {
       MeshData screenMeshData;
@@ -220,6 +250,7 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
    , farPlaneDistance(1000.0f)
    , resourceManager(inResourceManager)
    , screenMesh(generateScreenMesh())
+   , viewUniformBuffer("View")
 {
    ASSERT(initialWidth > 0 && initialHeight > 0, "Invalid framebuffer size");
    ASSERT(resourceManager);
@@ -229,6 +260,12 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
    glCullFace(GL_BACK);
 
    {
+      ViewUniforms viewUniforms;
+      viewUniformBuffer.setData(viewUniforms);
+      viewUniformBuffer.bindTo(0);
+   }
+
+   {
       std::vector<ShaderSpecification> depthShaderSpecifications;
       depthShaderSpecifications.resize(2);
       depthShaderSpecifications[0].type = ShaderType::Vertex;
@@ -236,6 +273,7 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
       IOUtils::getAbsoluteResourcePath("DepthOnly.vert", depthShaderSpecifications[0].path);
       IOUtils::getAbsoluteResourcePath("DepthOnly.frag", depthShaderSpecifications[1].path);
       depthOnlyProgram = getResourceManager().loadShaderProgram(depthShaderSpecifications);
+      depthOnlyProgram->bindUniformBuffer(viewUniformBuffer);
    }
 
    {
@@ -301,6 +339,7 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
       shaderSpecifications[1].definitions["WITH_POSITION_BUFFER"] = hasPositionBuffer ? "1" : "0";
 
       ssaoProgram = resourceManager->loadShaderProgram(shaderSpecifications);
+      ssaoProgram->bindUniformBuffer(viewUniformBuffer);
 
       {
          ssaoMaterial.setParameter("uNoise", ssaoNoiseTexture);
@@ -327,6 +366,7 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
 
       IOUtils::getAbsoluteResourcePath("SSAOBlur.frag", shaderSpecifications[1].path);
       ssaoBlurProgram = resourceManager->loadShaderProgram(shaderSpecifications);
+      ssaoBlurProgram->bindUniformBuffer(viewUniformBuffer);
       ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoTexture);
    }
 
@@ -493,7 +533,14 @@ bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& pers
 
    perspectiveInfo.cameraPosition = cameraTransform.position;
 
+   perspectiveInfo.viewport = glm::vec4(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
+
    return true;
+}
+
+void SceneRenderer::populateViewUniforms(const PerspectiveInfo& perspectiveInfo)
+{
+   viewUniformBuffer.updateData(calcViewUniforms(perspectiveInfo));
 }
 
 void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
@@ -505,9 +552,6 @@ void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
    glDepthMask(GL_TRUE);
 
    glClear(GL_DEPTH_BUFFER_BIT);
-
-   depthOnlyProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-   depthOnlyProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
@@ -549,9 +593,6 @@ void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
    glDisable(GL_DEPTH_TEST);
 
    glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
-   ssaoProgram->setUniformValue(UniformNames::kViewport, viewport);
-   ssaoProgram->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-   ssaoProgram->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
    ssaoProgram->setUniformValue("uInverseProjectionMatrix", glm::inverse(sceneRenderInfo.perspectiveInfo.projectionMatrix), false);
    ssaoProgram->setUniformValue("uInverseViewMatrix", glm::inverse(sceneRenderInfo.perspectiveInfo.viewMatrix), false);
 
@@ -643,6 +684,7 @@ void SceneRenderer::loadForwardProgramPermutations()
       }
 
       forwardProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
+      forwardProgramPermutations[i]->bindUniformBuffer(viewUniformBuffer);
    }
 }
 
@@ -659,14 +701,6 @@ void SceneRenderer::populateForwardUniforms(const SceneRenderInfo& sceneRenderIn
 {
    for (SPtr<ShaderProgram>& forwardProgramPermutation : forwardProgramPermutations)
    {
-      forwardProgramPermutation->setUniformValue(UniformNames::kProjectionMatrix, sceneRenderInfo.perspectiveInfo.projectionMatrix);
-      forwardProgramPermutation->setUniformValue(UniformNames::kViewMatrix, sceneRenderInfo.perspectiveInfo.viewMatrix);
-
-      forwardProgramPermutation->setUniformValue(UniformNames::kCameraPos, sceneRenderInfo.perspectiveInfo.cameraPosition);
-
-      glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
-      forwardProgramPermutation->setUniformValue(UniformNames::kViewport, viewport);
-
       populateLightUniforms(sceneRenderInfo, *forwardProgramPermutation);
    }
 }
