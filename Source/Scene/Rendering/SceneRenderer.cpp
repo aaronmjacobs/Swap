@@ -366,7 +366,6 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
 
       IOUtils::getAbsoluteResourcePath("SSAOBlur.frag", shaderSpecifications[1].path);
       ssaoBlurProgram = resourceManager->loadShaderProgram(shaderSpecifications);
-      ssaoBlurProgram->bindUniformBuffer(viewUniformBuffer);
       ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoTexture);
    }
 

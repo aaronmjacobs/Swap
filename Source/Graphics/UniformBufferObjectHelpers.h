@@ -9,6 +9,22 @@
 
 namespace UniformBufferObjectHelpers
 {
+   // Forward declarations
+
+   template<typename First, typename... Rest>
+   constexpr std::size_t getPaddedSizeHelper();
+
+   template<typename Type>
+   constexpr std::size_t getPaddedSizeSingle();
+
+   template<typename Tuple, std::size_t... Is>
+   inline void copyDataImpl(const Tuple& tuple, uint8_t* buffer, std::size_t& offset, std::index_sequence<Is...>);
+
+   template<typename T>
+   inline void copyDataSingle(const T& data, uint8_t* buffer, std::size_t& offset);
+
+   // Base implementations
+
    template<typename... Types>
    constexpr std::size_t getPaddedSize()
    {

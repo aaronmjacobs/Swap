@@ -11,7 +11,6 @@ Fb::Attachments Fb::generateAttachments(const Specification& specification)
    Attachments attachments;
 
    bool isMultisample = specification.samples > 0;
-   GLenum target = isMultisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
    if (specification.depthStencilType != DepthStencilType::None)
    {
