@@ -374,6 +374,17 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
 
       loadForwardProgramPermutations();
    }
+
+   {
+      std::vector<ShaderSpecification> shaderSpecifications;
+      shaderSpecifications.resize(2);
+      shaderSpecifications[0].type = ShaderType::Vertex;
+      shaderSpecifications[1].type = ShaderType::Fragment;
+      IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Tonemap.frag", shaderSpecifications[1].path);
+
+      tonemapProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+   }
 }
 
 void SceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
@@ -591,10 +602,6 @@ void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
 
    glDisable(GL_DEPTH_TEST);
 
-   glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
-   ssaoProgram->setUniformValue("uInverseProjectionMatrix", glm::inverse(sceneRenderInfo.perspectiveInfo.projectionMatrix), false);
-   ssaoProgram->setUniformValue("uInverseViewMatrix", glm::inverse(sceneRenderInfo.perspectiveInfo.viewMatrix), false);
-
    DrawingContext ssaoContext(ssaoProgram.get());
    ssaoMaterial.apply(ssaoContext);
    getScreenMesh().draw(ssaoContext);
@@ -662,6 +669,22 @@ void SceneRenderer::setTranslucencyPassAttachments(const SPtr<Texture>& depthAtt
    attachments.colorAttachments.push_back(colorAttachment);
 
    translucencyPassFramebuffer.setAttachments(std::move(attachments));
+}
+
+void SceneRenderer::renderTonemapPass(const SceneRenderInfo& sceneRenderInfo)
+{
+   glDisable(GL_DEPTH_TEST);
+
+   DrawingContext tonemapContext(tonemapProgram.get());
+   tonemapMaterial.apply(tonemapContext);
+   getScreenMesh().draw(tonemapContext);
+
+   glEnable(GL_DEPTH_TEST);
+}
+
+void SceneRenderer::setTonemapTexture(const SPtr<Texture>& hdrColorTexture)
+{
+   tonemapMaterial.setParameter("uColorHDR", hdrColorTexture);
 }
 
 void SceneRenderer::loadForwardProgramPermutations()

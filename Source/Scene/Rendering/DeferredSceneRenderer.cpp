@@ -37,7 +37,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
          Tex::InternalFormat::RGB8,
 
          // Color
-         Tex::InternalFormat::RGB8
+         Tex::InternalFormat::RGB16F
       };
 
       Fb::Specification specification;
@@ -130,6 +130,8 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
    setSSAOTextures(nullptr, positionTexture, normalShininessTexture);
 
    setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
+
+   setTonemapTexture(colorTexture);
 }
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
@@ -212,8 +214,6 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
    glEnable(GL_BLEND);
    glBlendFunc(GL_ONE, GL_ONE);
 
-   glm::vec4 viewport(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
-
    for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
    {
       directionalLightingProgram->setUniformValue("uDirectionalLight.color", directionalLightComponent->getColor());
@@ -280,16 +280,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
 void DeferredSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
 {
    Framebuffer::bindDefault();
-
-   // TODO Eventually an actual set of render passes
-
-   lightingPassFramebuffer.bind(Fb::Target::ReadFramebuffer);
-   Framebuffer::bindDefault(Fb::Target::DrawFramebuffer);
-
-   glReadBuffer(GL_COLOR_ATTACHMENT0);
-   glDrawBuffer(GL_BACK);
-
-   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+   renderTonemapPass(sceneRenderInfo);
 }
 
 void DeferredSceneRenderer::loadGBufferProgramPermutations()

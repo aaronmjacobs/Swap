@@ -23,7 +23,7 @@ ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, 
       static const std::array<Tex::InternalFormat, 2> kColorAttachmentFormats =
       {
          // Color
-         Tex::InternalFormat::RGBA8,
+         Tex::InternalFormat::RGBA16F,
 
          // Normal
          Tex::InternalFormat::RGB32F
@@ -60,6 +60,8 @@ ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, 
    setSSAOTextures(depthStencilTexture, nullptr, normalTexture);
 
    setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
+
+   setTonemapTexture(colorTexture);
 }
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
@@ -162,15 +164,8 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
 
 void ForwardSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
 {
-   // TODO Eventually an actual set of render passes
-
-   mainPassFramebuffer.bind(Fb::Target::ReadFramebuffer);
-   Framebuffer::bindDefault(Fb::Target::DrawFramebuffer);
-
-   glReadBuffer(GL_COLOR_ATTACHMENT0);
-   glDrawBuffer(GL_BACK);
-
-   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+   Framebuffer::bindDefault();
+   renderTonemapPass(sceneRenderInfo);
 }
 
 void ForwardSceneRenderer::loadNormalProgramPermutations()

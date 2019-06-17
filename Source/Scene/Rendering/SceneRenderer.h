@@ -87,6 +87,9 @@ protected:
    void renderTranslucencyPass(const SceneRenderInfo& sceneRenderInfo);
    void setTranslucencyPassAttachments(const SPtr<Texture>& depthAttachment, const SPtr<Texture>& colorAttachment);
 
+   void renderTonemapPass(const SceneRenderInfo& sceneRenderInfo);
+   void setTonemapTexture(const SPtr<Texture>& hdrColorTexture);
+
    const SPtr<Texture>& getSSAOBlurTexture() const
    {
       return ssaoBlurTexture;
@@ -165,4 +168,7 @@ private:
    Framebuffer translucencyPassFramebuffer;
    Material forwardMaterial;
    std::array<SPtr<ShaderProgram>, 8> forwardProgramPermutations;
+
+   Material tonemapMaterial;
+   SPtr<ShaderProgram> tonemapProgram;
 };
