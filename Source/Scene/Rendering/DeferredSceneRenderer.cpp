@@ -167,6 +167,8 @@ void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInf
 {
    basePassFramebuffer.bind();
 
+   glClear(GL_COLOR_BUFFER_BIT);
+
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
       ASSERT(modelRenderInfo.model);

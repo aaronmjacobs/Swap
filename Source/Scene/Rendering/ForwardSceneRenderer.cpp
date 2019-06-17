@@ -93,6 +93,8 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
 {
    normalPassFramebuffer.bind();
 
+   glClear(GL_COLOR_BUFFER_BIT);
+
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
       ASSERT(modelRenderInfo.model);
@@ -124,6 +126,8 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
 void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo)
 {
    mainPassFramebuffer.bind();
+
+   glClear(GL_COLOR_BUFFER_BIT);
 
    populateForwardUniforms(sceneRenderInfo);
 

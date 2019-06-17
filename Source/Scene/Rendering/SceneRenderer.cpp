@@ -550,7 +550,7 @@ void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
    glDepthFunc(GL_LESS);
    glDepthMask(GL_TRUE);
 
-   glClear(GL_DEPTH_BUFFER_BIT);
+   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
