@@ -7,6 +7,10 @@
 
 #include <utility>
 
+#if defined(__APPLE__)
+#include <glad/glad.h>
+#endif // defined(__APPLE__)
+
 class WindowCallbackHelper
 {
 public:
@@ -125,6 +129,10 @@ void Window::makeContextCurrent()
 
 void Window::swapBuffers()
 {
+#if defined(__APPLE__)
+   glFinish(); // OpenGL on macOS is garbage
+#endif // defined(__APPLE__)
+
    glfwSwapBuffers(glfwWindow);
 }
 
