@@ -33,7 +33,6 @@ struct PerspectiveInfo
    glm::mat4 projectionMatrix;
    glm::mat4 viewMatrix;
    glm::vec3 cameraPosition;
-   glm::vec4 viewport;
 };
 
 struct ModelRenderInfo
@@ -55,7 +54,7 @@ struct SceneRenderInfo
 class SceneRenderer
 {
 public:
-   SceneRenderer(int initialWidth, int initialHeight, const SPtr<ResourceManager>& inResourceManager, bool hasPositionBuffer);
+   SceneRenderer(const SPtr<ResourceManager>& inResourceManager, bool hasPositionBuffer);
    virtual ~SceneRenderer() = default;
 
    virtual void renderScene(const Scene& scene) = 0;
@@ -87,22 +86,16 @@ protected:
    void renderTranslucencyPass(const SceneRenderInfo& sceneRenderInfo);
    void setTranslucencyPassAttachments(const SPtr<Texture>& depthAttachment, const SPtr<Texture>& colorAttachment);
 
+   void renderBloomPass(const SceneRenderInfo& sceneRenderInfo, Framebuffer& lightingFramebuffer, int lightingBufferAttachmentIndex);
+
+   void renderBlurPass(const SceneRenderInfo& sceneRenderInfo, const SPtr<Texture>& inputTexture, Framebuffer& resultFramebuffer, int iterations);
+
    void renderTonemapPass(const SceneRenderInfo& sceneRenderInfo);
-   void setTonemapTexture(const SPtr<Texture>& hdrColorTexture);
+   void setTonemapTextures(const SPtr<Texture>& hdrColorTexture, const SPtr<Texture>& bloomTexture);
 
    const SPtr<Texture>& getSSAOBlurTexture() const
    {
       return ssaoBlurTexture;
-   }
-
-   int getWidth() const
-   {
-      return width;
-   }
-
-   int getHeight() const
-   {
-      return height;
    }
 
    float getNearPlaneDistance() const
@@ -139,9 +132,12 @@ protected:
       return forwardProgramPermutations;
    }
 
+   Framebuffer& getBloomPassFramebuffer()
+   {
+      return bloomPassFramebuffer;
+   }
+
 private:
-   int width;
-   int height;
    float nearPlaneDistance;
    float farPlaneDistance;
 
@@ -168,6 +164,18 @@ private:
    Framebuffer translucencyPassFramebuffer;
    Material forwardMaterial;
    std::array<SPtr<ShaderProgram>, 8> forwardProgramPermutations;
+
+   Material thresholdMaterial;
+   SPtr<ShaderProgram> thresholdProgram;
+
+   Framebuffer blurFramebuffer;
+   Material horizontalBlurMaterial;
+   Material verticalBlurMaterial;
+   SPtr<ShaderProgram> horizontalBlurProgram;
+   SPtr<ShaderProgram> verticalBlurProgram;
+
+   Framebuffer downsampledColorFramebuffer;
+   Framebuffer bloomPassFramebuffer;
 
    Material tonemapMaterial;
    SPtr<ShaderProgram> tonemapProgram;

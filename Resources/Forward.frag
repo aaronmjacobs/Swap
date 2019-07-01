@@ -1,6 +1,7 @@
 #include "Version.glsl"
 
 #include "ForwardCommon.glsl"
+#include "FramebufferCommon.glsl"
 #include "LightingCommon.glsl"
 #include "MaterialCommon.glsl"
 #include "ViewCommon.glsl"
@@ -40,7 +41,7 @@ layout(location = 0) out vec4 color;
 
 LightingParams calcLightingParams(MaterialSampleParams materialSampleParams)
 {
-   vec2 texCoord = gl_FragCoord.xy * uViewport.zw;
+   vec2 texCoord = gl_FragCoord.xy * uFramebufferSize.zw;
    vec4 diffuseColor = calcMaterialDiffuseColor(uMaterial, materialSampleParams);
 
    LightingParams lightingParams;

@@ -13,8 +13,7 @@ class ShaderProgram;
 class ForwardSceneRenderer : public SceneRenderer
 {
 public:
-   ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples,
-      const SPtr<ResourceManager>& inResourceManager);
+   ForwardSceneRenderer(int numSamples, const SPtr<ResourceManager>& inResourceManager);
 
    void renderScene(const Scene& scene) override;
 

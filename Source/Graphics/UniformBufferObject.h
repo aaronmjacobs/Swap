@@ -4,10 +4,20 @@
 #include "Graphics/BufferObject.h"
 #include "Graphics/UniformBufferObjectHelpers.h"
 
+#include <glad/glad.h>
+
 #include <cstdint>
 #include <string>
 #include <tuple>
 #include <vector>
+
+enum class UniformBufferObjectIndex : GLuint
+{
+   Framebuffer,
+   View,
+
+   Invalid = GL_INVALID_INDEX
+};
 
 class UniformBufferObject : public BufferObject
 {
@@ -29,14 +39,14 @@ public:
    template<typename... Types>
    void updateData(const std::tuple<Types...>& data);
 
-   void bindTo(GLuint index);
+   void bindTo(UniformBufferObjectIndex index);
 
    const std::string& getBlockName() const
    {
       return blockName;
    }
 
-   GLuint getBoundIndex() const
+   UniformBufferObjectIndex getBoundIndex() const
    {
       return boundIndex;
    }
@@ -46,7 +56,7 @@ private:
    std::vector<uint8_t> generateBuffer(const std::tuple<Types...>& data);
 
    std::string blockName;
-   GLuint boundIndex;
+   UniformBufferObjectIndex boundIndex;
 };
 
 template<typename... Types>

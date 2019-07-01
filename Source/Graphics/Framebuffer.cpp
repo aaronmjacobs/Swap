@@ -3,6 +3,7 @@
 #include "Core/Assert.h"
 #include "Graphics/GraphicsContext.h"
 #include "Graphics/Texture.h"
+#include "Graphics/Viewport.h"
 
 #include <utility>
 
@@ -117,9 +118,30 @@ void Framebuffer::release()
 }
 
 // static
+void Framebuffer::blit(Framebuffer& source, Framebuffer& destination, GLenum readBuffer, GLenum drawBuffer, GLbitfield mask, GLenum filter)
+{
+   source.bind(Fb::Target::ReadFramebuffer);
+   destination.bind(Fb::Target::DrawFramebuffer);
+
+   glReadBuffer(readBuffer);
+   glDrawBuffer(drawBuffer);
+
+   Viewport sourceViewport;
+   Viewport destinationViewport;
+   source.getViewport(sourceViewport);
+   destination.getViewport(destinationViewport);
+
+   glBlitFramebuffer(sourceViewport.x, sourceViewport.y, sourceViewport.width, sourceViewport.height,
+      destinationViewport.x, destinationViewport.y, destinationViewport.width, destinationViewport.height,
+      mask, filter);
+}
+
+// static
 void Framebuffer::bindDefault(Fb::Target target)
 {
    GraphicsContext::current().bindFramebuffer(target, 0);
+
+   GraphicsContext::current().setActiveViewport(GraphicsContext::current().getDefaultViewport());
 }
 
 void Framebuffer::bind(Fb::Target target)
@@ -127,6 +149,27 @@ void Framebuffer::bind(Fb::Target target)
    ASSERT(id != 0);
 
    GraphicsContext::current().bindFramebuffer(target, id);
+
+   Viewport viewport;
+   if (getViewport(viewport))
+   {
+      GraphicsContext::current().setActiveViewport(viewport);
+   }
+}
+
+SPtr<Texture> Framebuffer::getDepthStencilAttachment() const
+{
+   return attachments.depthStencilAttachment;
+}
+
+SPtr<Texture> Framebuffer::getColorAttachment(int index) const
+{
+   if (index >= 0 && index < attachments.colorAttachments.size())
+   {
+      return attachments.colorAttachments[index];
+   }
+
+   return nullptr;
 }
 
 void Framebuffer::setAttachments(Fb::Attachments newAttachments)
@@ -163,4 +206,36 @@ void Framebuffer::setAttachments(Fb::Attachments newAttachments)
 
    ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
    bindDefault();
+}
+
+bool Framebuffer::getViewport(Viewport& viewport) const
+{
+   if (const SPtr<Texture>* firstValidAttachment = getFirstValidAttachment())
+   {
+      int width = (*firstValidAttachment)->getSpecification().width;
+      int height = (*firstValidAttachment)->getSpecification().height;
+      viewport = Viewport(width, height);
+
+      return true;
+   }
+
+   return false;
+}
+
+const SPtr<Texture>* Framebuffer::getFirstValidAttachment() const
+{
+   if (attachments.depthStencilAttachment)
+   {
+      return &attachments.depthStencilAttachment;
+   }
+
+   for (const SPtr<Texture>& colorAttachment : attachments.colorAttachments)
+   {
+      if (colorAttachment)
+      {
+         return &colorAttachment;
+      }
+   }
+
+   return nullptr;
 }

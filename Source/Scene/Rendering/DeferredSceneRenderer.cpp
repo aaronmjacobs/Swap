@@ -2,6 +2,7 @@
 
 #include "Core/Assert.h"
 #include "Graphics/DrawingContext.h"
+#include "Graphics/GraphicsContext.h"
 #include "Graphics/Material.h"
 #include "Graphics/ShaderProgram.h"
 #include "Graphics/Texture.h"
@@ -14,10 +15,11 @@
 
 #include <vector>
 
-DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight,
-   const SPtr<ResourceManager>& inResourceManager)
-   : SceneRenderer(initialWidth, initialHeight, inResourceManager, true)
+DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inResourceManager)
+   : SceneRenderer(inResourceManager, true)
 {
+   Viewport viewport = GraphicsContext::current().getDefaultViewport();
+
    {
       static const std::array<Tex::InternalFormat, 6> kColorAttachmentFormats =
       {
@@ -41,8 +43,8 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       };
 
       Fb::Specification specification;
-      specification.width = getWidth();
-      specification.height = getHeight();
+      specification.width = viewport.width;
+      specification.height = viewport.height;
       specification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
       specification.colorAttachmentFormats = kColorAttachmentFormats;
 
@@ -84,16 +86,19 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
       directionalLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+      directionalLightingProgram->bindUniformBuffer(GraphicsContext::current().getFramebufferUniformBuffer());
       directionalLightingProgram->bindUniformBuffer(getViewUniformBuffer());
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "POINT_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "POINT_LIGHT";
       pointLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+      pointLightingProgram->bindUniformBuffer(GraphicsContext::current().getFramebufferUniformBuffer());
       pointLightingProgram->bindUniformBuffer(getViewUniformBuffer());
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "SPOT_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "SPOT_LIGHT";
       spotLightingProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+      spotLightingProgram->bindUniformBuffer(GraphicsContext::current().getFramebufferUniformBuffer());
       spotLightingProgram->bindUniformBuffer(getViewUniformBuffer());
    }
 
@@ -131,7 +136,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(int initialWidth, int initialHeight
 
    setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
 
-   setTonemapTexture(colorTexture);
+   setTonemapTextures(colorTexture, getBloomPassFramebuffer().getColorAttachment(0));
 }
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
@@ -156,13 +161,15 @@ void DeferredSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight
 {
    SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
 
-   depthStencilTexture->updateResolution(getWidth(), getHeight());
-   positionTexture->updateResolution(getWidth(), getHeight());
-   normalShininessTexture->updateResolution(getWidth(), getHeight());
-   albedoTexture->updateResolution(getWidth(), getHeight());
-   specularTexture->updateResolution(getWidth(), getHeight());
-   emissiveTexture->updateResolution(getWidth(), getHeight());
-   colorTexture->updateResolution(getWidth(), getHeight());
+   Viewport viewport = GraphicsContext::current().getDefaultViewport();
+
+   depthStencilTexture->updateResolution(viewport.width, viewport.height);
+   positionTexture->updateResolution(viewport.width, viewport.height);
+   normalShininessTexture->updateResolution(viewport.width, viewport.height);
+   albedoTexture->updateResolution(viewport.width, viewport.height);
+   specularTexture->updateResolution(viewport.width, viewport.height);
+   emissiveTexture->updateResolution(viewport.width, viewport.height);
+   colorTexture->updateResolution(viewport.width, viewport.height);
 }
 
 void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInfo)
@@ -204,11 +211,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
    lightingPassFramebuffer.bind();
 
    // Blit the emissive color
-   basePassFramebuffer.bind(Fb::Target::ReadFramebuffer);
-   lightingPassFramebuffer.bind(Fb::Target::DrawFramebuffer);
-   glReadBuffer(GL_COLOR_ATTACHMENT4);
-   glDrawBuffer(GL_COLOR_ATTACHMENT0);
-   glBlitFramebuffer(0, 0, getWidth(), getHeight(), 0, 0, getWidth(), getHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+   Framebuffer::blit(basePassFramebuffer, lightingPassFramebuffer, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
    glDisable(GL_DEPTH_TEST);
    glEnable(GL_BLEND);
@@ -279,6 +282,8 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
 
 void DeferredSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
 {
+   renderBloomPass(sceneRenderInfo, lightingPassFramebuffer, 0);
+
    Framebuffer::bindDefault();
    renderTonemapPass(sceneRenderInfo);
 }

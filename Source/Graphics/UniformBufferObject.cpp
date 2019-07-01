@@ -4,7 +4,7 @@
 
 UniformBufferObject::UniformBufferObject(std::string name)
    : blockName(std::move(name))
-   , boundIndex(GL_INVALID_INDEX)
+   , boundIndex(UniformBufferObjectIndex::Invalid)
 {
 }
 
@@ -23,13 +23,13 @@ UniformBufferObject& UniformBufferObject::operator=(UniformBufferObject&& other)
 void UniformBufferObject::move(UniformBufferObject&& other)
 {
    boundIndex = other.boundIndex;
-   other.boundIndex = GL_INVALID_INDEX;
+   other.boundIndex = UniformBufferObjectIndex::Invalid;
 
    BufferObject::move(std::move(other));
 }
 
-void UniformBufferObject::bindTo(GLuint index)
+void UniformBufferObject::bindTo(UniformBufferObjectIndex index)
 {
-   glBindBufferBase(GL_UNIFORM_BUFFER, index, getId());
+   glBindBufferBase(GL_UNIFORM_BUFFER, static_cast<GLuint>(index), getId());
    boundIndex = index;
 }

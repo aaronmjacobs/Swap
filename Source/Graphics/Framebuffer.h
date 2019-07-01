@@ -9,6 +9,7 @@
 #include <vector>
 
 class Texture;
+struct Viewport;
 
 namespace Fb
 {
@@ -57,6 +58,12 @@ public:
    Framebuffer& operator=(const Framebuffer& other) = delete;
    Framebuffer& operator=(Framebuffer&& other);
 
+private:
+   void move(Framebuffer&& other);
+   void release();
+
+public:
+   static void blit(Framebuffer& source, Framebuffer& destination, GLenum readBuffer, GLenum drawBuffer, GLbitfield mask, GLenum filter);
    static void bindDefault(Fb::Target target = Fb::Target::Framebuffer);
    void bind(Fb::Target target = Fb::Target::Framebuffer);
 
@@ -70,11 +77,15 @@ public:
       return attachments;
    }
 
+   SPtr<Texture> getDepthStencilAttachment() const;
+   SPtr<Texture> getColorAttachment(int index) const;
+
    void setAttachments(Fb::Attachments newAttachments);
 
+   bool getViewport(Viewport& viewport) const;
+
 private:
-   void move(Framebuffer&& other);
-   void release();
+   const SPtr<Texture>* getFirstValidAttachment() const;
 
    GLuint id;
    Fb::Attachments attachments;

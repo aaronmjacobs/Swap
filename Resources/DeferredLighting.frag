@@ -1,5 +1,6 @@
 #include "Version.glsl"
 
+#include "FramebufferCommon.glsl"
 #include "LightingCommon.glsl"
 #include "ViewCommon.glsl"
 
@@ -21,7 +22,7 @@ layout(location = 0) out vec4 color;
 
 LightingParams sampleLightingParams()
 {
-   vec2 texCoord = gl_FragCoord.xy * uViewport.zw;
+   vec2 texCoord = gl_FragCoord.xy * uFramebufferSize.zw;
    vec4 normalShininess = texture(uNormalShininess, texCoord);
 
    LightingParams lightingParams;

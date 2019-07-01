@@ -1,5 +1,6 @@
 #include "Version.glsl"
 
+#include "FramebufferCommon.glsl"
 #include "ViewCommon.glsl"
 
 #default WITH_POSITION_BUFFER 1
@@ -38,7 +39,7 @@ vec3 loadPosition(vec2 texCoord)
 
 void main()
 {
-   vec2 noiseScale = uViewport.xy / textureSize(uNoise, 0);
+   vec2 noiseScale = textureSize(uNoise, 0) * uFramebufferSize.zw;
 
    vec3 position = (uWorldToView * vec4(loadPosition(vTexCoord), 1.0)).xyz;
    vec3 normal = (uWorldToView * vec4(texture(uNormal, vTexCoord).xyz, 0.0)).xyz;

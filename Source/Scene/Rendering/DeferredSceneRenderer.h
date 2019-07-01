@@ -12,7 +12,7 @@ class Model;
 class DeferredSceneRenderer : public SceneRenderer
 {
 public:
-   DeferredSceneRenderer(int initialWidth, int initialHeight, const SPtr<ResourceManager>& inResourceManager);
+   DeferredSceneRenderer(const SPtr<ResourceManager>& inResourceManager);
 
    void renderScene(const Scene& scene) override;
 

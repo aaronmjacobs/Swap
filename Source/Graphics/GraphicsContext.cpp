@@ -1,7 +1,24 @@
 #include "GraphicsContext.h"
 
+#include <glm/glm.hpp>
+
+#include <tuple>
+
 namespace
 {
+   using FramebufferUniforms = std::tuple<
+      glm::vec4 // uFramebufferSize
+   >;
+
+   FramebufferUniforms calcFramebufferUniforms(const Viewport& viewport)
+   {
+      FramebufferUniforms framebufferUniforms;
+
+      std::get<0>(framebufferUniforms) = glm::vec4(viewport.width, viewport.height, 1.0f / viewport.width, 1.0f / viewport.height);
+
+      return framebufferUniforms;
+   }
+
    std::size_t textureTargetIndex(Tex::Target target)
    {
       switch (target)
@@ -72,12 +89,76 @@ namespace
 
 GraphicsContext::~GraphicsContext()
 {
+   framebufferUniformBuffer = nullptr;
+
    onDestroy(this);
 }
 
 void GraphicsContext::makeCurrent()
 {
    setCurrent(this);
+}
+
+void GraphicsContext::initialize()
+{
+   Viewport viewport;
+   glGetIntegerv(GL_VIEWPORT, &viewport.x);
+   framebufferUniformBuffer = std::make_unique<UniformBufferObject>("Framebuffer");
+   framebufferUniformBuffer->setData(calcFramebufferUniforms(viewport));
+   framebufferUniformBuffer->bindTo(UniformBufferObjectIndex::Framebuffer);
+   setDefaultViewport(viewport);
+
+   GLint currentProgram = 0;
+   glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+   ASSERT(currentProgram >= 0);
+   boundProgram = currentProgram;
+
+   GLint vertexArrayBinding = 0;
+   glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vertexArrayBinding);
+   ASSERT(vertexArrayBinding >= 0);
+   boundVAO = vertexArrayBinding;
+
+   GLint readFramebufferBinding = 0;
+   glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFramebufferBinding);
+   ASSERT(readFramebufferBinding >= 0);
+   boundReadFramebuffer = readFramebufferBinding;
+
+   GLint drawFramebufferBinding = 0;
+   glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFramebufferBinding);
+   ASSERT(drawFramebufferBinding >= 0);
+   boundDrawFramebuffer = drawFramebufferBinding;
+
+   glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTextureUnit);
+   activeTextureUnit -= GL_TEXTURE0;
+   ASSERT(activeTextureUnit >= 0);
+}
+
+void GraphicsContext::setDefaultViewport(const Viewport& viewport)
+{
+   ASSERT(viewport.width > 0 && viewport.height > 0);
+
+   if (defaultViewport != viewport)
+   {
+      defaultViewport = viewport;
+
+      if (boundDrawFramebuffer == 0)
+      {
+         setActiveViewport(viewport);
+      }
+   }
+}
+
+void GraphicsContext::setActiveViewport(const Viewport& viewport)
+{
+   ASSERT(viewport.width > 0 && viewport.height > 0);
+
+   if (activeViewport != viewport)
+   {
+      glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+      activeViewport = viewport;
+
+      framebufferUniformBuffer->updateData(calcFramebufferUniforms(viewport));
+   }
 }
 
 void GraphicsContext::useProgram(GLuint program)

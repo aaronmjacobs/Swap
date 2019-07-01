@@ -2,6 +2,7 @@
 
 #include "Core/Assert.h"
 #include "Graphics/DrawingContext.h"
+#include "Graphics/GraphicsContext.h"
 #include "Graphics/ShaderProgram.h"
 #include "Graphics/Texture.h"
 #include "Math/MathUtils.h"
@@ -38,8 +39,6 @@ namespace
       glm::mat4, // uWorldToClip
       glm::mat4, // uClipToWorld
 
-      glm::vec4, // uViewport
-
       glm::vec3  // uCameraPosition
    >;
 
@@ -56,9 +55,7 @@ namespace
       std::get<4>(viewUniforms) = perspectiveInfo.projectionMatrix * perspectiveInfo.viewMatrix;
       std::get<5>(viewUniforms) = glm::inverse(std::get<4>(viewUniforms));
 
-      std::get<6>(viewUniforms) = perspectiveInfo.viewport;
-
-      std::get<7>(viewUniforms) = perspectiveInfo.cameraPosition;
+      std::get<6>(viewUniforms) = perspectiveInfo.cameraPosition;
 
       return viewUniforms;
    }
@@ -243,27 +240,25 @@ namespace
    }
 }
 
-SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<ResourceManager>& inResourceManager, bool hasPositionBuffer)
-   : width(glm::max(initialWidth, 1))
-   , height(glm::max(initialHeight, 1))
-   , nearPlaneDistance(0.01f)
+SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, bool hasPositionBuffer)
+   : nearPlaneDistance(0.01f)
    , farPlaneDistance(1000.0f)
    , resourceManager(inResourceManager)
    , screenMesh(generateScreenMesh())
    , viewUniformBuffer("View")
 {
-   ASSERT(initialWidth > 0 && initialHeight > 0, "Invalid framebuffer size");
    ASSERT(resourceManager);
 
-   glViewport(0, 0, width, height);
    glEnable(GL_CULL_FACE);
    glCullFace(GL_BACK);
 
    {
       ViewUniforms viewUniforms;
       viewUniformBuffer.setData(viewUniforms);
-      viewUniformBuffer.bindTo(0);
+      viewUniformBuffer.bindTo(UniformBufferObjectIndex::View);
    }
+
+   Viewport viewport = GraphicsContext::current().getDefaultViewport();
 
    {
       std::vector<ShaderSpecification> depthShaderSpecifications;
@@ -287,8 +282,8 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
       };
 
       Fb::Specification specification;
-      specification.width = getWidth();
-      specification.height = getHeight();
+      specification.width = viewport.width;
+      specification.height = viewport.height;
       specification.depthStencilType = Fb::DepthStencilType::None;
       specification.colorAttachmentFormats = kColorAttachmentFormats;
 
@@ -339,6 +334,7 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
       shaderSpecifications[1].definitions["WITH_POSITION_BUFFER"] = hasPositionBuffer ? "1" : "0";
 
       ssaoProgram = resourceManager->loadShaderProgram(shaderSpecifications);
+      ssaoProgram->bindUniformBuffer(GraphicsContext::current().getFramebufferUniformBuffer());
       ssaoProgram->bindUniformBuffer(viewUniformBuffer);
 
       {
@@ -381,6 +377,47 @@ SceneRenderer::SceneRenderer(int initialWidth, int initialHeight, const SPtr<Res
       shaderSpecifications[0].type = ShaderType::Vertex;
       shaderSpecifications[1].type = ShaderType::Fragment;
       IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Threshold.frag", shaderSpecifications[1].path);
+
+      thresholdProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+   }
+
+   {
+      std::vector<ShaderSpecification> shaderSpecifications;
+      shaderSpecifications.resize(2);
+      shaderSpecifications[0].type = ShaderType::Vertex;
+      shaderSpecifications[1].type = ShaderType::Fragment;
+      IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Blur.frag", shaderSpecifications[1].path);
+
+      shaderSpecifications[1].definitions["HORIZONTAL"] = "1";
+      horizontalBlurProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+
+      shaderSpecifications[1].definitions["HORIZONTAL"] = "0";
+      verticalBlurProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
+   }
+
+   {
+      std::array<Tex::InternalFormat, 1> kColorFormats = { Tex::InternalFormat::RGB16F };
+
+      Fb::Specification specification;
+      specification.width = viewport.width / 4;
+      specification.height = viewport.height / 4;
+      specification.depthStencilType = Fb::DepthStencilType::None;
+      specification.colorAttachmentFormats = kColorFormats;
+
+      downsampledColorFramebuffer.setAttachments(Fb::generateAttachments(specification));
+      bloomPassFramebuffer.setAttachments(Fb::generateAttachments(specification));
+
+      blurFramebuffer.setAttachments(Fb::generateAttachments(specification));
+   }
+
+   {
+      std::vector<ShaderSpecification> shaderSpecifications;
+      shaderSpecifications.resize(2);
+      shaderSpecifications[0].type = ShaderType::Vertex;
+      shaderSpecifications[1].type = ShaderType::Fragment;
+      IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
       IOUtils::getAbsoluteResourcePath("Tonemap.frag", shaderSpecifications[1].path);
 
       tonemapProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
@@ -391,13 +428,11 @@ void SceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
 {
    ASSERT(newWidth > 0 && newHeight > 0, "Invalid framebuffer size");
 
-   width = glm::max(newWidth, 1);
-   height = glm::max(newHeight, 1);
+   Viewport newViewport(glm::max(newWidth, 1), glm::max(newHeight, 1));
+   GraphicsContext::current().setDefaultViewport(newViewport);
 
-   glViewport(0, 0, width, height);
-
-   ssaoTexture->updateResolution(width, height);
-   ssaoBlurTexture->updateResolution(width, height);
+   ssaoTexture->updateResolution(newViewport.width, newViewport.height);
+   ssaoBlurTexture->updateResolution(newViewport.width, newViewport.height);
 }
 
 void SceneRenderer::setNearPlaneDistance(float newNearPlaneDistance)
@@ -532,8 +567,8 @@ bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& pers
       return false;
    }
 
-   ASSERT(getWidth() > 0 && getHeight() > 0, "Invalid framebuffer size");
-   float aspectRatio = static_cast<float>(getWidth()) / getHeight();
+   Viewport viewport = GraphicsContext::current().getDefaultViewport();
+   float aspectRatio = static_cast<float>(viewport.width) / viewport.height;
    perspectiveInfo.projectionMatrix = glm::perspective(glm::radians(activeCamera->getFieldOfView()), aspectRatio,
       getNearPlaneDistance(), getFarPlaneDistance());
 
@@ -542,8 +577,6 @@ bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& pers
       cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
 
    perspectiveInfo.cameraPosition = cameraTransform.position;
-
-   perspectiveInfo.viewport = glm::vec4(getWidth(), getHeight(), 1.0f / getWidth(), 1.0f / getHeight());
 
    return true;
 }
@@ -671,6 +704,49 @@ void SceneRenderer::setTranslucencyPassAttachments(const SPtr<Texture>& depthAtt
    translucencyPassFramebuffer.setAttachments(std::move(attachments));
 }
 
+void SceneRenderer::renderBloomPass(const SceneRenderInfo& sceneRenderInfo, Framebuffer& lightingFramebuffer, int lightingBufferAttachmentIndex)
+{
+   glDisable(GL_DEPTH_TEST);
+
+   Framebuffer::blit(lightingFramebuffer, downsampledColorFramebuffer, GL_COLOR_ATTACHMENT0 + lightingBufferAttachmentIndex, GL_COLOR_ATTACHMENT0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+   bloomPassFramebuffer.bind();
+   DrawingContext thresholdContext(thresholdProgram.get());
+   thresholdMaterial.setParameter("uTexture", downsampledColorFramebuffer.getColorAttachment(0));
+   thresholdMaterial.apply(thresholdContext);
+   getScreenMesh().draw(thresholdContext);
+
+   renderBlurPass(sceneRenderInfo, bloomPassFramebuffer.getColorAttachment(0), bloomPassFramebuffer, 2);
+
+   glEnable(GL_DEPTH_TEST);
+}
+
+void SceneRenderer::renderBlurPass(const SceneRenderInfo& sceneRenderInfo, const SPtr<Texture>& inputTexture, Framebuffer& resultFramebuffer, int iterations)
+{
+   glDisable(GL_DEPTH_TEST);
+
+   horizontalBlurMaterial.setParameter("uTexture", inputTexture);
+
+   for (int i = 0; i < iterations; ++i)
+   {
+      blurFramebuffer.bind();
+      DrawingContext horizontalBlurContext(horizontalBlurProgram.get());
+      horizontalBlurMaterial.apply(horizontalBlurContext);
+      getScreenMesh().draw(horizontalBlurContext);
+
+      verticalBlurMaterial.setParameter("uTexture", blurFramebuffer.getColorAttachment(0));
+
+      resultFramebuffer.bind();
+      DrawingContext verticalBlurContext(verticalBlurProgram.get());
+      verticalBlurMaterial.apply(verticalBlurContext);
+      getScreenMesh().draw(verticalBlurContext);
+
+      horizontalBlurMaterial.setParameter("uTexture", resultFramebuffer.getColorAttachment(0));
+   }
+
+   glEnable(GL_DEPTH_TEST);
+}
+
 void SceneRenderer::renderTonemapPass(const SceneRenderInfo& sceneRenderInfo)
 {
    glDisable(GL_DEPTH_TEST);
@@ -682,9 +758,10 @@ void SceneRenderer::renderTonemapPass(const SceneRenderInfo& sceneRenderInfo)
    glEnable(GL_DEPTH_TEST);
 }
 
-void SceneRenderer::setTonemapTexture(const SPtr<Texture>& hdrColorTexture)
+void SceneRenderer::setTonemapTextures(const SPtr<Texture>& hdrColorTexture, const SPtr<Texture>& bloomTexture)
 {
    tonemapMaterial.setParameter("uColorHDR", hdrColorTexture);
+   tonemapMaterial.setParameter("uBloom", bloomTexture);
 }
 
 void SceneRenderer::loadForwardProgramPermutations()
@@ -706,6 +783,7 @@ void SceneRenderer::loadForwardProgramPermutations()
       }
 
       forwardProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
+      forwardProgramPermutations[i]->bindUniformBuffer(GraphicsContext::current().getFramebufferUniformBuffer());
       forwardProgramPermutations[i]->bindUniformBuffer(viewUniformBuffer);
    }
 }

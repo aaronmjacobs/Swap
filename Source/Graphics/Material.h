@@ -50,7 +50,7 @@ public:
       auto location = findOrCreateParameter(name, getUniformType<T>());
       ASSERT(location != parameters.end());
 
-      return location->second->setValue(value);;
+      return location->second->setValue(value);
    }
 
    bool isParameterEnabled(const std::string& name) const;

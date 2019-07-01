@@ -299,7 +299,7 @@ void ShaderProgram::commit()
 
 void ShaderProgram::bindUniformBuffer(const UniformBufferObject& buffer)
 {
-   ASSERT(buffer.getBoundIndex() != GL_INVALID_INDEX);
+   ASSERT(buffer.getBoundIndex() != UniformBufferObjectIndex::Invalid);
 
    GLuint blockIndex = glGetUniformBlockIndex(id, buffer.getBlockName().c_str());
    if (blockIndex == GL_INVALID_INDEX)
@@ -308,7 +308,7 @@ void ShaderProgram::bindUniformBuffer(const UniformBufferObject& buffer)
       return;
    }
 
-   glUniformBlockBinding(id, blockIndex, buffer.getBoundIndex());
+   glUniformBlockBinding(id, blockIndex, static_cast<GLuint>(buffer.getBoundIndex()));
 }
 
 #if SWAP_DEBUG

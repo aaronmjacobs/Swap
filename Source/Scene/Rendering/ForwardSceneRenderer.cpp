@@ -2,6 +2,7 @@
 
 #include "Core/Assert.h"
 #include "Graphics/DrawingContext.h"
+#include "Graphics/GraphicsContext.h"
 #include "Graphics/ShaderProgram.h"
 #include "Graphics/Texture.h"
 #include "Math/MathUtils.h"
@@ -15,10 +16,11 @@
 
 #include <string>
 
-ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, int numSamples,
-   const SPtr<ResourceManager>& inResourceManager)
-   : SceneRenderer(initialWidth, initialHeight, inResourceManager, false)
+ForwardSceneRenderer::ForwardSceneRenderer(int numSamples, const SPtr<ResourceManager>& inResourceManager)
+   : SceneRenderer(inResourceManager, false)
 {
+   Viewport viewport = GraphicsContext::current().getDefaultViewport();
+
    {
       static const std::array<Tex::InternalFormat, 2> kColorAttachmentFormats =
       {
@@ -30,8 +32,8 @@ ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, 
       };
 
       Fb::Specification specification;
-      specification.width = getWidth();
-      specification.height = getHeight();
+      specification.width = viewport.width;
+      specification.height = viewport.height;
       specification.samples = numSamples;
       specification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
       specification.colorAttachmentFormats = kColorAttachmentFormats;
@@ -61,7 +63,7 @@ ForwardSceneRenderer::ForwardSceneRenderer(int initialWidth, int initialHeight, 
 
    setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
 
-   setTonemapTexture(colorTexture);
+   setTonemapTextures(colorTexture, getBloomPassFramebuffer().getColorAttachment(0));
 }
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
@@ -86,9 +88,11 @@ void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
 {
    SceneRenderer::onFramebufferSizeChanged(newWidth, newHeight);
 
-   depthStencilTexture->updateResolution(getWidth(), getHeight());
-   colorTexture->updateResolution(getWidth(), getHeight());
-   normalTexture->updateResolution(getWidth(), getHeight());
+   Viewport viewport = GraphicsContext::current().getDefaultViewport();
+
+   depthStencilTexture->updateResolution(viewport.width, viewport.height);
+   colorTexture->updateResolution(viewport.width, viewport.height);
+   normalTexture->updateResolution(viewport.width, viewport.height);
 }
 
 void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderInfo)
@@ -164,6 +168,8 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
 
 void ForwardSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
 {
+   renderBloomPass(sceneRenderInfo, mainPassFramebuffer, 0);
+
    Framebuffer::bindDefault();
    renderTonemapPass(sceneRenderInfo);
 }
