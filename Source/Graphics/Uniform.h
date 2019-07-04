@@ -2,7 +2,7 @@
 
 #include "Core/Pointers.h"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 #include <glm/glm.hpp>
 
 #include <cstdint>

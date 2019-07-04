@@ -11,7 +11,7 @@
 #include "Scene/Components/CameraComponent.h"
 #include "Scene/Components/ModelComponent.h"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 #include <glm/glm.hpp>
 
 #include <string>

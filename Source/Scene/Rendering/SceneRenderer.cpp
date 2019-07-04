@@ -15,7 +15,7 @@
 #include "Scene/Components/ModelComponent.h"
 #include "Scene/Scene.h"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 #include <glm/gtx/compatibility.hpp>
 
 #include <array>

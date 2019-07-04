@@ -4,7 +4,7 @@
 #include "Graphics/BufferObject.h"
 #include "Graphics/UniformBufferObjectHelpers.h"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 
 #include <cstdint>
 #include <string>

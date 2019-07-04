@@ -4,7 +4,7 @@
 #include "Core/Pointers.h"
 #include "Graphics/Shader.h"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 
 #include <string>
 #include <unordered_map>

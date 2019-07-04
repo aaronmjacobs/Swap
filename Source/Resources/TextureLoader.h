@@ -3,7 +3,7 @@
 #include "Core/Pointers.h"
 #include "Graphics/TextureInfo.h"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 
 #include <array>
 #include <string>

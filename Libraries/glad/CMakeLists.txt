@@ -11,14 +11,14 @@ set(DEBUG_INC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/debug/include")
 set(DEBUG_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/debug/src")
 
 target_sources(${PROJECT_NAME} PRIVATE
-   "${INC_DIR}/glad/glad.h"
+   "${INC_DIR}/glad/gl.h"
    "${INC_DIR}/KHR/khrplatform.h"
-   "${SRC_DIR}/glad.c"
+   "${SRC_DIR}/gl.c"
 )
 target_sources(${DEBUG_PROJECT_NAME} PRIVATE
-   "${DEBUG_INC_DIR}/glad/glad.h"
+   "${DEBUG_INC_DIR}/glad/gl.h"
    "${DEBUG_INC_DIR}/KHR/khrplatform.h"
-   "${DEBUG_SRC_DIR}/glad.c"
+   "${DEBUG_SRC_DIR}/gl.c"
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${INC_DIR}")

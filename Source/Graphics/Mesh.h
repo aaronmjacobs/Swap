@@ -3,7 +3,7 @@
 #include "Graphics/BufferObject.h"
 #include "Math/Bounds.h"
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <gsl/span>
 

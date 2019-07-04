@@ -8,7 +8,7 @@
 #include <utility>
 
 #if defined(__APPLE__)
-#include <glad/glad.h>
+#include <glad/gl.h>
 #endif // defined(__APPLE__)
 
 class WindowCallbackHelper
