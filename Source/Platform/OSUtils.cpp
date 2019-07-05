@@ -5,11 +5,11 @@
 #include <cstdint>
 #include <ctime>
 
-#ifdef __APPLE__
+#if SWAP_PLATFORM_MACOS
 #include <sys/stat.h>
-#endif // __APPLE__
+#endif // SWAP_PLATFORM_MACOS
 
-#ifdef __linux__
+#if SWAP_PLATFORM_LINUX
 #include <cstring>
 #include <limits.h>
 #include <pwd.h>
@@ -17,9 +17,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#endif // __linux__
+#endif // SWAP_PLATFORM_LINUX
 
-#ifdef _WIN32
+#if SWAP_PLATFORM_WINDOWS
 #include <codecvt>
 #include <cstring>
 #include <locale>
@@ -28,11 +28,11 @@
 #include <sys/types.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#endif // _WIN32
+#endif // SWAP_PLATFORM_WINDOWS
 
 namespace OSUtils
 {
-#ifdef __linux__
+#if SWAP_PLATFORM_LINUX
    bool getExecutablePath(std::string& executablePath)
    {
       char path[PATH_MAX + 1];
@@ -77,9 +77,9 @@ namespace OSUtils
    {
       return mkdir(dir.c_str(), 0755) == 0;
    }
-#endif // __linux__
+#endif // SWAP_PLATFORM_LINUX
 
-#ifdef _WIN32
+#if SWAP_PLATFORM_WINDOWS
    bool getExecutablePath(std::string& executablePath)
    {
       TCHAR buffer[MAX_PATH + 1];
@@ -134,7 +134,7 @@ namespace OSUtils
    {
       return CreateDirectory(dir.c_str(), nullptr) != 0;
    }
-#endif // _WIN32
+#endif // SWAP_PLATFORM_WINDOWS
 
    bool getDirectoryFromPath(const std::string& path, std::string& dir)
    {
@@ -144,7 +144,7 @@ namespace OSUtils
          return false;
       }
 
-#ifdef _WIN32
+#if SWAP_PLATFORM_WINDOWS
       bool isRoot = pos == 2;
 #else
       bool isRoot = pos == 0;

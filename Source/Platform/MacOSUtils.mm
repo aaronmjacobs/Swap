@@ -1,6 +1,6 @@
-#if !defined(__APPLE__)
-#  error "Trying to compile macOS-only source, but '__APPLE__' isn't defined!"
-#endif // !defined(__APPLE__)
+#if !SWAP_PLATFORM_MACOS
+#  error "Trying to compile macOS-only source, but 'SWAP_PLATFORM_MACOS' isn't set!"
+#endif // !SWAP_PLATFORM_MACOS
 
 #include "Platform/OSUtils.h"
 

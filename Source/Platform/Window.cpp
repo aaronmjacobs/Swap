@@ -7,9 +7,9 @@
 
 #include <utility>
 
-#if defined(__APPLE__)
+#if SWAP_PLATFORM_MACOS
 #include <glad/gl.h>
-#endif // defined(__APPLE__)
+#endif // SWAP_PLATFORM_MACOS
 
 class WindowCallbackHelper
 {
@@ -129,9 +129,9 @@ void Window::makeContextCurrent()
 
 void Window::swapBuffers()
 {
-#if defined(__APPLE__)
+#if SWAP_PLATFORM_MACOS
    glFinish(); // OpenGL on macOS is garbage
-#endif // defined(__APPLE__)
+#endif // SWAP_PLATFORM_MACOS
 
    glfwSwapBuffers(glfwWindow);
 }

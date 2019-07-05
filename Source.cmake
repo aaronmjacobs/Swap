@@ -92,7 +92,7 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Scene/Scene.cpp"
 )
 
-if(APPLE)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
    target_sources(${PROJECT_NAME} PRIVATE "${SRC_DIR}/Platform/MacOSUtils.mm")
 endif()
 
