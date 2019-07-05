@@ -162,6 +162,28 @@ namespace OSUtils
       return true;
    }
 
+   bool getFileNameFromPath(const std::string& path, std::string& fileName, bool withExtension)
+   {
+      size_t slashPos = path.find_last_of("/\\");
+      if (slashPos == std::string::npos)
+      {
+         return false;
+      }
+
+      size_t count = path.size() - slashPos;
+      if (!withExtension)
+      {
+         size_t dotPos = path.find(".", slashPos);
+         if (dotPos != std::string::npos)
+         {
+            count = dotPos - slashPos;
+         }
+      }
+
+      fileName = path.substr(slashPos + 1, count - 1);
+      return true;
+   }
+
    bool fixWorkingDirectory()
    {
       std::string executablePath;
