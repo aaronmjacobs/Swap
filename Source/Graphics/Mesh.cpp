@@ -8,7 +8,7 @@
 #include <utility>
 
 MeshSection::MeshSection()
-   : vertexArrayObject(0)
+   : GraphicsResource(GraphicsResourceType::VertexArray)
    , positionBufferObject(VertexAttribute::Position)
    , normalBufferObject(VertexAttribute::Normal)
    , texCoordBufferObject(VertexAttribute::TexCoord)
@@ -17,11 +17,11 @@ MeshSection::MeshSection()
    , colorBufferObject(VertexAttribute::Color)
    , numIndices(0)
 {
-   glGenVertexArrays(1, &vertexArrayObject);
+   glGenVertexArrays(1, &id);
 }
 
 MeshSection::MeshSection(MeshSection&& other)
-   : vertexArrayObject(0)
+   : GraphicsResource(GraphicsResourceType::VertexArray)
    , positionBufferObject(VertexAttribute::Position)
    , normalBufferObject(VertexAttribute::Normal)
    , texCoordBufferObject(VertexAttribute::TexCoord)
@@ -47,9 +47,6 @@ MeshSection& MeshSection::operator=(MeshSection&& other)
 
 void MeshSection::move(MeshSection&& other)
 {
-   vertexArrayObject = other.vertexArrayObject;
-   other.vertexArrayObject = 0;
-
    elementBufferObject = std::move(other.elementBufferObject);
    positionBufferObject = std::move(other.positionBufferObject);
    normalBufferObject = std::move(other.normalBufferObject);
@@ -63,6 +60,8 @@ void MeshSection::move(MeshSection&& other)
 
    bounds = other.bounds;
    other.bounds = {};
+
+   GraphicsResource::move(std::move(other));
 }
 
 void MeshSection::release()
@@ -75,12 +74,12 @@ void MeshSection::release()
    bitangentBufferObject.release();
    colorBufferObject.release();
 
-   if (vertexArrayObject != 0)
+   if (id != 0)
    {
-      GraphicsContext::current().onVertexArrayDestroyed(vertexArrayObject);
+      GraphicsContext::current().onVertexArrayDestroyed(id);
 
-      glDeleteVertexArrays(1, &vertexArrayObject);
-      vertexArrayObject = 0;
+      glDeleteVertexArrays(1, &id);
+      id = 0;
    }
 
    numIndices = 0;
@@ -151,9 +150,9 @@ void MeshSection::draw(const DrawingContext& context) const
 
 void MeshSection::bind() const
 {
-   ASSERT(vertexArrayObject != 0);
+   ASSERT(id != 0);
 
-   GraphicsContext::current().bindVertexArray(vertexArrayObject);
+   GraphicsContext::current().bindVertexArray(id);
 }
 
 Mesh::Mesh(std::vector<MeshSection>&& meshSections)

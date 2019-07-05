@@ -6,13 +6,15 @@
 #include <utility>
 
 Shader::Shader(ShaderType shaderType)
-   : id(glCreateShader(static_cast<GLuint>(shaderType)))
+   : GraphicsResource(GraphicsResourceType::Shader)
    , type(shaderType)
    , compiled(false)
 {
+   id = glCreateShader(static_cast<GLuint>(shaderType));
 }
 
 Shader::Shader(Shader&& other)
+   : GraphicsResource(GraphicsResourceType::Shader)
 {
    move(std::move(other));
 }
@@ -31,10 +33,10 @@ Shader& Shader::operator=(Shader&& other)
 
 void Shader::move(Shader&& other)
 {
-   id = other.id;
-   other.id = 0;
-
    type = other.type;
+   compiled = other.compiled;
+
+   GraphicsResource::move(std::move(other));
 }
 
 void Shader::release()
@@ -78,6 +80,7 @@ bool Shader::compile(const char* source)
    return success;
 }
 
+#if SWAP_DEBUG
 const char* Shader::getTypeName() const
 {
    switch (type)
@@ -97,7 +100,6 @@ const char* Shader::getTypeName() const
    }
 }
 
-#if SWAP_DEBUG
 std::string Shader::getInfoLog() const
 {
    std::string infoLog;

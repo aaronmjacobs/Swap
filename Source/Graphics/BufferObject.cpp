@@ -5,11 +5,12 @@
 #include <utility>
 
 BufferObject::BufferObject()
-   : id(0)
+   : GraphicsResource(GraphicsResourceType::Buffer)
 {
 }
 
 BufferObject::BufferObject(BufferObject&& other)
+   : GraphicsResource(GraphicsResourceType::Buffer)
 {
    move(std::move(other));
 }
@@ -24,12 +25,6 @@ BufferObject& BufferObject::operator=(BufferObject&& other)
    release();
    move(std::move(other));
    return *this;
-}
-
-void BufferObject::move(BufferObject&& other)
-{
-   id = other.id;
-   other.id = 0;
 }
 
 void BufferObject::release()

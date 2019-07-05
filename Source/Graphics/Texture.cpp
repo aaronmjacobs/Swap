@@ -255,14 +255,15 @@ namespace
 }
 
 Texture::Texture(const Tex::Specification& textureSpecification)
-   : specification(textureSpecification)
-   , id(0)
+   : GraphicsResource(GraphicsResourceType::Texture)
+   , specification(textureSpecification)
 {
    glGenTextures(1, &id);
    updateSpecification(textureSpecification);
 }
 
 Texture::Texture(Texture&& other)
+   : GraphicsResource(GraphicsResourceType::Texture)
 {
    move(std::move(other));
 }
@@ -281,10 +282,9 @@ Texture::~Texture()
 
 void Texture::move(Texture&& other)
 {
-   id = other.id;
    specification = other.specification;
 
-   other.id = 0;
+   GraphicsResource::move(std::move(other));
 }
 
 void Texture::release()

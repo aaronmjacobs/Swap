@@ -5,6 +5,7 @@
 #include "Core/Delegate.h"
 #endif // SWAP_DEBUG
 #include "Core/Pointers.h"
+#include "Graphics/GraphicsResource.h"
 #include "Graphics/Uniform.h"
 
 #include <glad/gl.h>
@@ -16,7 +17,7 @@
 class Shader;
 class UniformBufferObject;
 
-class ShaderProgram
+class ShaderProgram : public GraphicsResource
 {
 public:
    using UniformMap = std::unordered_map<std::string, UPtr<Uniform>>;
@@ -62,11 +63,6 @@ public:
 
    void bindUniformBuffer(const UniformBufferObject& buffer);
 
-   GLuint getId() const
-   {
-      return id;
-   }
-
    const UniformMap& getUniforms() const
    {
       return uniforms;
@@ -92,7 +88,6 @@ public:
 #endif // SWAP_DEBUG
 
 private:
-   GLuint id;
    UniformMap uniforms;
    std::vector<SPtr<Shader>> shaders;
    bool linked;

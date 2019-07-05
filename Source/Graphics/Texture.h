@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/GraphicsResource.h"
 #include "Graphics/TextureInfo.h"
 
 #include <glad/gl.h>
@@ -7,7 +8,7 @@
 
 struct DrawingContext;
 
-class Texture
+class Texture : public GraphicsResource
 {
 public:
    Texture(const Tex::Specification& textureSpecification);
@@ -37,11 +38,6 @@ public:
 
    void generateMipMaps();
 
-   GLuint getId() const
-   {
-      return id;
-   }
-
    const Tex::Specification& getSpecification() const
    {
       return specification;
@@ -54,5 +50,4 @@ private:
    void assertBound() const;
 
    Tex::Specification specification;
-   GLuint id;
 };

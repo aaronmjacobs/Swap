@@ -72,12 +72,13 @@ Fb::Attachments Fb::generateAttachments(const Specification& specification)
 }
 
 Framebuffer::Framebuffer()
-   : id(0)
+   : GraphicsResource(GraphicsResourceType::Framebuffer)
 {
    glGenFramebuffers(1, &id);
 }
 
 Framebuffer::Framebuffer(Framebuffer&& other)
+   : GraphicsResource(GraphicsResourceType::Framebuffer)
 {
    move(std::move(other));
 }
@@ -96,12 +97,9 @@ Framebuffer& Framebuffer::operator=(Framebuffer&& other)
 
 void Framebuffer::move(Framebuffer&& other)
 {
-   ASSERT(id == 0);
-
-   id = other.id;
-   other.id = 0;
-
    attachments = std::move(other.attachments);
+
+   GraphicsResource::move(std::move(other));
 }
 
 void Framebuffer::release()

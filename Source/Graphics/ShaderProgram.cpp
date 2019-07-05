@@ -181,12 +181,14 @@ namespace
 }
 
 ShaderProgram::ShaderProgram()
-   : id(glCreateProgram())
+   : GraphicsResource(GraphicsResourceType::Program)
    , linked(false)
 {
+   id = glCreateProgram();
 }
 
 ShaderProgram::ShaderProgram(ShaderProgram&& other)
+   : GraphicsResource(GraphicsResourceType::Program)
 {
    move(std::move(other));
 }
@@ -205,10 +207,17 @@ ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other)
 
 void ShaderProgram::move(ShaderProgram&& other)
 {
-   id = other.id;
-   other.id = 0;
-
    uniforms = std::move(other.uniforms);
+   shaders = std::move(other.shaders);
+
+   linked = other.linked;
+   other.linked = false;
+
+#if SWAP_DEBUG
+   onLink = std::move(other.onLink);
+#endif // SWAP_DEBUG
+
+   GraphicsResource::move(std::move(other));
 }
 
 void ShaderProgram::release()

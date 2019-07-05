@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Pointers.h"
+#include "Graphics/GraphicsResource.h"
 #include "Graphics/TextureInfo.h"
 
 #include <glad/gl.h>
@@ -48,7 +49,7 @@ namespace Fb
    Attachments generateAttachments(const Specification& specification);
 }
 
-class Framebuffer
+class Framebuffer : public GraphicsResource
 {
 public:
    Framebuffer();
@@ -67,11 +68,6 @@ public:
    static void bindDefault(Fb::Target target = Fb::Target::Framebuffer);
    void bind(Fb::Target target = Fb::Target::Framebuffer);
 
-   GLuint getId() const
-   {
-      return id;
-   }
-
    const Fb::Attachments& getAttachments() const
    {
       return attachments;
@@ -87,6 +83,5 @@ public:
 private:
    const SPtr<Texture>* getFirstValidAttachment() const;
 
-   GLuint id;
    Fb::Attachments attachments;
 };

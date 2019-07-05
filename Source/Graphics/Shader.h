@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/GraphicsResource.h"
+
 #include <glad/gl.h>
 
 #if SWAP_DEBUG
@@ -15,7 +17,7 @@ enum class ShaderType : GLuint
    Fragment = GL_FRAGMENT_SHADER
 };
 
-class Shader
+class Shader : public GraphicsResource
 {
 public:
    Shader(ShaderType shaderType);
@@ -32,24 +34,17 @@ private:
 public:
    bool compile(const char* source);
 
-   GLuint getId() const
-   {
-      return id;
-   }
-
    ShaderType getType() const
    {
       return type;
    }
 
-   const char* getTypeName() const;
-
 #if SWAP_DEBUG
+   const char* getTypeName() const;
    std::string getInfoLog() const;
 #endif // SWAP_DEBUG
 
 private:
-   GLuint id;
    ShaderType type;
    bool compiled;
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/GraphicsResource.h"
+
 #include <glad/gl.h>
 
 enum class BufferBindingTarget : GLenum
@@ -29,7 +31,7 @@ enum class BufferUsage : GLenum
    DynamicCopy = GL_DYNAMIC_COPY
 };
 
-class BufferObject
+class BufferObject : public GraphicsResource
 {
 public:
    BufferObject();
@@ -39,23 +41,10 @@ public:
    BufferObject& operator=(const BufferObject& other) = delete;
    BufferObject& operator=(BufferObject&& other);
 
-protected:
-   void move(BufferObject&& other);
-
-public:
    void release();
 
    void setData(BufferBindingTarget target, GLsizeiptr size, const GLvoid* data, BufferUsage usage);
    void updateData(BufferBindingTarget target, GLintptr offset, GLsizeiptr size, const GLvoid* data);
-
-protected:
-   GLuint getId() const
-   {
-      return id;
-   }
-
-private:
-   GLuint id;
 };
 
 enum class VertexAttribute : GLuint

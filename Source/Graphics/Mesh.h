@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/BufferObject.h"
+#include "Graphics/GraphicsResource.h"
 #include "Math/Bounds.h"
 
 #include <glad/gl.h>
@@ -29,7 +30,7 @@ struct MeshData
    MeshAttributeData<GLfloat> colors;
 };
 
-class MeshSection
+class MeshSection : public GraphicsResource
 {
 public:
    MeshSection();
@@ -54,8 +55,6 @@ public:
 
 private:
    void bind() const;
-
-   GLuint vertexArrayObject;
 
    BufferObject elementBufferObject;
    VertexBufferObject positionBufferObject;
