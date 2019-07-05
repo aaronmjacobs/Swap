@@ -35,6 +35,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
 
 # GLM
 set(GLM_INSTALL_ENABLE OFF CACHE INTERNAL "GLM install")
+set(GLM_TEST_ENABLE OFF CACHE INTERNAL "Build unit tests")
 add_subdirectory("${LIB_DIR}/glm")
 target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_ENABLE_EXPERIMENTAL)
 target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_CTOR_INIT)
