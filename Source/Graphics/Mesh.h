@@ -53,6 +53,8 @@ public:
       return bounds;
    }
 
+   void setLabel(std::string newLabel);
+
 private:
    void bind() const;
 
@@ -75,6 +77,11 @@ public:
    Mesh(std::vector<MeshSection>&& meshSections);
 
    void draw(const DrawingContext& context) const;
+
+   std::vector<MeshSection>& getSections()
+   {
+      return sections;
+   }
 
    const std::vector<MeshSection>& getSections() const
    {

@@ -21,6 +21,8 @@ void GraphicsResource::move(GraphicsResource&& other)
 
 void GraphicsResource::setLabel(std::string newLabel)
 {
+   ASSERT(id != 0);
+
    label = std::move(newLabel);
 
 #if SWAP_GL_OBJECT_LABEL_SUPPORTED

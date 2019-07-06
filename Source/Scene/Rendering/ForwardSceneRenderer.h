@@ -28,7 +28,7 @@ private:
    SPtr<ShaderProgram>& selectNormalPermutation(const Material& material);
 
    SPtr<Texture> depthStencilTexture;
-   SPtr<Texture> colorTexture;
+   SPtr<Texture> hdrColorTexture;
    SPtr<Texture> normalTexture;
 
    Framebuffer normalPassFramebuffer;

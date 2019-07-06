@@ -46,6 +46,14 @@ public:
       return materials.size();
    }
 
+   MeshSection& getMeshSection(std::size_t index)
+   {
+      ASSERT(mesh);
+      ASSERT(index < mesh->getSections().size());
+
+      return mesh->getSections()[index];
+   }
+
    const MeshSection& getMeshSection(std::size_t index) const
    {
       ASSERT(mesh);

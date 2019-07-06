@@ -93,9 +93,9 @@ protected:
    void renderTonemapPass(const SceneRenderInfo& sceneRenderInfo);
    void setTonemapTextures(const SPtr<Texture>& hdrColorTexture, const SPtr<Texture>& bloomTexture);
 
-   const SPtr<Texture>& getSSAOBlurTexture() const
+   const SPtr<Texture>& getSSAOTexture() const
    {
-      return ssaoBlurTexture;
+      return ssaoTexture;
    }
 
    float getNearPlaneDistance() const
@@ -153,13 +153,13 @@ private:
    Framebuffer ssaoBuffer;
    Material ssaoMaterial;
    SPtr<ShaderProgram> ssaoProgram;
-   SPtr<Texture> ssaoTexture;
+   SPtr<Texture> ssaoUnfilteredTexture;
    SPtr<Texture> ssaoNoiseTexture;
 
    Framebuffer ssaoBlurBuffer;
    Material ssaoBlurMaterial;
    SPtr<ShaderProgram> ssaoBlurProgram;
-   SPtr<Texture> ssaoBlurTexture;
+   SPtr<Texture> ssaoTexture;
 
    Framebuffer translucencyPassFramebuffer;
    Material forwardMaterial;

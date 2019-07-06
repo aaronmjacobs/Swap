@@ -7,6 +7,7 @@
 #include "Graphics/Model.h"
 #include "Graphics/Texture.h"
 #include "Platform/IOUtils.h"
+#include "Platform/OSUtils.h"
 #include "Resources/TextureLoader.h"
 
 #include <assimp/Importer.hpp>
@@ -255,6 +256,23 @@ Model ModelLoader::loadModel(const ModelSpecification& specification, TextureLoa
    }
 
    Model model = loadModelFromFile(specification, textureLoader);
+
+   std::string fileName;
+   if (OSUtils::getFileNameFromPath(specification.path, fileName, true))
+   {
+      if (model.getNumMeshSections() == 1)
+      {
+         model.getMeshSection(0).setLabel(fileName);
+      }
+      else
+      {
+         for (int i = 0; i < model.getNumMeshSections(); ++i)
+         {
+            model.getMeshSection(i).setLabel(fileName + " | " + std::to_string(i));
+         }
+      }
+   }
+
    if (model.getMesh() && specification.cache)
    {
       modelMap.emplace(specification, ModelRef(model));

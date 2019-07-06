@@ -148,6 +148,46 @@ void MeshSection::draw(const DrawingContext& context) const
    glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
 }
 
+void MeshSection::setLabel(std::string newLabel)
+{
+   GraphicsResource::setLabel(newLabel);
+
+   if (elementBufferObject.getId() != 0)
+   {
+      elementBufferObject.setLabel(newLabel + " | Element");
+   }
+
+   if (positionBufferObject.getId() != 0)
+   {
+      positionBufferObject.setLabel(newLabel + " | Position");
+   }
+
+   if (normalBufferObject.getId() != 0)
+   {
+      normalBufferObject.setLabel(newLabel + " | Normal");
+   }
+
+   if (texCoordBufferObject.getId() != 0)
+   {
+      texCoordBufferObject.setLabel(newLabel + " | TexCoord");
+   }
+
+   if (tangentBufferObject.getId() != 0)
+   {
+      tangentBufferObject.setLabel(newLabel + " | Tangent");
+   }
+
+   if (bitangentBufferObject.getId() != 0)
+   {
+      bitangentBufferObject.setLabel(newLabel + " | Bitangent");
+   }
+
+   if (colorBufferObject.getId() != 0)
+   {
+      colorBufferObject.setLabel(newLabel + " | Color");
+   }
+}
+
 void MeshSection::bind() const
 {
    ASSERT(id != 0);

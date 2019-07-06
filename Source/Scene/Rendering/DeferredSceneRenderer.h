@@ -32,7 +32,7 @@ private:
    SPtr<Texture> albedoTexture;
    SPtr<Texture> specularTexture;
    SPtr<Texture> emissiveTexture;
-   SPtr<Texture> colorTexture;
+   SPtr<Texture> hdrColorTexture;
 
    Framebuffer basePassFramebuffer;
    std::array<SPtr<ShaderProgram>, 8> gBufferProgramPermutations;

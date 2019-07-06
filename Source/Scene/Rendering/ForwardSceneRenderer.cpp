@@ -42,18 +42,23 @@ ForwardSceneRenderer::ForwardSceneRenderer(int numSamples, const SPtr<ResourceMa
       ASSERT(attachments.colorAttachments.size() == kColorAttachmentFormats.size());
 
       depthStencilTexture = std::move(attachments.depthStencilAttachment);
-      colorTexture = std::move(attachments.colorAttachments[0]);
+      depthStencilTexture->setLabel("Depth / Stencil");
+      hdrColorTexture = std::move(attachments.colorAttachments[0]);
+      hdrColorTexture->setLabel("HDR Color");
       normalTexture = std::move(attachments.colorAttachments[1]);
+      normalTexture->setLabel("Normal");
 
       Fb::Attachments normalPassAttachments;
       normalPassAttachments.depthStencilAttachment = depthStencilTexture;
       normalPassAttachments.colorAttachments.push_back(normalTexture);
       normalPassFramebuffer.setAttachments(std::move(normalPassAttachments));
+      normalPassFramebuffer.setLabel("Normal Pass Framebuffer");
 
       Fb::Attachments mainPassAttachments;
       mainPassAttachments.depthStencilAttachment = depthStencilTexture;
-      mainPassAttachments.colorAttachments.push_back(colorTexture);
+      mainPassAttachments.colorAttachments.push_back(hdrColorTexture);
       mainPassFramebuffer.setAttachments(std::move(mainPassAttachments));
+      mainPassFramebuffer.setLabel("Main Pass Framebuffer");
    }
 
    loadNormalProgramPermutations();
@@ -61,9 +66,9 @@ ForwardSceneRenderer::ForwardSceneRenderer(int numSamples, const SPtr<ResourceMa
    setPrePassDepthAttachment(depthStencilTexture);
    setSSAOTextures(depthStencilTexture, nullptr, normalTexture);
 
-   setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
+   setTranslucencyPassAttachments(depthStencilTexture, hdrColorTexture);
 
-   setTonemapTextures(colorTexture, getBloomPassFramebuffer().getColorAttachment(0));
+   setTonemapTextures(hdrColorTexture, getBloomPassFramebuffer().getColorAttachment(0));
 }
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
@@ -91,7 +96,7 @@ void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
    Viewport viewport = GraphicsContext::current().getDefaultViewport();
 
    depthStencilTexture->updateResolution(viewport.width, viewport.height);
-   colorTexture->updateResolution(viewport.width, viewport.height);
+   hdrColorTexture->updateResolution(viewport.width, viewport.height);
    normalTexture->updateResolution(viewport.width, viewport.height);
 }
 

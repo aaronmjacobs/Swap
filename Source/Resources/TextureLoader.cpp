@@ -4,6 +4,7 @@
 #include "Core/Hash.h"
 #include "Core/Log.h"
 #include "Graphics/Texture.h"
+#include "Platform/OSUtils.h"
 #include "Resources/DefaultImageSource.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -216,6 +217,12 @@ SPtr<Texture> TextureLoader::loadTexture(const LoadedTextureSpecification& speci
 
    SPtr<Texture> texture = createTexture(info);
    setParameters(*texture, specification.params);
+
+   std::string fileName;
+   if (OSUtils::getFileNameFromPath(specification.path, fileName, true))
+   {
+      texture->setLabel(fileName);
+   }
 
    if (specification.cache)
    {

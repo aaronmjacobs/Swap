@@ -3,6 +3,7 @@
 #include "Core/Log.h"
 #include "Graphics/ShaderProgram.h"
 #include "Platform/IOUtils.h"
+#include "Platform/OSUtils.h"
 
 #include <algorithm>
 #include <cctype>
@@ -16,6 +17,23 @@
 
 namespace
 {
+   std::string generateProgramLabel(const std::vector<SPtr<Shader>>& shaders)
+   {
+      std::string programLabel;
+
+      for (std::size_t i = 0; i < shaders.size(); ++i)
+      {
+         programLabel += shaders[i]->getLabel();
+
+         if (i != shaders.size() - 1)
+         {
+            programLabel += " | ";
+         }
+      }
+
+      return programLabel;
+   }
+
    void replaceAll(std::string& string, const std::string& search, const std::string& replace)
    {
       for (std::size_t pos = 0; ; pos += replace.length())
@@ -422,6 +440,12 @@ SPtr<Shader> ShaderLoader::loadShader(const ShaderSpecification& specification)
    SPtr<Shader> shader(new Shader(specification.type));
    loadAndCompileSource(*shader, specification, shaderSourceMap, false);
 
+   std::string fileName;
+   if (OSUtils::getFileNameFromPath(specification.path, fileName, true))
+   {
+      shader->setLabel(fileName);
+   }
+
    if (specification.cache)
    {
       shaderMap.emplace(specification, WPtr<Shader>(shader));
@@ -455,12 +479,14 @@ SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(std::vector<ShaderSpecificat
 
    SPtr<ShaderProgram> shaderProgram(new ShaderProgram);
    bool cache = !specifications.empty();
+   std::vector<SPtr<Shader>> shaders;
    for (const ShaderSpecification& specification : specifications)
    {
       SPtr<Shader> shader = loadShader(specification);
       if (shader)
       {
          shaderProgram->attach(shader);
+         shaders.push_back(shader);
       }
 
       cache &= specification.cache;
@@ -471,6 +497,8 @@ SPtr<ShaderProgram> ShaderLoader::loadShaderProgram(std::vector<ShaderSpecificat
 #else // SWAP_DEBUG
    linkProgram(*shaderProgram);
 #endif // SWAP_DEBUG
+
+   shaderProgram->setLabel(generateProgramLabel(shaders));
 
    if (cache)
    {

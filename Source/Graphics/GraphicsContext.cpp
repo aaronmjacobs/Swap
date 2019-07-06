@@ -106,6 +106,7 @@ void GraphicsContext::initialize()
    framebufferUniformBuffer = std::make_unique<UniformBufferObject>("Framebuffer");
    framebufferUniformBuffer->setData(calcFramebufferUniforms(viewport));
    framebufferUniformBuffer->bindTo(UniformBufferObjectIndex::Framebuffer);
+   framebufferUniformBuffer->setLabel("Framebuffer Uniform Buffer");
    setDefaultViewport(viewport);
 
    GLint currentProgram = 0;

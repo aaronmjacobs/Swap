@@ -93,6 +93,7 @@ namespace
 
       MeshSection meshSection;
       meshSection.setData(screenMeshData);
+      meshSection.setLabel("Screen Mesh");
 
       std::vector<MeshSection> sections;
       sections.push_back(std::move(meshSection));
@@ -256,11 +257,14 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       ViewUniforms viewUniforms;
       viewUniformBuffer.setData(viewUniforms);
       viewUniformBuffer.bindTo(UniformBufferObjectIndex::View);
+      viewUniformBuffer.setLabel("View Uniform Buffer");
    }
 
    Viewport viewport = GraphicsContext::current().getDefaultViewport();
 
    {
+      prePassFramebuffer.setLabel("Pre Pass Framebuffer");
+
       std::vector<ShaderSpecification> depthShaderSpecifications;
       depthShaderSpecifications.resize(2);
       depthShaderSpecifications[0].type = ShaderType::Vertex;
@@ -290,16 +294,20 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       Fb::Attachments attachments = Fb::generateAttachments(specification);
       ASSERT(attachments.colorAttachments.size() == kColorAttachmentFormats.size());
 
-      ssaoTexture = attachments.colorAttachments[0];
-      ssaoBlurTexture = attachments.colorAttachments[1];
+      ssaoUnfilteredTexture = attachments.colorAttachments[0];
+      ssaoUnfilteredTexture->setLabel("SSAO Unfiltered");
+      ssaoTexture = attachments.colorAttachments[1];
+      ssaoTexture->setLabel("SSAO");
 
       Fb::Attachments ssaoAttachments;
-      ssaoAttachments.colorAttachments.push_back(ssaoTexture);
+      ssaoAttachments.colorAttachments.push_back(ssaoUnfilteredTexture);
       ssaoBuffer.setAttachments(std::move(ssaoAttachments));
+      ssaoBuffer.setLabel("SSAO Framebuffer");
 
       Fb::Attachments ssaoBlurAttachments;
-      ssaoBlurAttachments.colorAttachments.push_back(ssaoBlurTexture);
+      ssaoBlurAttachments.colorAttachments.push_back(ssaoTexture);
       ssaoBlurBuffer.setAttachments(std::move(ssaoBlurAttachments));
+      ssaoBlurBuffer.setLabel("SSAO Blur Framebuffer");
    }
 
    {
@@ -323,6 +331,7 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       ssaoNoiseTexture->setParam(Tex::IntParam::TextureWrapT, static_cast<GLint>(Tex::Wrap::Repeat));
       ssaoNoiseTexture->setParam(Tex::IntParam::TextureMinFilter, static_cast<GLint>(Tex::MinFilter::Nearest));
       ssaoNoiseTexture->setParam(Tex::IntParam::TextureMagFilter, static_cast<GLint>(Tex::MinFilter::Nearest));
+      ssaoNoiseTexture->setLabel("SSAO Noise");
 
       std::vector<ShaderSpecification> shaderSpecifications;
       shaderSpecifications.resize(2);
@@ -362,11 +371,13 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
 
       IOUtils::getAbsoluteResourcePath("SSAOBlur.frag", shaderSpecifications[1].path);
       ssaoBlurProgram = resourceManager->loadShaderProgram(shaderSpecifications);
-      ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoTexture);
+      ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoUnfilteredTexture);
    }
 
    {
-      forwardMaterial.setParameter("uAmbientOcclusion", ssaoBlurTexture);
+      translucencyPassFramebuffer.setLabel("Translucency Pass Framebuffer");
+
+      forwardMaterial.setParameter("uAmbientOcclusion", ssaoTexture);
 
       loadForwardProgramPermutations();
    }
@@ -407,9 +418,15 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       specification.colorAttachmentFormats = kColorFormats;
 
       downsampledColorFramebuffer.setAttachments(Fb::generateAttachments(specification));
+      downsampledColorFramebuffer.setLabel("Downsample Framebuffer");
+      downsampledColorFramebuffer.getColorAttachment(0)->setLabel("Downsample");
       bloomPassFramebuffer.setAttachments(Fb::generateAttachments(specification));
+      bloomPassFramebuffer.setLabel("Bloom Framebuffer");
+      bloomPassFramebuffer.getColorAttachment(0)->setLabel("Bloom");
 
       blurFramebuffer.setAttachments(Fb::generateAttachments(specification));
+      blurFramebuffer.setLabel("Blur Framebuffer");
+      blurFramebuffer.getColorAttachment(0)->setLabel("Blur");
    }
 
    {
@@ -431,8 +448,8 @@ void SceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
    Viewport newViewport(glm::max(newWidth, 1), glm::max(newHeight, 1));
    GraphicsContext::current().setDefaultViewport(newViewport);
 
+   ssaoUnfilteredTexture->updateResolution(newViewport.width, newViewport.height);
    ssaoTexture->updateResolution(newViewport.width, newViewport.height);
-   ssaoBlurTexture->updateResolution(newViewport.width, newViewport.height);
 }
 
 void SceneRenderer::setNearPlaneDistance(float newNearPlaneDistance)

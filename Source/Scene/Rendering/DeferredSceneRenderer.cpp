@@ -52,12 +52,19 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
       ASSERT(attachments.colorAttachments.size() == kColorAttachmentFormats.size());
 
       depthStencilTexture = attachments.depthStencilAttachment;
+      depthStencilTexture->setLabel("Depth / Stencil");
       positionTexture = attachments.colorAttachments[0];
+      positionTexture->setLabel("Position");
       normalShininessTexture = attachments.colorAttachments[1];
+      normalShininessTexture->setLabel("Normal / Shininess");
       albedoTexture = attachments.colorAttachments[2];
+      albedoTexture->setLabel("Albedo");
       specularTexture = attachments.colorAttachments[3];
+      specularTexture->setLabel("Specular");
       emissiveTexture = attachments.colorAttachments[4];
-      colorTexture = attachments.colorAttachments[5];
+      emissiveTexture->setLabel("Emissive");
+      hdrColorTexture = attachments.colorAttachments[5];
+      hdrColorTexture->setLabel("HDR Color");
 
       Fb::Attachments basePassAttachments;
       basePassAttachments.depthStencilAttachment = depthStencilTexture;
@@ -67,10 +74,12 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
       basePassAttachments.colorAttachments.push_back(specularTexture);
       basePassAttachments.colorAttachments.push_back(emissiveTexture);
       basePassFramebuffer.setAttachments(std::move(basePassAttachments));
+      basePassFramebuffer.setLabel("Base Pass Framebuffer");
 
       Fb::Attachments lightingPassAttachments;
-      lightingPassAttachments.colorAttachments.push_back(colorTexture);
+      lightingPassAttachments.colorAttachments.push_back(hdrColorTexture);
       lightingPassFramebuffer.setAttachments(std::move(lightingPassAttachments));
+      lightingPassFramebuffer.setLabel("Lighting Pass Framebuffer");
    }
 
    loadGBufferProgramPermutations();
@@ -108,7 +117,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
       lightingMaterial.setParameter("uAlbedo", albedoTexture);
       lightingMaterial.setParameter("uSpecular", specularTexture);
 
-      lightingMaterial.setParameter("uAmbientOcclusion", getSSAOBlurTexture());
+      lightingMaterial.setParameter("uAmbientOcclusion", getSSAOTexture());
    }
 
    {
@@ -134,9 +143,9 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
    setPrePassDepthAttachment(depthStencilTexture);
    setSSAOTextures(nullptr, positionTexture, normalShininessTexture);
 
-   setTranslucencyPassAttachments(depthStencilTexture, colorTexture);
+   setTranslucencyPassAttachments(depthStencilTexture, hdrColorTexture);
 
-   setTonemapTextures(colorTexture, getBloomPassFramebuffer().getColorAttachment(0));
+   setTonemapTextures(hdrColorTexture, getBloomPassFramebuffer().getColorAttachment(0));
 }
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
@@ -169,7 +178,7 @@ void DeferredSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight
    albedoTexture->updateResolution(viewport.width, viewport.height);
    specularTexture->updateResolution(viewport.width, viewport.height);
    emissiveTexture->updateResolution(viewport.width, viewport.height);
-   colorTexture->updateResolution(viewport.width, viewport.height);
+   hdrColorTexture->updateResolution(viewport.width, viewport.height);
 }
 
 void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInfo)
