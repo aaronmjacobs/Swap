@@ -267,8 +267,8 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       depthShaderSpecifications.resize(2);
       depthShaderSpecifications[0].type = ShaderType::Vertex;
       depthShaderSpecifications[1].type = ShaderType::Fragment;
-      IOUtils::getAbsoluteResourcePath("DepthOnly.vert", depthShaderSpecifications[0].path);
-      IOUtils::getAbsoluteResourcePath("DepthOnly.frag", depthShaderSpecifications[1].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/DepthOnly.vert", depthShaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/DepthOnly.frag", depthShaderSpecifications[1].path);
       depthOnlyProgram = getResourceManager().loadShaderProgram(depthShaderSpecifications);
       depthOnlyProgram->bindUniformBuffer(viewUniformBuffer);
    }
@@ -335,8 +335,8 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       shaderSpecifications.resize(2);
       shaderSpecifications[0].type = ShaderType::Vertex;
       shaderSpecifications[1].type = ShaderType::Fragment;
-      IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
-      IOUtils::getAbsoluteResourcePath("SSAO.frag", shaderSpecifications[1].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/Screen.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/SSAO.frag", shaderSpecifications[1].path);
 
       shaderSpecifications[1].definitions["WITH_POSITION_BUFFER"] = hasPositionBuffer ? "1" : "0";
 
@@ -367,7 +367,7 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
          }
       }
 
-      IOUtils::getAbsoluteResourcePath("SSAOBlur.frag", shaderSpecifications[1].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/SSAOBlur.frag", shaderSpecifications[1].path);
       ssaoBlurProgram = resourceManager->loadShaderProgram(shaderSpecifications);
       ssaoBlurMaterial.setParameter("uAmbientOcclusion", ssaoUnfilteredTexture);
    }
@@ -383,8 +383,8 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       shaderSpecifications.resize(2);
       shaderSpecifications[0].type = ShaderType::Vertex;
       shaderSpecifications[1].type = ShaderType::Fragment;
-      IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
-      IOUtils::getAbsoluteResourcePath("Threshold.frag", shaderSpecifications[1].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/Screen.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/Threshold.frag", shaderSpecifications[1].path);
 
       thresholdProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
    }
@@ -394,8 +394,8 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       shaderSpecifications.resize(2);
       shaderSpecifications[0].type = ShaderType::Vertex;
       shaderSpecifications[1].type = ShaderType::Fragment;
-      IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
-      IOUtils::getAbsoluteResourcePath("Blur.frag", shaderSpecifications[1].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/Screen.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/Blur.frag", shaderSpecifications[1].path);
 
       shaderSpecifications[1].definitions["HORIZONTAL"] = "1";
       horizontalBlurProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
@@ -430,8 +430,8 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       shaderSpecifications.resize(2);
       shaderSpecifications[0].type = ShaderType::Vertex;
       shaderSpecifications[1].type = ShaderType::Fragment;
-      IOUtils::getAbsoluteResourcePath("Screen.vert", shaderSpecifications[0].path);
-      IOUtils::getAbsoluteResourcePath("Tonemap.frag", shaderSpecifications[1].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/Screen.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/Tonemap.frag", shaderSpecifications[1].path);
 
       tonemapProgram = getResourceManager().loadShaderProgram(shaderSpecifications);
    }
@@ -785,8 +785,8 @@ void SceneRenderer::loadForwardProgramPermutations()
    shaderSpecifications.resize(2);
    shaderSpecifications[0].type = ShaderType::Vertex;
    shaderSpecifications[1].type = ShaderType::Fragment;
-   IOUtils::getAbsoluteResourcePath("Forward.vert", shaderSpecifications[0].path);
-   IOUtils::getAbsoluteResourcePath("Forward.frag", shaderSpecifications[1].path);
+   IOUtils::getAbsoluteResourcePath("Shaders/Forward.vert", shaderSpecifications[0].path);
+   IOUtils::getAbsoluteResourcePath("Shaders/Forward.frag", shaderSpecifications[1].path);
 
    for (std::size_t i = 0; i < forwardProgramPermutations.size(); ++i)
    {

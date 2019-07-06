@@ -185,8 +185,8 @@ void ForwardSceneRenderer::loadNormalProgramPermutations()
    shaderSpecifications.resize(2);
    shaderSpecifications[0].type = ShaderType::Vertex;
    shaderSpecifications[1].type = ShaderType::Fragment;
-   IOUtils::getAbsoluteResourcePath("Normals.vert", shaderSpecifications[0].path);
-   IOUtils::getAbsoluteResourcePath("Normals.frag", shaderSpecifications[1].path);
+   IOUtils::getAbsoluteResourcePath("Shaders/Normals.vert", shaderSpecifications[0].path);
+   IOUtils::getAbsoluteResourcePath("Shaders/Normals.frag", shaderSpecifications[1].path);
 
    for (std::size_t i = 0; i < normalProgramPermutations.size(); ++i)
    {

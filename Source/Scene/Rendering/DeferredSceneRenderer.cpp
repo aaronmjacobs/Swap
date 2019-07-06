@@ -89,8 +89,8 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
       shaderSpecifications.resize(2);
       shaderSpecifications[0].type = ShaderType::Vertex;
       shaderSpecifications[1].type = ShaderType::Fragment;
-      IOUtils::getAbsoluteResourcePath("DeferredLighting.vert", shaderSpecifications[0].path);
-      IOUtils::getAbsoluteResourcePath("DeferredLighting.frag", shaderSpecifications[1].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/DeferredLighting.vert", shaderSpecifications[0].path);
+      IOUtils::getAbsoluteResourcePath("Shaders/DeferredLighting.frag", shaderSpecifications[1].path);
 
       shaderSpecifications[0].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
       shaderSpecifications[1].definitions["LIGHT_TYPE"] = "DIRECTIONAL_LIGHT";
@@ -122,7 +122,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
 
    {
       ModelSpecification sphereSpecification;
-      IOUtils::getAbsoluteResourcePath("Sphere.obj", sphereSpecification.path);
+      IOUtils::getAbsoluteResourcePath("Meshes/Sphere.obj", sphereSpecification.path);
       sphereSpecification.normalGenerationMode = NormalGenerationMode::None;
       sphereSpecification.cache = false;
       sphereSpecification.cacheTextures = false;
@@ -132,7 +132,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
 
    {
       ModelSpecification coneSpecification;
-      IOUtils::getAbsoluteResourcePath("Cone.obj", coneSpecification.path);
+      IOUtils::getAbsoluteResourcePath("Meshes/Cone.obj", coneSpecification.path);
       coneSpecification.normalGenerationMode = NormalGenerationMode::None;
       coneSpecification.cache = false;
       coneSpecification.cacheTextures = false;
@@ -303,8 +303,8 @@ void DeferredSceneRenderer::loadGBufferProgramPermutations()
    shaderSpecifications.resize(2);
    shaderSpecifications[0].type = ShaderType::Vertex;
    shaderSpecifications[1].type = ShaderType::Fragment;
-   IOUtils::getAbsoluteResourcePath("GBuffer.vert", shaderSpecifications[0].path);
-   IOUtils::getAbsoluteResourcePath("GBuffer.frag", shaderSpecifications[1].path);
+   IOUtils::getAbsoluteResourcePath("Shaders/GBuffer.vert", shaderSpecifications[0].path);
+   IOUtils::getAbsoluteResourcePath("Shaders/GBuffer.frag", shaderSpecifications[1].path);
 
    for (std::size_t i = 0; i < gBufferProgramPermutations.size(); ++i)
    {
