@@ -263,8 +263,6 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
    Viewport viewport = GraphicsContext::current().getDefaultViewport();
 
    {
-      prePassFramebuffer.setLabel("Pre Pass Framebuffer");
-
       std::vector<ShaderSpecification> depthShaderSpecifications;
       depthShaderSpecifications.resize(2);
       depthShaderSpecifications[0].type = ShaderType::Vertex;
@@ -375,8 +373,6 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
    }
 
    {
-      translucencyPassFramebuffer.setLabel("Translucency Pass Framebuffer");
-
       forwardMaterial.setParameter("uAmbientOcclusion", ssaoTexture);
 
       loadForwardProgramPermutations();
@@ -644,6 +640,7 @@ void SceneRenderer::setPrePassDepthAttachment(const SPtr<Texture>& depthAttachme
    attachments.depthStencilAttachment = depthAttachment;
 
    prePassFramebuffer.setAttachments(std::move(attachments));
+   prePassFramebuffer.setLabel("Pre Pass Framebuffer");
 }
 
 void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
@@ -719,6 +716,7 @@ void SceneRenderer::setTranslucencyPassAttachments(const SPtr<Texture>& depthAtt
    attachments.colorAttachments.push_back(colorAttachment);
 
    translucencyPassFramebuffer.setAttachments(std::move(attachments));
+   translucencyPassFramebuffer.setLabel("Translucency Pass Framebuffer");
 }
 
 void SceneRenderer::renderBloomPass(const SceneRenderInfo& sceneRenderInfo, Framebuffer& lightingFramebuffer, int lightingBufferAttachmentIndex)
