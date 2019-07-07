@@ -1,11 +1,35 @@
 #include "Graphics/Framebuffer.h"
 
 #include "Core/Assert.h"
+#include "Core/Hash.h"
 #include "Graphics/GraphicsContext.h"
 #include "Graphics/Texture.h"
 #include "Graphics/Viewport.h"
 
 #include <utility>
+
+bool Fb::Specification::operator==(const Fb::Specification& other) const
+{
+   bool equal = width == other.width
+      && height == other.height
+      && samples == other.samples
+      && depthStencilType == other.depthStencilType
+      && colorAttachmentFormats.size() == other.colorAttachmentFormats.size();
+
+   if (equal)
+   {
+      for (std::ptrdiff_t i = 0; i < colorAttachmentFormats.size(); ++i)
+      {
+         if (colorAttachmentFormats[i] != other.colorAttachmentFormats[i])
+         {
+            equal = false;
+            break;
+         }
+      }
+   }
+
+   return equal;
+}
 
 Fb::Attachments Fb::generateAttachments(const Specification& specification)
 {
@@ -71,6 +95,25 @@ Fb::Attachments Fb::generateAttachments(const Specification& specification)
    return attachments;
 }
 
+namespace std
+{
+   size_t hash<Fb::Specification>::operator()(const Fb::Specification& specification) const
+   {
+      size_t seed = 0;
+
+      Hash::combine(seed, specification.width);
+      Hash::combine(seed, specification.height);
+
+      Hash::combine(seed, specification.samples);
+
+      Hash::combine(seed, specification.depthStencilType);
+
+      Hash::combine(seed, specification.colorAttachmentFormats);
+
+      return seed;
+   }
+}
+
 Framebuffer::Framebuffer()
    : GraphicsResource(GraphicsResourceType::Framebuffer)
 {
@@ -113,6 +156,22 @@ void Framebuffer::release()
       glDeleteFramebuffers(1, &id);
       id = 0;
    }
+}
+
+// static
+SPtr<Framebuffer> Framebuffer::create(const Fb::Specification& specification)
+{
+   SPtr<Framebuffer> framebuffer = std::make_shared<Framebuffer>();
+
+   framebuffer->setAttachments(generateAttachments(specification));
+
+   return framebuffer;
+}
+
+// static
+const char* Framebuffer::labelSuffix()
+{
+   return "Framebuffer";
 }
 
 // static

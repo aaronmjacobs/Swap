@@ -38,6 +38,8 @@ namespace Fb
       DepthStencilType depthStencilType = DepthStencilType::Depth24Stencil8;
 
       gsl::span<const Tex::InternalFormat> colorAttachmentFormats;
+
+      bool operator==(const Specification& other) const;
    };
 
    struct Attachments
@@ -47,6 +49,15 @@ namespace Fb
    };
 
    Attachments generateAttachments(const Specification& specification);
+}
+
+namespace std
+{
+   template<>
+   struct hash<Fb::Specification>
+   {
+      size_t operator()(const Fb::Specification& specification) const;
+   };
 }
 
 class Framebuffer : public GraphicsResource
@@ -64,8 +75,13 @@ private:
    void release();
 
 public:
+   using SpecificationType = Fb::Specification;
+   static SPtr<Framebuffer> create(const Fb::Specification& specification);
+   static const char* labelSuffix();
+
    static void blit(Framebuffer& source, Framebuffer& destination, GLenum readBuffer, GLenum drawBuffer, GLbitfield mask, GLenum filter);
    static void bindDefault(Fb::Target target = Fb::Target::Framebuffer);
+
    void bind(Fb::Target target = Fb::Target::Framebuffer);
 
    const Fb::Attachments& getAttachments() const
