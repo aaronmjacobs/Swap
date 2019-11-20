@@ -309,6 +309,8 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
    }
 
    {
+      static const int kNumSamples = 16;
+
       std::uniform_real_distribution<GLfloat> distribution(0.0f, 1.0f);
       std::default_random_engine generator;
 
@@ -339,6 +341,7 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
       IOUtils::getAbsoluteResourcePath("Shaders/SSAO.frag", shaderSpecifications[1].path);
 
       shaderSpecifications[1].definitions["WITH_POSITION_BUFFER"] = hasPositionBuffer ? "1" : "0";
+      shaderSpecifications[1].definitions["SSAO_NUM_SAMPLES"] = std::to_string(kNumSamples);
 
       ssaoProgram = resourceManager->loadShaderProgram(shaderSpecifications);
       ssaoProgram->bindUniformBuffer(GraphicsContext::current().getFramebufferUniformBuffer());
@@ -352,12 +355,12 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
 
          std::uniform_real_distribution<GLfloat> distribution(0.0f, 1.0f);
          std::default_random_engine generator;
-         for (unsigned int i = 0; i < 64; ++i)
+         for (unsigned int i = 0; i < kNumSamples; ++i)
          {
             glm::vec3 sample(distribution(generator) * 2.0f - 1.0f, distribution(generator) * 2.0f - 1.0f, distribution(generator));
             sample = glm::normalize(sample);
             sample *= distribution(generator);
-            float scale = i / 64.0f;
+            float scale = i / static_cast<float>(kNumSamples);
 
             // scale samples s.t. they're more aligned to center of kernel
             scale = glm::lerp(0.1f, 1.0f, scale * scale);

@@ -14,7 +14,7 @@ uniform sampler2D uDepth;
 uniform sampler2D uNormal;
 uniform sampler2D uNoise;
 
-uniform vec3 uSamples[64];
+uniform vec3 uSamples[SSAO_NUM_SAMPLES];
 
 in vec2 vTexCoord;
 
@@ -50,7 +50,7 @@ void main()
    mat3 tbn = mat3(tangent, bitangent, normal);
 
    ambientOcclusion = 0.0;
-   for (int i = 0; i < 64; ++i)
+   for (int i = 0; i < SSAO_NUM_SAMPLES; ++i)
    {
       float radius = 1.0;
       vec3 samplePosition = position + (tbn * uSamples[i]) * radius;
@@ -64,5 +64,5 @@ void main()
       ambientOcclusion += (sampleDepth >= samplePosition.z + bias ? 1.0 : 0.0) * rangeCheck;
    }
 
-   ambientOcclusion = pow(1.0 - (ambientOcclusion / 64), 2.0);
+   ambientOcclusion = pow(1.0 - (ambientOcclusion / SSAO_NUM_SAMPLES), 2.0);
 }
