@@ -116,7 +116,7 @@ namespace
       }
 
       std::vector<GLfloat> texCoords;
-      if (assimpMesh.mTextureCoords && assimpMesh.mTextureCoords[0] && assimpMesh.mNumUVComponents[0] == 2)
+      if (assimpMesh.mTextureCoords[0] && assimpMesh.mNumUVComponents[0] == 2)
       {
          texCoords.resize(assimpMesh.mNumVertices * 2);
 
@@ -141,7 +141,7 @@ namespace
          meshData.bitangents.valueSize = 3;
       }
 
-      if (assimpMesh.mColors && assimpMesh.mColors[0])
+      if (assimpMesh.mColors[0])
       {
          meshData.colors.values = gsl::span<GLfloat>(&assimpMesh.mColors[0][0].r, assimpMesh.mNumVertices * 4);
          meshData.colors.valueSize = 4;
