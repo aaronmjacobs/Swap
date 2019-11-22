@@ -1,10 +1,6 @@
-#define SWAP_USE_WINMAIN (SWAP_PLATFORM_WINDOWS && !SWAP_DEBUG)
-
-#if SWAP_USE_WINMAIN
-#  pragma comment(linker, "/SUBSYSTEM:WINDOWS")
-#  define WIN32_LEAN_AND_MEAN
-#  include <windows.h>
-#endif // SWAP_USE_WINMAIN
+#if SWAP_PLATFORM_WINDOWS && !SWAP_DEBUG
+#  pragma comment(linker, "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+#endif // SWAP_PLATFORM_WINDOWS && !SWAP_DEBUG
 
 #include "Core/Assert.h"
 #include "Core/Log.h"
@@ -426,10 +422,3 @@ int main(int argc, char* argv[])
    glfwTerminate();
    return returnCode;
 }
-
-#if SWAP_USE_WINMAIN
-int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
-{
-   return main(__argc, __argv);
-}
-#endif // SWAP_USE_WINMAIN
