@@ -103,7 +103,7 @@ void GraphicsContext::initialize()
 {
    Viewport viewport;
    glGetIntegerv(GL_VIEWPORT, &viewport.x);
-   framebufferUniformBuffer = std::make_unique<UniformBufferObject>("Framebuffer");
+   framebufferUniformBuffer = std::make_shared<UniformBufferObject>("Framebuffer");
    framebufferUniformBuffer->setData(calcFramebufferUniforms(viewport));
    framebufferUniformBuffer->bindTo(UniformBufferObjectIndex::Framebuffer);
    framebufferUniformBuffer->setLabel("Framebuffer Uniform Buffer");

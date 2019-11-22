@@ -113,7 +113,7 @@ protected:
       return screenMesh;
    }
 
-   const UniformBufferObject& getViewUniformBuffer() const
+   const SPtr<UniformBufferObject>& getViewUniformBuffer() const
    {
       return viewUniformBuffer;
    }
@@ -145,7 +145,7 @@ private:
 
    Mesh screenMesh;
 
-   UniformBufferObject viewUniformBuffer;
+   SPtr<UniformBufferObject> viewUniformBuffer;
 
    Framebuffer prePassFramebuffer;
    SPtr<ShaderProgram> depthOnlyProgram;

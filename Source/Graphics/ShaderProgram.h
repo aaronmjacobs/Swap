@@ -61,7 +61,7 @@ public:
       return false;
    }
 
-   void bindUniformBuffer(const UniformBufferObject& buffer);
+   void bindUniformBuffer(const SPtr<UniformBufferObject>& buffer);
 
    const UniformMap& getUniforms() const
    {
@@ -94,5 +94,6 @@ private:
 
 #if SWAP_DEBUG
    OnLinkDelegate onLink;
+   std::vector<SPtr<UniformBufferObject>> uniformBuffers;
 #endif // SWAP_DEBUG
 };

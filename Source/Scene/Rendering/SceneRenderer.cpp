@@ -246,7 +246,6 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
    , farPlaneDistance(1000.0f)
    , resourceManager(inResourceManager)
    , screenMesh(generateScreenMesh())
-   , viewUniformBuffer("View")
 {
    ASSERT(resourceManager);
 
@@ -254,10 +253,12 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
    glCullFace(GL_BACK);
 
    {
+      viewUniformBuffer = std::make_shared<UniformBufferObject>("View");
+
       ViewUniforms viewUniforms;
-      viewUniformBuffer.setData(viewUniforms);
-      viewUniformBuffer.bindTo(UniformBufferObjectIndex::View);
-      viewUniformBuffer.setLabel("View Uniform Buffer");
+      viewUniformBuffer->setData(viewUniforms);
+      viewUniformBuffer->bindTo(UniformBufferObjectIndex::View);
+      viewUniformBuffer->setLabel("View Uniform Buffer");
    }
 
    Viewport viewport = GraphicsContext::current().getDefaultViewport();
@@ -599,7 +600,7 @@ bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& pers
 
 void SceneRenderer::populateViewUniforms(const PerspectiveInfo& perspectiveInfo)
 {
-   viewUniformBuffer.updateData(calcViewUniforms(perspectiveInfo));
+   viewUniformBuffer->updateData(calcViewUniforms(perspectiveInfo));
 }
 
 void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)

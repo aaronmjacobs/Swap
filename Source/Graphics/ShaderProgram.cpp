@@ -291,6 +291,11 @@ bool ShaderProgram::link()
 
 #if SWAP_DEBUG
    onLink.broadcast(*this, true);
+
+   for (const SPtr<UniformBufferObject>& uniformBuffer : uniformBuffers)
+   {
+      bindUniformBuffer(uniformBuffer);
+   }
 #endif // SWAP_DEBUG
 
    return true;
@@ -306,18 +311,26 @@ void ShaderProgram::commit()
    }
 }
 
-void ShaderProgram::bindUniformBuffer(const UniformBufferObject& buffer)
+void ShaderProgram::bindUniformBuffer(const SPtr<UniformBufferObject>& buffer)
 {
-   ASSERT(buffer.getBoundIndex() != UniformBufferObjectIndex::Invalid);
+   ASSERT(buffer);
+   ASSERT(buffer->getBoundIndex() != UniformBufferObjectIndex::Invalid);
 
-   GLuint blockIndex = glGetUniformBlockIndex(id, buffer.getBlockName().c_str());
+   GLuint blockIndex = glGetUniformBlockIndex(id, buffer->getBlockName().c_str());
    if (blockIndex == GL_INVALID_INDEX)
    {
-      LOG_WARNING("Uniform block not found: " << buffer.getBlockName());
+      LOG_WARNING("Uniform block not found: " << buffer->getBlockName());
       return;
    }
 
-   glUniformBlockBinding(id, blockIndex, static_cast<GLuint>(buffer.getBoundIndex()));
+   glUniformBlockBinding(id, blockIndex, static_cast<GLuint>(buffer->getBoundIndex()));
+
+#if SWAP_DEBUG
+   if (std::find(uniformBuffers.begin(), uniformBuffers.end(), buffer) == uniformBuffers.end())
+   {
+      uniformBuffers.push_back(buffer);
+   }
+#endif // SWAP_DEBUG
 }
 
 #if SWAP_DEBUG

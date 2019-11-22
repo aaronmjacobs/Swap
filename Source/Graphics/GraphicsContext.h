@@ -36,10 +36,9 @@ public:
       return activeViewport;
    }
 
-   const UniformBufferObject& getFramebufferUniformBuffer() const
+   const SPtr<UniformBufferObject>& getFramebufferUniformBuffer() const
    {
-      ASSERT(framebufferUniformBuffer);
-      return *framebufferUniformBuffer;
+      return framebufferUniformBuffer;
    }
 
    void setDefaultViewport(const Viewport& viewport);
@@ -77,5 +76,5 @@ private:
    int activeTextureUnit = 0;
    std::array<TextureBindings, 32> textureBindings;
 
-   UPtr<UniformBufferObject> framebufferUniformBuffer;
+   SPtr<UniformBufferObject> framebufferUniformBuffer;
 };
