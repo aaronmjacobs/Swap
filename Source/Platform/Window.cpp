@@ -107,6 +107,9 @@ Window::Window(GLFWwindow* internalWindow)
 
    graphicsContext = std::make_unique<GraphicsContext>();
 
+   // Clear out initial events before registering for callbacks
+   glfwPollEvents();
+
    glfwSetFramebufferSizeCallback(glfwWindow, WindowCallbackHelper::framebufferSizeCallback);
    glfwSetWindowRefreshCallback(glfwWindow, WindowCallbackHelper::windowRefreshCallback);
    glfwSetWindowFocusCallback(glfwWindow, WindowCallbackHelper::windowFocusCallback);
