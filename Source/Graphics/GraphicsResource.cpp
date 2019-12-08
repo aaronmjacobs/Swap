@@ -12,6 +12,7 @@ GraphicsResource::GraphicsResource(GraphicsResourceType graphicsResourceType)
 void GraphicsResource::move(GraphicsResource&& other)
 {
    ASSERT(id == 0);
+   ASSERT(resourceType == other.resourceType);
 
    id = other.id;
    other.id = 0;
