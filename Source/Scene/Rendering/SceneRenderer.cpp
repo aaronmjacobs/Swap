@@ -23,8 +23,8 @@
 
 namespace UniformNames
 {
-   const char* kModelMatrix = "uModelMatrix";
-   const char* kNormalMatrix = "uNormalMatrix";
+   const char* kLocalToWorld = "uLocalToWorld";
+   const char* kLocalToNormal = "uLocalToNormal";
 }
 
 namespace
@@ -617,8 +617,8 @@ void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
    {
       ASSERT(modelRenderInfo.model);
 
-      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
-      depthOnlyProgram->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
+      glm::mat4 localToWorld = modelRenderInfo.localToWorld.toMatrix();
+      depthOnlyProgram->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
 
       for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
@@ -686,8 +686,8 @@ void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInf
    {
       ASSERT(modelRenderInfo.model);
 
-      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
-      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+      glm::mat4 localToWorld = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 localToNormal = glm::transpose(glm::inverse(localToWorld));
 
       for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
@@ -699,8 +699,8 @@ void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInf
          {
             SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
 
-            forwardProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-            forwardProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
+            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
+            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
 
             DrawingContext context(forwardProgramPermutation.get());
             forwardMaterial.apply(context);

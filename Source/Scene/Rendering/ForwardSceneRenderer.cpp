@@ -110,8 +110,8 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
    {
       ASSERT(modelRenderInfo.model);
 
-      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
-      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+      glm::mat4 localToWorld = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 localToNormal = glm::transpose(glm::inverse(localToWorld));
 
       for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
@@ -123,8 +123,8 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
          {
             SPtr<ShaderProgram>& normalProgramPermutation = selectNormalPermutation(material);
 
-            normalProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-            normalProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
+            normalProgramPermutation->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
+            normalProgramPermutation->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
 
             DrawingContext context(normalProgramPermutation.get());
             material.apply(context);
@@ -146,8 +146,8 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
    {
       ASSERT(modelRenderInfo.model);
 
-      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
-      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+      glm::mat4 localToWorld = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 localToNormal = glm::transpose(glm::inverse(localToWorld));
 
       for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
@@ -159,8 +159,8 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
          {
             SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
 
-            forwardProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-            forwardProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
+            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
+            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
 
             DrawingContext context(forwardProgramPermutation.get());
             getForwardMaterial().apply(context);

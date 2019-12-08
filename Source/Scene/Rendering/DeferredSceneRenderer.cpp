@@ -191,8 +191,8 @@ void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInf
    {
       ASSERT(modelRenderInfo.model);
 
-      glm::mat4 modelMatrix = modelRenderInfo.localToWorld.toMatrix();
-      glm::mat4 normalMatrix = glm::transpose(glm::inverse(modelMatrix));
+      glm::mat4 localToWorld = modelRenderInfo.localToWorld.toMatrix();
+      glm::mat4 localToNormal = glm::transpose(glm::inverse(localToWorld));
 
       for (std::size_t i = 0; i < modelRenderInfo.model->getNumMeshSections(); ++i)
       {
@@ -204,8 +204,8 @@ void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInf
          {
             SPtr<ShaderProgram>& gBufferProgramPermutation = selectGBufferPermutation(material);
 
-            gBufferProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-            gBufferProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
+            gBufferProgramPermutation->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
+            gBufferProgramPermutation->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
 
             DrawingContext context(gBufferProgramPermutation.get());
             material.apply(context);
@@ -246,7 +246,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
       float scaledRadius = pointLightComponent->getScaledRadius();
       transform.scale = glm::vec3(scaledRadius);
 
-      pointLightingProgram->setUniformValue("uModelViewProjectionMatrix",
+      pointLightingProgram->setUniformValue("uLocalToClip",
          sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
 
       pointLightingProgram->setUniformValue("uPointLight.color", pointLightComponent->getColor());
@@ -269,7 +269,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
       float widthScale = glm::tan(cutoffAngle) * scaledRadius * 2.0f;
       transform.scale = glm::vec3(widthScale, widthScale, scaledRadius);
 
-      spotLightingProgram->setUniformValue("uModelViewProjectionMatrix",
+      spotLightingProgram->setUniformValue("uLocalToClip",
          sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
 
       spotLightingProgram->setUniformValue("uSpotLight.color", spotLightComponent->getColor());

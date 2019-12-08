@@ -3,8 +3,8 @@
 #include "GBufferCommon.glsl"
 #include "ViewCommon.glsl"
 
-uniform mat4 uModelMatrix;
-uniform mat4 uNormalMatrix;
+uniform mat4 uLocalToWorld;
+uniform mat4 uLocalToNormal;
 
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
@@ -34,11 +34,11 @@ out mat3 vTBN;
 
 void main()
 {
-   vec4 worldPosition = uModelMatrix * vec4(aPosition, 1.0);
+   vec4 worldPosition = uLocalToWorld * vec4(aPosition, 1.0);
    vPosition = worldPosition.xyz;
 
 #if VARYING_NORMAL
-   vNormal = (uNormalMatrix * vec4(aNormal, 1.0)).xyz;
+   vNormal = (uLocalToNormal * vec4(aNormal, 1.0)).xyz;
 #endif
 
 #if VARYING_TEX_COORD
@@ -46,9 +46,9 @@ void main()
 #endif
 
 #if VARYING_TBN
-   vec3 t = normalize(vec3(uModelMatrix * vec4(aTangent, 0.0)));
-   vec3 b = normalize(vec3(uModelMatrix * vec4(aBitangent, 0.0)));
-   vec3 n = normalize(vec3(uModelMatrix * vec4(aNormal, 0.0)));
+   vec3 t = normalize(vec3(uLocalToWorld * vec4(aTangent, 0.0)));
+   vec3 b = normalize(vec3(uLocalToWorld * vec4(aBitangent, 0.0)));
+   vec3 n = normalize(vec3(uLocalToWorld * vec4(aNormal, 0.0)));
    vTBN = mat3(t, b, n);
 #endif
 

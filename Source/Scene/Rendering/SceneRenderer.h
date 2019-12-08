@@ -24,8 +24,8 @@ struct DrawingContext;
 
 namespace UniformNames
 {
-   extern const char* kModelMatrix;
-   extern const char* kNormalMatrix;
+   extern const char* kLocalToWorld;
+   extern const char* kLocalToNormal;
 }
 
 struct PerspectiveInfo
