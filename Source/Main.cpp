@@ -157,7 +157,7 @@ namespace
          {
             if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
             {
-               activeCameraComponent->rotate(0.0f, -value * scene.getDeltaTime() * kLookSpeed);
+               activeCameraComponent->rotate(0.0f, value * scene.getDeltaTime() * kLookSpeed);
             }
          });
 
@@ -165,7 +165,7 @@ namespace
          {
             if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
             {
-               activeCameraComponent->rotate(value * scene.getDeltaTime() * kLookSpeed, 0.0f);
+               activeCameraComponent->rotate(-value * scene.getDeltaTime() * kLookSpeed, 0.0f);
             }
          });
       }

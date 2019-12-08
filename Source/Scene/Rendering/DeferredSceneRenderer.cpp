@@ -230,7 +230,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
    {
       directionalLightingProgram->setUniformValue("uDirectionalLight.color", directionalLightComponent->getColor());
       directionalLightingProgram->setUniformValue("uDirectionalLight.direction",
-         directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
+         directionalLightComponent->getAbsoluteTransform().rotateVector(MathUtils::kForwardVector));
 
       DrawingContext context(directionalLightingProgram.get());
       lightingMaterial.apply(context);
@@ -273,7 +273,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
          sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
 
       spotLightingProgram->setUniformValue("uSpotLight.color", spotLightComponent->getColor());
-      spotLightingProgram->setUniformValue("uSpotLight.direction", transform.orientation * MathUtils::kForwardVector);
+      spotLightingProgram->setUniformValue("uSpotLight.direction", transform.rotateVector(MathUtils::kForwardVector));
       spotLightingProgram->setUniformValue("uSpotLight.position", transform.position);
       spotLightingProgram->setUniformValue("uSpotLight.radius", scaledRadius);
       spotLightingProgram->setUniformValue("uSpotLight.beamAngle", beamAngle);

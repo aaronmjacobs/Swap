@@ -185,7 +185,7 @@ namespace
 
          program.setUniformValue(directionalLightStr + ".color", directionalLightComponent->getColor());
          program.setUniformValue(directionalLightStr + ".direction",
-            directionalLightComponent->getAbsoluteTransform().orientation * MathUtils::kForwardVector);
+            directionalLightComponent->getAbsoluteTransform().rotateVector(MathUtils::kForwardVector));
 
          ++directionalLightIndex;
       }
@@ -222,7 +222,7 @@ namespace
          float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
 
          program.setUniformValue(spotLightStr + ".color", spotLightComponent->getColor());
-         program.setUniformValue(spotLightStr + ".direction", transform.orientation * MathUtils::kForwardVector);
+         program.setUniformValue(spotLightStr + ".direction", transform.rotateVector(MathUtils::kForwardVector));
          program.setUniformValue(spotLightStr + ".position", transform.position);
          program.setUniformValue(spotLightStr + ".radius", spotLightComponent->getRadius() * radiusScale);
          program.setUniformValue(spotLightStr + ".beamAngle", glm::radians(spotLightComponent->getBeamAngle()));
@@ -564,7 +564,7 @@ bool SceneRenderer::calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sce
       Bounds worldBounds;
       worldBounds.radius = spotLight->getScaledRadius() * 0.5f;
       worldBounds.extent = glm::vec3(worldBounds.radius);
-      worldBounds.center = localToWorld.position + localToWorld.orientation * MathUtils::kForwardVector * worldBounds.radius;
+      worldBounds.center = localToWorld.position + localToWorld.rotateVector(MathUtils::kForwardVector) * worldBounds.radius;
 
       bool visible = !frustumCull(worldBounds, frustumPlanes);
       if (visible)
@@ -590,8 +590,8 @@ bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& pers
       getNearPlaneDistance(), getFarPlaneDistance());
 
    Transform cameraTransform = activeCamera->getAbsoluteTransform();
-   perspectiveInfo.viewMatrix = glm::lookAt(cameraTransform.position,
-      cameraTransform.position + MathUtils::kForwardVector * cameraTransform.orientation, MathUtils::kUpVector);
+   glm::vec3 viewTarget = cameraTransform.transformPosition(MathUtils::kForwardVector);
+   perspectiveInfo.viewMatrix = glm::lookAt(cameraTransform.position, viewTarget, MathUtils::kUpVector);
 
    perspectiveInfo.cameraPosition = cameraTransform.position;
 
