@@ -73,14 +73,14 @@ ForwardSceneRenderer::ForwardSceneRenderer(int numSamples, const SPtr<ResourceMa
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
 {
-   SceneRenderInfo sceneRenderInfo;
-   if (!calcSceneRenderInfo(scene, sceneRenderInfo))
+   ViewInfo viewInfo;
+   if (!getViewInfo(scene, viewInfo))
    {
       return;
    }
+   setView(viewInfo);
 
-   populateViewUniforms(sceneRenderInfo.perspectiveInfo);
-
+   SceneRenderInfo sceneRenderInfo = calcSceneRenderInfo(scene, viewInfo, true);
    renderPrePass(sceneRenderInfo);
    renderNormalPass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);

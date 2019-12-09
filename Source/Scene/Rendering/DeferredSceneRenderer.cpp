@@ -150,14 +150,14 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
 
 void DeferredSceneRenderer::renderScene(const Scene& scene)
 {
-   SceneRenderInfo sceneRenderInfo;
-   if (!calcSceneRenderInfo(scene, sceneRenderInfo))
+   ViewInfo viewInfo;
+   if (!getViewInfo(scene, viewInfo))
    {
       return;
    }
+   setView(viewInfo);
 
-   populateViewUniforms(sceneRenderInfo.perspectiveInfo);
-
+   SceneRenderInfo sceneRenderInfo = calcSceneRenderInfo(scene, viewInfo, true);
    renderPrePass(sceneRenderInfo);
    renderBasePass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
@@ -256,8 +256,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
          float scaledRadius = pointLightComponent->getScaledRadius();
          transform.scale = glm::vec3(scaledRadius);
 
-         pointLightingProgram->setUniformValue("uLocalToClip",
-            sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
+         pointLightingProgram->setUniformValue("uLocalToClip", sceneRenderInfo.viewInfo.getWorldToClip() * transform.toMatrix());
 
          pointLightingProgram->setUniformValue("uPointLight.color", pointLightComponent->getColor());
          pointLightingProgram->setUniformValue("uPointLight.position", transform.position);
@@ -279,8 +278,7 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
          float widthScale = glm::tan(cutoffAngle) * scaledRadius * 2.0f;
          transform.scale = glm::vec3(widthScale, widthScale, scaledRadius);
 
-         spotLightingProgram->setUniformValue("uLocalToClip",
-            sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
+         spotLightingProgram->setUniformValue("uLocalToClip", sceneRenderInfo.viewInfo.getWorldToClip() * transform.toMatrix());
 
          spotLightingProgram->setUniformValue("uSpotLight.color", spotLightComponent->getColor());
          spotLightingProgram->setUniformValue("uSpotLight.direction", transform.rotateVector(MathUtils::kForwardVector));

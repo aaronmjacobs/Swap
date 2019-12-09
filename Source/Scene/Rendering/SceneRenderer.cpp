@@ -42,20 +42,20 @@ namespace
       glm::vec3  // uCameraPosition
    >;
 
-   ViewUniforms calcViewUniforms(const PerspectiveInfo& perspectiveInfo)
+   ViewUniforms calcViewUniforms(const ViewInfo& viewInfo)
    {
       ViewUniforms viewUniforms;
 
-      std::get<0>(viewUniforms) = perspectiveInfo.viewMatrix;
+      std::get<0>(viewUniforms) = viewInfo.getWorldToView();
       std::get<1>(viewUniforms) = glm::inverse(std::get<0>(viewUniforms));
 
-      std::get<2>(viewUniforms) = perspectiveInfo.projectionMatrix;
+      std::get<2>(viewUniforms) = viewInfo.getViewToClip();
       std::get<3>(viewUniforms) = glm::inverse(std::get<2>(viewUniforms));
 
-      std::get<4>(viewUniforms) = perspectiveInfo.projectionMatrix * perspectiveInfo.viewMatrix;
+      std::get<4>(viewUniforms) = viewInfo.getWorldToClip();
       std::get<5>(viewUniforms) = glm::inverse(std::get<4>(viewUniforms));
 
-      std::get<6>(viewUniforms) = perspectiveInfo.cameraPosition;
+      std::get<6>(viewUniforms) = viewInfo.getViewOrigin();
 
       return viewUniforms;
    }
@@ -466,15 +466,36 @@ void SceneRenderer::setFarPlaneDistance(float newFarPlaneDistance)
    farPlaneDistance = glm::max(newFarPlaneDistance, nearPlaneDistance + MathUtils::kKindaSmallNumber);
 }
 
-bool SceneRenderer::calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sceneRenderInfo) const
+bool SceneRenderer::getViewInfo(const Scene& scene, ViewInfo& viewInfo) const
 {
-   if (!getPerspectiveInfo(scene, sceneRenderInfo.perspectiveInfo))
+   const CameraComponent* activeCamera = scene.getActiveCameraComponent();
+   if (!activeCamera)
    {
       return false;
    }
 
-   glm::mat4 worldToClip = sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix;
-   std::array<glm::vec4, 6> frustumPlanes = computeFrustumPlanes(worldToClip);
+   Transform cameraTransform = activeCamera->getAbsoluteTransform();
+   glm::vec3 viewTarget = cameraTransform.transformPosition(MathUtils::kForwardVector);
+   glm::mat4 worldToView = glm::lookAt(cameraTransform.position, viewTarget, MathUtils::kUpVector);
+
+   Viewport viewport = GraphicsContext::current().getDefaultViewport();
+   float fovY = glm::radians(activeCamera->getFieldOfView());
+   float aspectRatio = static_cast<float>(viewport.width) / viewport.height;
+   float zNear = getNearPlaneDistance();
+   float zFar = getFarPlaneDistance();
+   glm::mat4 viewToClip = glm::perspective(fovY, aspectRatio, zNear, zFar);
+
+   viewInfo.init(worldToView, viewToClip);
+
+   return true;
+}
+
+SceneRenderInfo SceneRenderer::calcSceneRenderInfo(const Scene& scene, const ViewInfo& viewInfo, bool includeLights) const
+{
+   SceneRenderInfo sceneRenderInfo;
+   sceneRenderInfo.viewInfo = viewInfo;
+
+   std::array<glm::vec4, 6> frustumPlanes = computeFrustumPlanes(viewInfo.getWorldToClip());
 
    for (const ModelComponent* modelComponent : scene.getModelComponents())
    {
@@ -518,86 +539,67 @@ bool SceneRenderer::calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sce
 
    // Sort back-to-front
    std::sort(sceneRenderInfo.modelRenderInfo.begin(), sceneRenderInfo.modelRenderInfo.end(),
-      [cameraPosition = sceneRenderInfo.perspectiveInfo.cameraPosition](const ModelRenderInfo& first, const ModelRenderInfo& second)
+      [cameraPosition = viewInfo.getViewOrigin()](const ModelRenderInfo& first, const ModelRenderInfo& second)
    {
       return glm::distance2(first.localToWorld.position, cameraPosition) > glm::distance2(second.localToWorld.position, cameraPosition);
    });
 
-   // Everything the light touches is our kingdom
-   sceneRenderInfo.directionalLights.reserve(scene.getDirectionalLightComponents().size());
-   for (DirectionalLightComponent* directionalLight : scene.getDirectionalLightComponents())
+   if (includeLights)
    {
-      ASSERT(directionalLight);
-
-      sceneRenderInfo.directionalLights.push_back(directionalLight);
-   }
-
-   for (PointLightComponent* pointLight : scene.getPointLightComponents())
-   {
-      ASSERT(pointLight);
-
-      Transform localToWorld = pointLight->getAbsoluteTransform();
-
-      Bounds worldBounds;
-      worldBounds.center = localToWorld.position;
-      worldBounds.radius = pointLight->getScaledRadius();
-      worldBounds.extent = glm::vec3(worldBounds.radius);
-
-      bool visible = !frustumCull(worldBounds, frustumPlanes);
-      if (visible)
+      // Everything the light touches is our kingdom
+      sceneRenderInfo.directionalLights.reserve(scene.getDirectionalLightComponents().size());
+      for (DirectionalLightComponent* directionalLight : scene.getDirectionalLightComponents())
       {
-         sceneRenderInfo.pointLights.push_back(pointLight);
+         ASSERT(directionalLight);
+
+         sceneRenderInfo.directionalLights.push_back(directionalLight);
+      }
+
+      for (PointLightComponent* pointLight : scene.getPointLightComponents())
+      {
+         ASSERT(pointLight);
+
+         Transform localToWorld = pointLight->getAbsoluteTransform();
+
+         Bounds worldBounds;
+         worldBounds.center = localToWorld.position;
+         worldBounds.radius = pointLight->getScaledRadius();
+         worldBounds.extent = glm::vec3(worldBounds.radius);
+
+         bool visible = !frustumCull(worldBounds, frustumPlanes);
+         if (visible)
+         {
+            sceneRenderInfo.pointLights.push_back(pointLight);
+         }
+      }
+
+      sceneRenderInfo.spotLights.reserve(scene.getSpotLightComponents().size());
+      for (SpotLightComponent* spotLight : scene.getSpotLightComponents())
+      {
+         ASSERT(spotLight);
+
+         Transform localToWorld = spotLight->getAbsoluteTransform();
+
+         // Set the radius to half that of the light, and center the bounds on the center of the light (not the origin)
+         Bounds worldBounds;
+         worldBounds.radius = spotLight->getScaledRadius() * 0.5f;
+         worldBounds.extent = glm::vec3(worldBounds.radius);
+         worldBounds.center = localToWorld.position + localToWorld.rotateVector(MathUtils::kForwardVector) * worldBounds.radius;
+
+         bool visible = !frustumCull(worldBounds, frustumPlanes);
+         if (visible)
+         {
+            sceneRenderInfo.spotLights.push_back(spotLight);
+         }
       }
    }
 
-   sceneRenderInfo.spotLights.reserve(scene.getSpotLightComponents().size());
-   for (SpotLightComponent* spotLight : scene.getSpotLightComponents())
-   {
-      ASSERT(spotLight);
-
-      Transform localToWorld = spotLight->getAbsoluteTransform();
-
-      // Set the radius to half that of the light, and center the bounds on the center of the light (not the origin)
-      Bounds worldBounds;
-      worldBounds.radius = spotLight->getScaledRadius() * 0.5f;
-      worldBounds.extent = glm::vec3(worldBounds.radius);
-      worldBounds.center = localToWorld.position + localToWorld.rotateVector(MathUtils::kForwardVector) * worldBounds.radius;
-
-      bool visible = !frustumCull(worldBounds, frustumPlanes);
-      if (visible)
-      {
-         sceneRenderInfo.spotLights.push_back(spotLight);
-      }
-   }
-
-   return true;
+   return sceneRenderInfo;
 }
 
-bool SceneRenderer::getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const
+void SceneRenderer::setView(const ViewInfo& viewInfo)
 {
-   const CameraComponent* activeCamera = scene.getActiveCameraComponent();
-   if (!activeCamera)
-   {
-      return false;
-   }
-
-   Viewport viewport = GraphicsContext::current().getDefaultViewport();
-   float aspectRatio = static_cast<float>(viewport.width) / viewport.height;
-   perspectiveInfo.projectionMatrix = glm::perspective(glm::radians(activeCamera->getFieldOfView()), aspectRatio,
-      getNearPlaneDistance(), getFarPlaneDistance());
-
-   Transform cameraTransform = activeCamera->getAbsoluteTransform();
-   glm::vec3 viewTarget = cameraTransform.transformPosition(MathUtils::kForwardVector);
-   perspectiveInfo.viewMatrix = glm::lookAt(cameraTransform.position, viewTarget, MathUtils::kUpVector);
-
-   perspectiveInfo.cameraPosition = cameraTransform.position;
-
-   return true;
-}
-
-void SceneRenderer::populateViewUniforms(const PerspectiveInfo& perspectiveInfo)
-{
-   viewUniformBuffer->updateData(calcViewUniforms(perspectiveInfo));
+   viewUniformBuffer->updateData(calcViewUniforms(viewInfo));
 }
 
 void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)

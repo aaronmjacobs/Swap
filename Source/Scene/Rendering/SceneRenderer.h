@@ -28,11 +28,40 @@ namespace UniformNames
    extern const char* kLocalToNormal;
 }
 
-struct PerspectiveInfo
+class ViewInfo
 {
-   glm::mat4 projectionMatrix;
-   glm::mat4 viewMatrix;
-   glm::vec3 cameraPosition;
+public:
+   void init(const glm::mat4& worldToViewMatrix, const glm::mat4& viewToClipMatrix)
+   {
+      worldToView = worldToViewMatrix;
+      viewToClip = viewToClipMatrix;
+      worldToClip = viewToClip * worldToView;
+   }
+
+   const glm::mat4& getWorldToView() const
+   {
+      return worldToView;
+   }
+
+   const glm::mat4& getViewToClip() const
+   {
+      return viewToClip;
+   }
+
+   const glm::mat4& getWorldToClip() const
+   {
+      return worldToClip;
+   }
+
+   glm::vec3 getViewOrigin() const
+   {
+      return glm::vec3(-worldToView[3][0], -worldToView[3][1], -worldToView[3][2]);
+   }
+
+private:
+   glm::mat4 worldToView;
+   glm::mat4 viewToClip;
+   glm::mat4 worldToClip;
 };
 
 struct ModelRenderInfo
@@ -44,7 +73,7 @@ struct ModelRenderInfo
 
 struct SceneRenderInfo
 {
-   PerspectiveInfo perspectiveInfo;
+   ViewInfo viewInfo;
    std::vector<ModelRenderInfo> modelRenderInfo;
    std::vector<const DirectionalLightComponent*> directionalLights;
    std::vector<const PointLightComponent*> pointLights;
@@ -72,10 +101,10 @@ protected:
       return *resourceManager;
    }
 
-   bool calcSceneRenderInfo(const Scene& scene, SceneRenderInfo& sceneRenderInfo) const;
-   bool getPerspectiveInfo(const Scene& scene, PerspectiveInfo& perspectiveInfo) const;
+   bool getViewInfo(const Scene& scene, ViewInfo& viewInfo) const;
+   SceneRenderInfo calcSceneRenderInfo(const Scene& scene, const ViewInfo& viewInfo, bool includeLights) const;
 
-   void populateViewUniforms(const PerspectiveInfo& perspectiveInfo);
+   void setView(const ViewInfo& viewInfo);
 
    void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
    void setPrePassDepthAttachment(const SPtr<Texture>& depthAttachment);
