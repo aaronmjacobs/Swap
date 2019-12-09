@@ -3,6 +3,7 @@
 #include "Core/Assert.h"
 #include "Core/Pointers.h"
 #include "Graphics/Framebuffer.h"
+#include "Graphics/RasterizerState.h"
 #include "Graphics/TextureInfo.h"
 #include "Graphics/UniformBufferObject.h"
 #include "Graphics/Viewport.h"
@@ -10,6 +11,30 @@
 #include <glad/gl.h>
 
 #include <array>
+#include <vector>
+
+enum class PrimitiveMode : GLenum
+{
+   Points = GL_POINTS,
+   LineStrip = GL_LINE_STRIP,
+   LineLoop = GL_LINE_LOOP,
+   Lines = GL_LINES,
+   LineStripAdjacency = GL_LINE_STRIP_ADJACENCY,
+   LinesAdjacency = GL_LINES_ADJACENCY,
+   TriangleStrip = GL_TRIANGLE_STRIP,
+   TriangleFan = GL_TRIANGLE_FAN,
+   Triangles = GL_TRIANGLES,
+   TriangleStripAdjacency = GL_TRIANGLE_STRIP_ADJACENCY,
+   TrianglesAdjacency = GL_TRIANGLES_ADJACENCY,
+   Patches = GL_PATCHES
+};
+
+enum class IndexType : GLenum
+{
+   UnsignedBye = GL_UNSIGNED_BYTE,
+   UnsignedShort = GL_UNSIGNED_SHORT,
+   UnsignedInt = GL_UNSIGNED_INT
+};
 
 class GraphicsContext
 {
@@ -52,6 +77,11 @@ public:
    void bindTexture(Tex::Target target, GLuint texture);
    void activateAndBindTexture(int textureUnit, Tex::Target target, GLuint texture);
 
+   void drawElements(PrimitiveMode mode, GLsizei count, IndexType type, const GLvoid* indices);
+
+   void pushRasterizerState(const RasterizerState& state);
+   void popRasterizerState();
+
    void onProgramDestroyed(GLuint program);
    void onVertexArrayDestroyed(GLuint vao);
    void onFramebufferDestroyed(GLuint framebuffer);
@@ -77,4 +107,9 @@ private:
    std::array<TextureBindings, 32> textureBindings;
 
    SPtr<UniformBufferObject> framebufferUniformBuffer;
+
+   std::vector<RasterizerState> rasterizerStateStack;
+   RasterizerState baseRasterizerState;
+   RasterizerState currentRasterizerState;
+   bool rasterizerStateDirty = true;
 };

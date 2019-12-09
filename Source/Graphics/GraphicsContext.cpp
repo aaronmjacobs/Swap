@@ -85,6 +85,139 @@ namespace
          return 0;
       }
    }
+
+   void setCapabilityEnabled(GLenum capability, bool enabled)
+   {
+      if (enabled)
+      {
+         glEnable(capability);
+      }
+      else
+      {
+         glDisable(capability);
+      }
+   }
+
+   void setRasterizerState(const RasterizerState& newState, const RasterizerState& oldState)
+   {
+#define IS_STATE_DIRTY(state_name) (newState.state_name != oldState.state_name)
+
+   if (IS_STATE_DIRTY(enableFaceCulling))
+   {
+      setCapabilityEnabled(GL_CULL_FACE, newState.enableFaceCulling);
+   }
+
+   if (IS_STATE_DIRTY(faceCullMode))
+   {
+      glCullFace(static_cast<GLenum>(newState.faceCullMode));
+   }
+
+   if (IS_STATE_DIRTY(enableDepthTest))
+   {
+      setCapabilityEnabled(GL_DEPTH_TEST, newState.enableDepthTest);
+   }
+
+   if (IS_STATE_DIRTY(enableDepthWriting))
+   {
+      glDepthMask(newState.enableDepthWriting);
+   }
+
+   if (IS_STATE_DIRTY(depthFunc))
+   {
+      glDepthFunc(static_cast<GLenum>(newState.depthFunc));
+   }
+
+   if (IS_STATE_DIRTY(enableBlending))
+   {
+      setCapabilityEnabled(GL_BLEND, newState.enableBlending);
+   }
+
+   if (IS_STATE_DIRTY(sourceBlendFactor) || IS_STATE_DIRTY(destinationBlendFactor))
+   {
+      glBlendFunc(static_cast<GLenum>(newState.sourceBlendFactor), static_cast<GLenum>(newState.destinationBlendFactor));
+   }
+
+#undef IS_STATE_DIRTY
+   }
+
+   bool isValidFaceCullMode(FaceCullMode faceCullMode)
+   {
+      return faceCullMode == FaceCullMode::Front
+         || faceCullMode == FaceCullMode::Back
+         || faceCullMode == FaceCullMode::FrontAndBack;
+   }
+
+   bool isValidDepthFunc(DepthFunc depthFunc)
+   {
+      return depthFunc == DepthFunc::Never
+         || depthFunc == DepthFunc::Always
+         || depthFunc == DepthFunc::Equal
+         || depthFunc == DepthFunc::NotEqual
+         || depthFunc == DepthFunc::Less
+         || depthFunc == DepthFunc::LessEqual
+         || depthFunc == DepthFunc::Greater
+         || depthFunc == DepthFunc::GreaterEqual;
+   }
+
+   bool isValidBlendFactor(BlendFactor blendFactor)
+   {
+      return blendFactor == BlendFactor::Zero
+         || blendFactor == BlendFactor::One
+         || blendFactor == BlendFactor::SourceColor
+         || blendFactor == BlendFactor::OneMinusSourceColor
+         || blendFactor == BlendFactor::DestinationColor
+         || blendFactor == BlendFactor::OneMinusDestinationColor
+         || blendFactor == BlendFactor::SourceAlpha
+         || blendFactor == BlendFactor::OneMinusSourceAlpha
+         || blendFactor == BlendFactor::DestinationAlpha
+         || blendFactor == BlendFactor::OneMinusDestinationAlpha
+         || blendFactor == BlendFactor::ConstantColor
+         || blendFactor == BlendFactor::OneMinusConstantColor
+         || blendFactor == BlendFactor::ConstantAlpha
+         || blendFactor == BlendFactor::OneMinusConstantAlpha
+         || blendFactor == BlendFactor::SourceAlphaSaturate
+         || blendFactor == BlendFactor::Source1Color
+         || blendFactor == BlendFactor::OneMinusSource1Color
+         || blendFactor == BlendFactor::Source1Alpha
+         || blendFactor == BlendFactor::OneMinusSource1Alpha;
+   }
+
+   RasterizerState queryRasterizerState()
+   {
+      RasterizerState state;
+
+      state.enableFaceCulling = !!glIsEnabled(GL_CULL_FACE);
+
+      GLint faceCullMode = 0;
+      glGetIntegerv(GL_CULL_FACE_MODE, &faceCullMode);
+      state.faceCullMode = static_cast<FaceCullMode>(faceCullMode);
+      ASSERT(isValidFaceCullMode(state.faceCullMode));
+
+      state.enableDepthTest = !!glIsEnabled(GL_DEPTH_TEST);
+
+      GLint depthWriteMask = 0;
+      glGetIntegerv(GL_DEPTH_WRITEMASK, &depthWriteMask);
+      state.enableDepthWriting = !!depthWriteMask;
+
+      GLint depthFunc = 0;
+      glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+      state.depthFunc = static_cast<DepthFunc>(depthFunc);
+      ASSERT(isValidDepthFunc(state.depthFunc));
+
+      state.enableBlending = !!glIsEnabled(GL_BLEND);
+
+      GLint blendSrc = 0;
+      glGetIntegerv(GL_BLEND_SRC, &blendSrc);
+      state.sourceBlendFactor = static_cast<BlendFactor>(blendSrc);
+      ASSERT(isValidBlendFactor(state.sourceBlendFactor));
+
+      GLint blendDst = 0;
+      glGetIntegerv(GL_BLEND_DST, &blendDst);
+      state.destinationBlendFactor = static_cast<BlendFactor>(blendDst);
+      ASSERT(isValidBlendFactor(state.destinationBlendFactor));
+
+      return state;
+   }
 }
 
 GraphicsContext::~GraphicsContext()
@@ -132,6 +265,9 @@ void GraphicsContext::initialize()
    glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTextureUnit);
    activeTextureUnit -= GL_TEXTURE0;
    ASSERT(activeTextureUnit >= 0);
+
+   currentRasterizerState = queryRasterizerState();
+   setRasterizerState(baseRasterizerState, currentRasterizerState);
 }
 
 void GraphicsContext::setDefaultViewport(const Viewport& viewport)
@@ -252,6 +388,34 @@ void GraphicsContext::activateAndBindTexture(int textureUnit, Tex::Target target
       activeTexture(textureUnit);
       bindTexture(target, texture);
    }
+}
+
+void GraphicsContext::drawElements(PrimitiveMode mode, GLsizei count, IndexType type, const GLvoid* indices)
+{
+   if (rasterizerStateDirty)
+   {
+      const RasterizerState& newState = rasterizerStateStack.empty() ? baseRasterizerState : rasterizerStateStack.back();
+      setRasterizerState(newState, currentRasterizerState);
+      currentRasterizerState = newState;
+
+      rasterizerStateDirty = false;
+   }
+
+   glDrawElements(static_cast<GLenum>(mode), count, static_cast<GLenum>(type), indices);
+}
+
+void GraphicsContext::pushRasterizerState(const RasterizerState& state)
+{
+   rasterizerStateStack.push_back(state);
+   rasterizerStateDirty = true;
+}
+
+void GraphicsContext::popRasterizerState()
+{
+   ASSERT(!rasterizerStateStack.empty());
+
+   rasterizerStateStack.pop_back();
+   rasterizerStateDirty = true;
 }
 
 void GraphicsContext::onProgramDestroyed(GLuint program)

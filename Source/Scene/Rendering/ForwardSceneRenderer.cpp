@@ -104,6 +104,10 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
 {
    normalPassFramebuffer.bind();
 
+   RasterizerState rasterizerState;
+   rasterizerState.depthFunc = DepthFunc::LessEqual;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
+
    glClear(GL_COLOR_BUFFER_BIT);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
@@ -137,6 +141,10 @@ void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderIn
 void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo)
 {
    mainPassFramebuffer.bind();
+
+   RasterizerState rasterizerState;
+   rasterizerState.depthFunc = DepthFunc::LessEqual;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    glClear(GL_COLOR_BUFFER_BIT);
 

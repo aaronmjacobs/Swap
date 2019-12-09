@@ -28,6 +28,8 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${SRC_DIR}/Graphics/Mesh.cpp"
    "${SRC_DIR}/Graphics/Model.h"
    "${SRC_DIR}/Graphics/Model.cpp"
+   "${SRC_DIR}/Graphics/RasterizerState.h"
+   "${SRC_DIR}/Graphics/RasterizerState.cpp"
    "${SRC_DIR}/Graphics/ResourcePool.h"
    "${SRC_DIR}/Graphics/Shader.h"
    "${SRC_DIR}/Graphics/Shader.cpp"

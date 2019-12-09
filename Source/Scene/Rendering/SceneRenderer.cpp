@@ -249,9 +249,6 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
 {
    ASSERT(resourceManager);
 
-   glEnable(GL_CULL_FACE);
-   glCullFace(GL_BACK);
-
    {
       viewUniformBuffer = std::make_shared<UniformBufferObject>("View");
 
@@ -607,9 +604,8 @@ void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
 {
    prePassFramebuffer.bind();
 
-   glEnable(GL_DEPTH_TEST);
-   glDepthFunc(GL_LESS);
-   glDepthMask(GL_TRUE);
+   RasterizerState rasterizerState;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -633,9 +629,6 @@ void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
          }
       }
    }
-
-   glDepthMask(GL_FALSE);
-   glDepthFunc(GL_LEQUAL);
 }
 
 void SceneRenderer::setPrePassDepthAttachment(const SPtr<Texture>& depthAttachment)
@@ -651,7 +644,9 @@ void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
 {
    ssaoBuffer.bind();
 
-   glDisable(GL_DEPTH_TEST);
+   RasterizerState rasterizerState;
+   rasterizerState.enableDepthTest = false;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    DrawingContext ssaoContext(ssaoProgram.get());
    ssaoMaterial.apply(ssaoContext);
@@ -662,8 +657,6 @@ void SceneRenderer::renderSSAOPass(const SceneRenderInfo& sceneRenderInfo)
    DrawingContext blurContext(ssaoBlurProgram.get());
    ssaoBlurMaterial.apply(blurContext);
    getScreenMesh().draw(blurContext);
-
-   glEnable(GL_DEPTH_TEST);
 }
 
 void SceneRenderer::setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture)
@@ -677,8 +670,12 @@ void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInf
 {
    translucencyPassFramebuffer.bind();
 
-   glEnable(GL_BLEND);
-   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+   RasterizerState rasterizerState;
+   rasterizerState.enableDepthWriting = false;
+   rasterizerState.enableBlending = true;
+   rasterizerState.sourceBlendFactor = BlendFactor::SourceAlpha;
+   rasterizerState.destinationBlendFactor = BlendFactor::OneMinusSourceAlpha;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    populateForwardUniforms(sceneRenderInfo);
 
@@ -709,8 +706,6 @@ void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInf
          }
       }
    }
-
-   glDisable(GL_BLEND);
 }
 
 void SceneRenderer::setTranslucencyPassAttachments(const SPtr<Texture>& depthAttachment, const SPtr<Texture>& colorAttachment)
@@ -725,7 +720,9 @@ void SceneRenderer::setTranslucencyPassAttachments(const SPtr<Texture>& depthAtt
 
 void SceneRenderer::renderBloomPass(const SceneRenderInfo& sceneRenderInfo, Framebuffer& lightingFramebuffer, int lightingBufferAttachmentIndex)
 {
-   glDisable(GL_DEPTH_TEST);
+   RasterizerState rasterizerState;
+   rasterizerState.enableDepthTest = false;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    Framebuffer::blit(lightingFramebuffer, downsampledColorFramebuffer, GL_COLOR_ATTACHMENT0 + lightingBufferAttachmentIndex, GL_COLOR_ATTACHMENT0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
@@ -736,13 +733,13 @@ void SceneRenderer::renderBloomPass(const SceneRenderInfo& sceneRenderInfo, Fram
    getScreenMesh().draw(thresholdContext);
 
    renderBlurPass(sceneRenderInfo, bloomPassFramebuffer.getColorAttachment(0), bloomPassFramebuffer, 2);
-
-   glEnable(GL_DEPTH_TEST);
 }
 
 void SceneRenderer::renderBlurPass(const SceneRenderInfo& sceneRenderInfo, const SPtr<Texture>& inputTexture, Framebuffer& resultFramebuffer, int iterations)
 {
-   glDisable(GL_DEPTH_TEST);
+   RasterizerState rasterizerState;
+   rasterizerState.enableDepthTest = false;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    horizontalBlurMaterial.setParameter("uTexture", inputTexture);
 
@@ -762,19 +759,17 @@ void SceneRenderer::renderBlurPass(const SceneRenderInfo& sceneRenderInfo, const
 
       horizontalBlurMaterial.setParameter("uTexture", resultFramebuffer.getColorAttachment(0));
    }
-
-   glEnable(GL_DEPTH_TEST);
 }
 
 void SceneRenderer::renderTonemapPass(const SceneRenderInfo& sceneRenderInfo)
 {
-   glDisable(GL_DEPTH_TEST);
+   RasterizerState rasterizerState;
+   rasterizerState.enableDepthTest = false;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    DrawingContext tonemapContext(tonemapProgram.get());
    tonemapMaterial.apply(tonemapContext);
    getScreenMesh().draw(tonemapContext);
-
-   glEnable(GL_DEPTH_TEST);
 }
 
 void SceneRenderer::setTonemapTextures(const SPtr<Texture>& hdrColorTexture, const SPtr<Texture>& bloomTexture)

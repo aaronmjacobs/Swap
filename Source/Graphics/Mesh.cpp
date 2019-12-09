@@ -145,7 +145,7 @@ void MeshSection::draw(const DrawingContext& context) const
    context.program->commit();
 
    bind();
-   glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+   GraphicsContext::current().drawElements(PrimitiveMode::Triangles, numIndices, IndexType::UnsignedInt, nullptr);
 }
 
 void MeshSection::setLabel(std::string newLabel)

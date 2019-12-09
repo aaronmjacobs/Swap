@@ -185,6 +185,10 @@ void DeferredSceneRenderer::renderBasePass(const SceneRenderInfo& sceneRenderInf
 {
    basePassFramebuffer.bind();
 
+   RasterizerState rasterizerState;
+   rasterizerState.depthFunc = DepthFunc::LessEqual;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
+
    glClear(GL_COLOR_BUFFER_BIT);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
@@ -222,9 +226,12 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
    // Blit the emissive color
    Framebuffer::blit(basePassFramebuffer, lightingPassFramebuffer, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-   glDisable(GL_DEPTH_TEST);
-   glEnable(GL_BLEND);
-   glBlendFunc(GL_ONE, GL_ONE);
+   RasterizerState baseRasterizerState;
+   baseRasterizerState.enableDepthTest = false;
+   baseRasterizerState.enableBlending = true;
+   baseRasterizerState.sourceBlendFactor = BlendFactor::One;
+   baseRasterizerState.destinationBlendFactor = BlendFactor::One;
+   RasterizerStateScope baseRasterierStateScope(baseRasterizerState);
 
    for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
    {
@@ -237,56 +244,56 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
       getScreenMesh().draw(context);
    }
 
-   glCullFace(GL_FRONT);
-
-   for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
    {
-      Transform transform = pointLightComponent->getAbsoluteTransform();
+      RasterizerState pointAndSpotRasterizerState = baseRasterizerState;
+      pointAndSpotRasterizerState.faceCullMode = FaceCullMode::Front;
+      RasterizerStateScope pointAndSpotRasterizerStateScope(pointAndSpotRasterizerState);
 
-      float scaledRadius = pointLightComponent->getScaledRadius();
-      transform.scale = glm::vec3(scaledRadius);
+      for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
+      {
+         Transform transform = pointLightComponent->getAbsoluteTransform();
 
-      pointLightingProgram->setUniformValue("uLocalToClip",
-         sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
+         float scaledRadius = pointLightComponent->getScaledRadius();
+         transform.scale = glm::vec3(scaledRadius);
 
-      pointLightingProgram->setUniformValue("uPointLight.color", pointLightComponent->getColor());
-      pointLightingProgram->setUniformValue("uPointLight.position", transform.position);
-      pointLightingProgram->setUniformValue("uPointLight.radius", scaledRadius);
+         pointLightingProgram->setUniformValue("uLocalToClip",
+            sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
 
-      DrawingContext context(pointLightingProgram.get());
-      lightingMaterial.apply(context);
-      sphereMesh->draw(context);
+         pointLightingProgram->setUniformValue("uPointLight.color", pointLightComponent->getColor());
+         pointLightingProgram->setUniformValue("uPointLight.position", transform.position);
+         pointLightingProgram->setUniformValue("uPointLight.radius", scaledRadius);
+
+         DrawingContext context(pointLightingProgram.get());
+         lightingMaterial.apply(context);
+         sphereMesh->draw(context);
+      }
+
+      for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
+      {
+         Transform transform = spotLightComponent->getAbsoluteTransform();
+
+         float beamAngle = glm::radians(spotLightComponent->getBeamAngle());
+         float cutoffAngle = glm::radians(spotLightComponent->getCutoffAngle());
+
+         float scaledRadius = spotLightComponent->getScaledRadius();
+         float widthScale = glm::tan(cutoffAngle) * scaledRadius * 2.0f;
+         transform.scale = glm::vec3(widthScale, widthScale, scaledRadius);
+
+         spotLightingProgram->setUniformValue("uLocalToClip",
+            sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
+
+         spotLightingProgram->setUniformValue("uSpotLight.color", spotLightComponent->getColor());
+         spotLightingProgram->setUniformValue("uSpotLight.direction", transform.rotateVector(MathUtils::kForwardVector));
+         spotLightingProgram->setUniformValue("uSpotLight.position", transform.position);
+         spotLightingProgram->setUniformValue("uSpotLight.radius", scaledRadius);
+         spotLightingProgram->setUniformValue("uSpotLight.beamAngle", beamAngle);
+         spotLightingProgram->setUniformValue("uSpotLight.cutoffAngle", cutoffAngle);
+
+         DrawingContext context(spotLightingProgram.get());
+         lightingMaterial.apply(context);
+         coneMesh->draw(context);
+      }
    }
-
-   for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
-   {
-      Transform transform = spotLightComponent->getAbsoluteTransform();
-
-      float beamAngle = glm::radians(spotLightComponent->getBeamAngle());
-      float cutoffAngle = glm::radians(spotLightComponent->getCutoffAngle());
-
-      float scaledRadius = spotLightComponent->getScaledRadius();
-      float widthScale = glm::tan(cutoffAngle) * scaledRadius * 2.0f;
-      transform.scale = glm::vec3(widthScale, widthScale, scaledRadius);
-
-      spotLightingProgram->setUniformValue("uLocalToClip",
-         sceneRenderInfo.perspectiveInfo.projectionMatrix * sceneRenderInfo.perspectiveInfo.viewMatrix * transform.toMatrix());
-
-      spotLightingProgram->setUniformValue("uSpotLight.color", spotLightComponent->getColor());
-      spotLightingProgram->setUniformValue("uSpotLight.direction", transform.rotateVector(MathUtils::kForwardVector));
-      spotLightingProgram->setUniformValue("uSpotLight.position", transform.position);
-      spotLightingProgram->setUniformValue("uSpotLight.radius", scaledRadius);
-      spotLightingProgram->setUniformValue("uSpotLight.beamAngle", beamAngle);
-      spotLightingProgram->setUniformValue("uSpotLight.cutoffAngle", cutoffAngle);
-
-      DrawingContext context(spotLightingProgram.get());
-      lightingMaterial.apply(context);
-      coneMesh->draw(context);
-   }
-
-   glCullFace(GL_BACK);
-   glDisable(GL_BLEND);
-   glEnable(GL_DEPTH_TEST);
 }
 
 void DeferredSceneRenderer::renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo)
