@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Core/Delegate.h"
 #include "Core/Pointers.h"
 
 #include <algorithm>
 #include <map>
 #include <string>
 
-// Type need to be a subclass of GraphicsResource, and must implement the following:
+// Type needs to be a subclass of GraphicsResource, and must implement the following:
 // using SpecificationType = <specification type>;
 // static SPtr<T> create(const SpecificationType& specification);
 // static const char* labelSuffix();
@@ -16,6 +17,7 @@ class ResourcePool
 {
 public:
    using Spec = typename T::SpecificationType;
+   using ResourceCreatedDelegate = Delegate<void, T&>;
 
    void clear()
    {
@@ -45,10 +47,27 @@ public:
 
       pool.insert({ { spec, resource } });
 
+      if (resourceCreatedDelegate.isBound())
+      {
+         resourceCreatedDelegate.execute(*resource);
+      }
+
       return resource;
+   }
+
+   DelegateHandle bindOnResourceCreated(typename ResourceCreatedDelegate::FuncType&& func)
+   {
+      return resourceCreatedDelegate.bind(std::move(func)));
+   }
+
+   void unbindOnResourceCreated()
+   {
+      resourceCreatedDelegate.unbind();
    }
 
 private:
    std::unordered_multimap<Spec, SPtr<T>> pool;
    int count = 0;
+
+   ResourceCreatedDelegate resourceCreatedDelegate;
 };
