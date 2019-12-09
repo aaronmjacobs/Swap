@@ -35,7 +35,7 @@ Fb::Attachments Fb::generateAttachments(const Specification& specification)
 {
    Attachments attachments;
 
-   bool isMultisample = specification.samples > 0;
+   bool isMultisample = specification.samples > 0 && !specification.cubeMap;
 
    if (specification.depthStencilType != DepthStencilType::None)
    {
@@ -44,7 +44,11 @@ Fb::Attachments Fb::generateAttachments(const Specification& specification)
       depthStencilSpecification.width = specification.width;
       depthStencilSpecification.height = specification.height;
 
-      if (isMultisample)
+      if (specification.cubeMap)
+      {
+         depthStencilSpecification.target = Tex::Target::TextureCubeMap;
+      }
+      else if (isMultisample)
       {
          depthStencilSpecification.target = Tex::Target::Texture2D_Multisample;
          depthStencilSpecification.samples = specification.samples;
@@ -70,7 +74,11 @@ Fb::Attachments Fb::generateAttachments(const Specification& specification)
    colorSpecification.width = specification.width;
    colorSpecification.height = specification.height;
 
-   if (isMultisample)
+   if (specification.cubeMap)
+   {
+      colorSpecification.target = Tex::Target::TextureCubeMap;
+   }
+   else if (isMultisample)
    {
       colorSpecification.target = Tex::Target::Texture2D_Multisample;
       colorSpecification.samples = specification.samples;
@@ -214,7 +222,7 @@ void Framebuffer::bind(Fb::Target target)
    }
 }
 
-SPtr<Texture> Framebuffer::getDepthStencilAttachment() const
+const SPtr<Texture>& Framebuffer::getDepthStencilAttachment() const
 {
    return attachments.depthStencilAttachment;
 }
@@ -235,20 +243,21 @@ void Framebuffer::setAttachments(Fb::Attachments newAttachments)
 
    attachments = std::move(newAttachments);
 
-   bool isMultisample = false;
-   if (attachments.depthStencilAttachment)
+   Tex::Target target = Tex::Target::Texture2D;
+   if (const SPtr<Texture>* firstValidAttachment = getFirstValidAttachment())
    {
-      isMultisample = attachments.depthStencilAttachment->isMultisample();
+      target = (*firstValidAttachment)->getSpecification().target;
    }
-   else if (attachments.colorAttachments.size() > 0)
+
+   GLenum attachmentTarget = static_cast<GLenum>(target);
+   if (target == Tex::Target::TextureCubeMap || target == Tex::Target::ProxyTextureCubeMap)
    {
-      isMultisample = attachments.colorAttachments[0]->isMultisample();
+      attachmentTarget = static_cast<GLenum>(Tex::Target::TextureCubeMapPositiveX);
    }
-   GLenum target = isMultisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
    if (attachments.depthStencilAttachment)
    {
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, target, attachments.depthStencilAttachment->getId(), 0);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, attachmentTarget, attachments.depthStencilAttachment->getId(), 0);
    }
 
    std::vector<GLenum> drawBuffers(attachments.colorAttachments.size());
@@ -256,7 +265,7 @@ void Framebuffer::setAttachments(Fb::Attachments newAttachments)
    for (const SPtr<Texture>& colorAttachment : attachments.colorAttachments)
    {
       drawBuffers[attachmentIndex] = static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + attachmentIndex);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, drawBuffers[attachmentIndex], target, colorAttachment->getId(), 0);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, drawBuffers[attachmentIndex], attachmentTarget, colorAttachment->getId(), 0);
       ++attachmentIndex;
    }
    glDrawBuffers(static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
@@ -277,6 +286,52 @@ bool Framebuffer::getViewport(Viewport& viewport) const
    }
 
    return false;
+}
+
+void Framebuffer::setActiveFace(Fb::CubeFace face)
+{
+   bind();
+
+   Tex::Target target = Tex::Target::Texture2D;
+   if (const SPtr<Texture> * firstValidAttachment = getFirstValidAttachment())
+   {
+      target = (*firstValidAttachment)->getSpecification().target;
+   }
+
+   ASSERT(target == Tex::Target::TextureCubeMap || target == Tex::Target::ProxyTextureCubeMap);
+
+   if (attachments.depthStencilAttachment)
+   {
+      GLenum attachmentTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+      switch (face)
+      {
+      case Fb::CubeFace::Front:
+         attachmentTarget = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
+         break;
+      case Fb::CubeFace::Back:
+         attachmentTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
+         break;
+      case Fb::CubeFace::Top:
+         attachmentTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_Y;
+         break;
+      case Fb::CubeFace::Bottom:
+         attachmentTarget = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y;
+         break;
+      case Fb::CubeFace::Left:
+         attachmentTarget = GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
+         break;
+      case Fb::CubeFace::Right:
+         attachmentTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+         break;
+      default:
+         ASSERT(false);
+         break;
+      }
+
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, attachmentTarget, attachments.depthStencilAttachment->getId(), 0);
+   }
+
+   bindDefault();
 }
 
 const SPtr<Texture>* Framebuffer::getFirstValidAttachment() const

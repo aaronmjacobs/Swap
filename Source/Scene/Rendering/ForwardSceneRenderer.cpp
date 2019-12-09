@@ -73,17 +73,19 @@ ForwardSceneRenderer::ForwardSceneRenderer(int numSamples, const SPtr<ResourceMa
 
 void ForwardSceneRenderer::renderScene(const Scene& scene)
 {
-   SceneRenderInfo sceneRenderInfo;
-   if (!calcSceneRenderInfo(scene, sceneRenderInfo))
+   ViewInfo viewInfo;
+   if (!getViewInfo(scene, viewInfo))
    {
       return;
    }
 
-   populateViewUniforms(sceneRenderInfo.perspectiveInfo);
+   SceneRenderInfo sceneRenderInfo = calcSceneRenderInfo(scene, viewInfo, true);
+   setView(viewInfo);
 
    renderPrePass(sceneRenderInfo);
    renderNormalPass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
+   renderShadowMaps(scene, sceneRenderInfo);
    renderMainPass(sceneRenderInfo);
    renderTranslucencyPass(sceneRenderInfo);
    renderPostProcessPasses(sceneRenderInfo);
@@ -103,6 +105,10 @@ void ForwardSceneRenderer::onFramebufferSizeChanged(int newWidth, int newHeight)
 void ForwardSceneRenderer::renderNormalPass(const SceneRenderInfo& sceneRenderInfo)
 {
    normalPassFramebuffer.bind();
+
+   RasterizerState rasterizerState;
+   rasterizerState.depthFunc = DepthFunc::LessEqual;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
 
    glClear(GL_COLOR_BUFFER_BIT);
 
@@ -138,9 +144,14 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
 {
    mainPassFramebuffer.bind();
 
+   RasterizerState rasterizerState;
+   rasterizerState.depthFunc = DepthFunc::LessEqual;
+   RasterizerStateScope rasterizerStateScope(rasterizerState);
+
    glClear(GL_COLOR_BUFFER_BIT);
 
-   populateForwardUniforms(sceneRenderInfo);
+   std::array<DrawingContext, 8> contexts;
+   populateForwardUniforms(sceneRenderInfo, contexts);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
@@ -157,15 +168,16 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
          bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
          if (visible && material.getBlendMode() == BlendMode::Opaque)
          {
-            SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
+            int permutationIndex = selectForwardPermutation(material);
+            DrawingContext& permutationContext = contexts[permutationIndex];
 
-            forwardProgramPermutation->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
-            forwardProgramPermutation->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
+            permutationContext.program->setUniformValue(UniformNames::kModelMatrix, modelMatrix);
+            permutationContext.program->setUniformValue(UniformNames::kNormalMatrix, normalMatrix, false);
 
-            DrawingContext context(forwardProgramPermutation.get());
-            getForwardMaterial().apply(context);
-            material.apply(context);
-            section.draw(context);
+            DrawingContext localContext = permutationContext;
+            getForwardMaterial().apply(localContext);
+            material.apply(localContext);
+            section.draw(localContext);
          }
       }
    }

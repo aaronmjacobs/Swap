@@ -57,6 +57,11 @@ struct Transform
       return orientation * (scale * v);
    }
 
+   glm::vec3 rotateVector(const glm::vec3& v) const
+   {
+      return orientation * v;
+   }
+
 private:
    static void multiply(Transform& result, const Transform& first, const Transform& second)
    {

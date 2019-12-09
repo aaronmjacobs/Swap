@@ -3,6 +3,7 @@
 #include "Core/Assert.h"
 #include "Core/Pointers.h"
 #include "Graphics/Framebuffer.h"
+#include "Graphics/RasterizerState.h"
 #include "Graphics/TextureInfo.h"
 #include "Graphics/UniformBufferObject.h"
 #include "Graphics/Viewport.h"
@@ -10,6 +11,13 @@
 #include <glad/gl.h>
 
 #include <array>
+
+class RasterizerStateScope
+{
+public:
+   RasterizerStateScope(const RasterizerState& state);
+   ~RasterizerStateScope();
+};
 
 class GraphicsContext
 {
@@ -52,6 +60,9 @@ public:
    void bindTexture(Tex::Target target, GLuint texture);
    void activateAndBindTexture(int textureUnit, Tex::Target target, GLuint texture);
 
+   void pushRasterizerState(const RasterizerState& state);
+   void popRasterizerState();
+
    void onProgramDestroyed(GLuint program);
    void onVertexArrayDestroyed(GLuint vao);
    void onFramebufferDestroyed(GLuint framebuffer);
@@ -77,4 +88,7 @@ private:
    std::array<TextureBindings, 32> textureBindings;
 
    SPtr<UniformBufferObject> framebufferUniformBuffer;
+
+   RasterizerState baseRasterizerState;
+   std::vector<RasterizerState> rasterizerStateStack;
 };

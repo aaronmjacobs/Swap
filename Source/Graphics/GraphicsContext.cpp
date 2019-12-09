@@ -85,6 +85,70 @@ namespace
          return 0;
       }
    }
+
+   void setCapabilityEnabled(GLenum capability, bool enabled)
+   {
+      if (enabled)
+      {
+         glEnable(capability);
+      }
+      else
+      {
+         glDisable(capability);
+      }
+   }
+
+   void setRasterizerState(const RasterizerState& state, const RasterizerState* oldState)
+   {
+#define IS_STATE_DIRTY(state_name) (!oldState || state.state_name != oldState->state_name)
+
+      if (IS_STATE_DIRTY(enableFaceCulling))
+      {
+         setCapabilityEnabled(GL_CULL_FACE, state.enableFaceCulling);
+      }
+
+      if (IS_STATE_DIRTY(faceCullMode))
+      {
+         glCullFace(static_cast<GLenum>(state.faceCullMode));
+      }
+
+      if (IS_STATE_DIRTY(enableDepthTest))
+      {
+         setCapabilityEnabled(GL_DEPTH_TEST, state.enableDepthTest);
+      }
+
+      if (IS_STATE_DIRTY(enableDepthWriting))
+      {
+         glDepthMask(state.enableDepthWriting);
+      }
+
+      if (IS_STATE_DIRTY(depthFunc))
+      {
+         glDepthFunc(static_cast<GLenum>(state.depthFunc));
+      }
+
+      if (IS_STATE_DIRTY(enableBlending))
+      {
+         setCapabilityEnabled(GL_BLEND, state.enableBlending);
+      }
+
+      if (IS_STATE_DIRTY(sourceBlendFactor) || IS_STATE_DIRTY(destinationBlendFactor))
+      {
+         glBlendFunc(static_cast<GLenum>(state.sourceBlendFactor), static_cast<GLenum>(state.destinationBlendFactor));
+      }
+
+#undef IS_STATE_DIRTY
+   }
+}
+
+RasterizerStateScope::RasterizerStateScope(const RasterizerState& state)
+{
+   GraphicsContext::current().pushRasterizerState(state);
+}
+
+RasterizerStateScope::~RasterizerStateScope()
+{
+   GraphicsContext::current().popRasterizerState();
 }
 
 GraphicsContext::~GraphicsContext()
@@ -132,6 +196,8 @@ void GraphicsContext::initialize()
    glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTextureUnit);
    activeTextureUnit -= GL_TEXTURE0;
    ASSERT(activeTextureUnit >= 0);
+
+   setRasterizerState(baseRasterizerState, nullptr);
 }
 
 void GraphicsContext::setDefaultViewport(const Viewport& viewport)
@@ -252,6 +318,35 @@ void GraphicsContext::activateAndBindTexture(int textureUnit, Tex::Target target
       activeTexture(textureUnit);
       bindTexture(target, texture);
    }
+}
+
+void GraphicsContext::pushRasterizerState(const RasterizerState& state)
+{
+   rasterizerStateStack.push_back(state);
+
+   RasterizerState* oldState = &baseRasterizerState;
+   if (rasterizerStateStack.size() > 1)
+   {
+      oldState = &rasterizerStateStack[rasterizerStateStack.size() - 2];
+   }
+
+   setRasterizerState(state, oldState);
+}
+
+void GraphicsContext::popRasterizerState()
+{
+   ASSERT(!rasterizerStateStack.empty());
+
+   RasterizerState oldState = rasterizerStateStack.back();
+   rasterizerStateStack.pop_back();
+
+   const RasterizerState* state = &baseRasterizerState;
+   if (!rasterizerStateStack.empty())
+   {
+      state = &rasterizerStateStack.back();
+   }
+
+   setRasterizerState(*state, &oldState);
 }
 
 void GraphicsContext::onProgramDestroyed(GLuint program)

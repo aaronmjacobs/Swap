@@ -20,7 +20,7 @@ public:
 
 private:
    void renderBasePass(const SceneRenderInfo& sceneRenderInfo);
-   void renderLightingPass(const SceneRenderInfo& sceneRenderInfo);
+   void renderLightingPass(const Scene& scene, const SceneRenderInfo& sceneRenderInfo);
    void renderPostProcessPasses(const SceneRenderInfo& sceneRenderInfo);
 
    void loadGBufferProgramPermutations();

@@ -1,9 +1,6 @@
 #pragma once
 
 #include "Core/Assert.h"
-#if SWAP_DEBUG
-#include "Core/Delegate.h"
-#endif // SWAP_DEBUG
 #include "Core/Pointers.h"
 #include "Graphics/MaterialParameter.h"
 #include "Graphics/Uniform.h"

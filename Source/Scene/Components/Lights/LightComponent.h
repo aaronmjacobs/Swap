@@ -10,6 +10,7 @@ protected:
    LightComponent(Entity& owningEntity)
       : SceneComponent(owningEntity)
       , color(glm::vec3(1.0f))
+      , castShadows(true)
    {
    }
 
@@ -24,6 +25,17 @@ public:
       color = newColor;
    }
 
+   bool getCastShadows() const
+   {
+      return castShadows;
+   }
+
+   void setCastShadows(bool newCastShadows)
+   {
+      castShadows = newCastShadows;
+   }
+
 private:
    glm::vec3 color;
+   bool castShadows;
 };

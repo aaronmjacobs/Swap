@@ -44,20 +44,20 @@ void CameraComponent::rotate(float yaw, float pitch)
    glm::quat yawChange = glm::angleAxis(yaw, MathUtils::kUpVector);
    glm::quat pitchChange = glm::angleAxis(pitch, MathUtils::kRightVector);
 
-   relativeTransform.orientation = glm::normalize(pitchChange * relativeTransform.orientation * yawChange);
+   relativeTransform.orientation = glm::normalize(yawChange * relativeTransform.orientation * pitchChange);
 }
 
 glm::vec3 CameraComponent::getForward() const
 {
-   return MathUtils::kForwardVector * relativeTransform.orientation;
+   return relativeTransform.rotateVector(MathUtils::kForwardVector);
 }
 
 glm::vec3 CameraComponent::getRight() const
 {
-   return MathUtils::kRightVector * relativeTransform.orientation;
+   return relativeTransform.rotateVector(MathUtils::kRightVector);
 }
 
 glm::vec3 CameraComponent::getUp() const
 {
-   return MathUtils::kUpVector * relativeTransform.orientation;
+   return relativeTransform.rotateVector(MathUtils::kUpVector);
 }

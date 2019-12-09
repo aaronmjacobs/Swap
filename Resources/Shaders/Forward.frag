@@ -6,6 +6,20 @@
 #include "MaterialCommon.glsl"
 #include "ViewCommon.glsl"
 
+/*
+layout(std140) uniform Lights
+{
+   DirectionalLight uDirectionalLights[kMaxDirectionalLights];
+   int uNumDirectionalLights;
+
+   PointLight uPointLights[kMaxPointLights];
+   int uNumPointLights;
+
+   SpotLight uSpotLights[kMaxSpotLights];
+   int uNumSpotLights;
+};
+*/
+
 uniform Material uMaterial;
 
 const int kMaxDirectionalLights = 2;

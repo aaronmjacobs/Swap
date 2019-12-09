@@ -157,7 +157,7 @@ namespace
          {
             if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
             {
-               activeCameraComponent->rotate(0.0f, -value * scene.getDeltaTime() * kLookSpeed);
+               activeCameraComponent->rotate(0.0f, value * scene.getDeltaTime() * kLookSpeed);
             }
          });
 
@@ -165,7 +165,7 @@ namespace
          {
             if (CameraComponent* activeCameraComponent = scene.getActiveCameraComponent())
             {
-               activeCameraComponent->rotate(value * scene.getDeltaTime() * kLookSpeed, 0.0f);
+               activeCameraComponent->rotate(-value * scene.getDeltaTime() * kLookSpeed, 0.0f);
             }
          });
       }
@@ -210,6 +210,42 @@ namespace
          cameraComponent->makeActiveCamera();
       }
 
+      // Sponza
+      {
+         ModelSpecification modelSpecification;
+         IOUtils::getAbsoluteResourcePath("Sponza/Sponza.gltf", modelSpecification.path);
+         modelSpecification.textureParams.minFilter = Tex::MinFilter::LinearMipmapLinear;
+         modelSpecification.textureParams.flipVerticallyOnLoad = false;
+         Model sponzaModel = resourceManager.loadModel(modelSpecification);
+         sponzaModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(0.0f));
+         sponzaModel.setMaterialParameter("uMaterial.shininess", 50.0f);
+
+         Entity* sponzaEntity = scene.createEntity<ModelComponent>();
+
+         ModelComponent* sponzaModelComponent = sponzaEntity->getComponentByClass<ModelComponent>();
+         sponzaModelComponent->setModel(std::move(sponzaModel));
+         sponzaModelComponent->setRelativeScale(glm::vec3(0.1f));
+      }
+
+      // Sponza point light
+      {
+         Entity* pointLightEntity = scene.createEntity<PointLightComponent, ModelComponent>();
+
+         PointLightComponent* pointLightComponent = pointLightEntity->getComponentByClass<PointLightComponent>();
+         pointLightComponent->setColor(glm::vec3(0.5f));
+         pointLightComponent->setRadius(800.0f);
+         pointLightComponent->setRelativePosition(glm::vec3(0.0f, 30.0f, 0.0f));
+
+         ModelSpecification sphereModelSpecification;
+         IOUtils::getAbsoluteResourcePath("Meshes/Sphere.obj", sphereModelSpecification.path);
+         Model sphereModel = resourceManager.loadModel(sphereModelSpecification);
+         sphereModel.setMaterialParameter("uMaterial.emissiveColor", pointLightComponent->getColor());
+
+         ModelComponent* modelComponent = pointLightEntity->getComponentByClass<ModelComponent>();
+         modelComponent->setParent(pointLightComponent);
+         modelComponent->setModel(std::move(sphereModel));
+      }
+
       // Bunnies
       {
          ModelSpecification modelSpecification;
@@ -223,22 +259,44 @@ namespace
          Entity* bunnyEntity = scene.createEntity<ModelComponent>();
 
          ModelComponent* bunnyModelComponent = bunnyEntity->getComponentByClass<ModelComponent>();
-         bunnyModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(1.0f, 0.0f, 0.0f));
+         //bunnyModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(1.0f, 0.0f, 0.0f));
          bunnyModelComponent->setModel(bunnyModel);
-         bunnyModelComponent->setRelativePosition(glm::vec3(0.25f, -1.0f, 0.0f));
+         bunnyModelComponent->setRelativePosition(glm::vec3(0.25f, 0.0f, -2.0f));
          bunnyModelComponent->setRelativeScale(glm::vec3(10.0f));
 
          ModelComponent* bunnyModelComponent2 = bunnyEntity->createComponent<ModelComponent>();
          bunnyModelComponent2->setParent(bunnyModelComponent);
-         bunnyModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(0.0f, 1.0f, 0.0f));
+         //bunnyModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(0.0f, 1.0f, 0.0f));
          bunnyModelComponent2->setModel(bunnyModel);
          bunnyModelComponent2->setRelativePosition(glm::vec3(0.15f, 0.0f, 0.0f));
 
          ModelComponent* bunnyModelComponent3 = bunnyEntity->createComponent<ModelComponent>();
          bunnyModelComponent3->setParent(bunnyModelComponent);
-         bunnyModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(0.0f, 0.0f, 1.0f));
+         //bunnyModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(0.0f, 0.0f, 1.0f));
          bunnyModelComponent3->setModel(bunnyModel);
          bunnyModelComponent3->setRelativePosition(glm::vec3(-0.15f, 0.0f, 0.0f));
+      }
+
+      // Nanosuit
+      {
+         ModelSpecification modelSpecification;
+         IOUtils::getAbsoluteResourcePath("nanosuit/nanosuit.obj", modelSpecification.path);
+         Model nanosuitModel = resourceManager.loadModel(modelSpecification);
+         nanosuitModel.setMaterialParameter("uMaterial.emissiveColor", glm::vec3(0.0f));
+         nanosuitModel.setMaterialParameter("uMaterial.shininess", 50.0f);
+
+         // ...
+         for (std::size_t i = 0; i < nanosuitModel.getNumMeshSections(); ++i)
+         {
+            Material& material = nanosuitModel.getMaterial(i);
+            material.setBlendMode(BlendMode::Opaque);
+         }
+
+         Entity* nanosuitEntity = scene.createEntity<ModelComponent>();
+
+         ModelComponent* nanosuitModelComponent = nanosuitEntity->getComponentByClass<ModelComponent>();
+         nanosuitModelComponent->setModel(std::move(nanosuitModel));
+         nanosuitModelComponent->setRelativeScale(glm::vec3(0.25f));
       }
 
       // Directional light
@@ -253,11 +311,11 @@ namespace
       }
 
       // Point light
-      {
+      /*{
          Entity* pointLightEntity = scene.createEntity<PointLightComponent, ModelComponent>();
 
          PointLightComponent* pointLightComponent = pointLightEntity->getComponentByClass<PointLightComponent>();
-         pointLightComponent->setColor(glm::vec3(0.12f, 0.83f, 0.91f));
+         pointLightComponent->setColor(glm::vec3(0.12f, 0.83f, 0.91f) * 0.25f);
          pointLightComponent->setRadius(20.0f);
          pointLightComponent->setTickFunction([](Component* component, float dt)
          {
@@ -281,30 +339,36 @@ namespace
          modelComponent->setParent(pointLightComponent);
          modelComponent->setModel(std::move(sphereModel));
          modelComponent->setRelativeScale(glm::vec3(0.125f));
-      }
+      }*/
 
       // Spot light
       {
          Entity* spotLightEntity = scene.createEntity<SpotLightComponent, ModelComponent>();
 
          SpotLightComponent* spotLightComponent = spotLightEntity->getComponentByClass<SpotLightComponent>();
-         spotLightComponent->setColor(glm::vec3(0.93f, 0.22f, 0.60f));
-         spotLightComponent->setRadius(30.0f);
-         spotLightComponent->setRelativeOrientation(glm::angleAxis(glm::radians(35.0f), MathUtils::kRightVector));
-         spotLightComponent->setRelativePosition(glm::vec3(-0.5f, -0.75f, 1.0f));
-         spotLightComponent->setBeamAngle(5.0f);
-         spotLightComponent->setCutoffAngle(15.0f);
+         spotLightComponent->setColor(glm::vec3(0.93f, 0.22f, 0.60f) * 5.0f);
+         spotLightComponent->setRadius(150.0f);
+         spotLightComponent->setRelativeOrientation(glm::angleAxis(glm::radians(15.0f), MathUtils::kRightVector));
+         glm::vec3 basePosition(0.0f, 1.0f, 3.0f);
+         spotLightComponent->setRelativePosition(basePosition);
+         spotLightComponent->setBeamAngle(25.0f);
+         spotLightComponent->setCutoffAngle(45.0f);
 
-         spotLightComponent->setTickFunction([](Component* component, float dt)
+         spotLightComponent->setTickFunction([basePosition](Component* component, float dt)
          {
             SceneComponent* sceneComponent = static_cast<SceneComponent*>(component);
 
             float pitchMultiplier = glm::sin(component->getScene().getTime()) + 1.0f;
             float yawMultiplier = glm::sin(component->getScene().getTime() * 0.7f) * 2.0f;
 
-            glm::quat pitch = glm::angleAxis(glm::radians(35.0f) * pitchMultiplier, MathUtils::kRightVector);
-            glm::quat yaw = glm::angleAxis(glm::radians(-35.0f) * yawMultiplier, MathUtils::kUpVector);
+            glm::quat pitch = glm::angleAxis(glm::radians(15.0f) * pitchMultiplier, MathUtils::kRightVector);
+            glm::quat yaw = glm::angleAxis(glm::radians(-15.0f) * yawMultiplier, MathUtils::kUpVector);
             sceneComponent->setRelativeOrientation(pitch * yaw);
+
+            float xOffset = glm::sin(component->getScene().getTime() * 1.3f);
+            float yOffset = glm::sin(component->getScene().getTime() * 0.9f);
+            float zOffset = glm::sin(component->getScene().getTime() * 1.6f);
+            sceneComponent->setRelativePosition(basePosition + glm::vec3(xOffset, yOffset, zOffset));
          });
 
          ModelSpecification coneModelSpecification;
@@ -315,7 +379,7 @@ namespace
          ModelComponent* modelComponent = spotLightEntity->getComponentByClass<ModelComponent>();
          modelComponent->setParent(spotLightComponent);
          modelComponent->setModel(std::move(coneModel));
-         modelComponent->setRelativeScale(glm::vec3(0.125f));
+         modelComponent->setRelativeScale(glm::vec3(0.25f));
       }
    }
 }

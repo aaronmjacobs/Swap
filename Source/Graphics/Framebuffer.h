@@ -28,12 +28,23 @@ namespace Fb
       DrawFramebuffer = GL_DRAW_FRAMEBUFFER
    };
 
+   enum class CubeFace
+   {
+      Front,
+      Back,
+      Top,
+      Bottom,
+      Left,
+      Right
+   };
+
    struct Specification
    {
       GLsizei width = 0;
       GLsizei height = 0;
 
       GLsizei samples = 0;
+      bool cubeMap = false;
 
       DepthStencilType depthStencilType = DepthStencilType::Depth24Stencil8;
 
@@ -89,12 +100,14 @@ public:
       return attachments;
    }
 
-   SPtr<Texture> getDepthStencilAttachment() const;
+   const SPtr<Texture>& getDepthStencilAttachment() const;
    SPtr<Texture> getColorAttachment(int index) const;
 
    void setAttachments(Fb::Attachments newAttachments);
 
    bool getViewport(Viewport& viewport) const;
+
+   void setActiveFace(Fb::CubeFace face);
 
 private:
    const SPtr<Texture>* getFirstValidAttachment() const;
