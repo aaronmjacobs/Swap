@@ -25,6 +25,11 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
+#if SWAP_DEBUG && SWAP_GL_DEBUG_CONTEXT_SUPPORTED
+#  include <sstream>
+#  include <string>
+#endif // SWAP_DEBUG && SWAP_GL_DEBUG_CONTEXT_SUPPORTED
+
 namespace
 {
 #if SWAP_DEBUG
@@ -59,6 +64,113 @@ namespace
       GLenum errorCode = glad_glGetError();
       ASSERT(errorCode == GL_NO_ERROR, "OpenGL error %d (%s) in %s", errorCode, getGlErrorName(errorCode), name);
    }
+
+#if SWAP_GL_DEBUG_CONTEXT_SUPPORTED
+   void glDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+   {
+      static const std::array<GLuint, 4> kIgnoredIds =
+      {
+         131169, // Framebuffer created
+         131185, // Buffer created
+         131218, // Shader will be recompiled due to GL state mismatches
+         131204, // Texture 0 has mipmaps
+      };
+
+      for (GLuint ignoredId : kIgnoredIds)
+      {
+         if (id == ignoredId)
+         {
+            return;
+         }
+      }
+
+      const char* sourceStr = nullptr;
+      switch (source)
+      {
+      case GL_DEBUG_SOURCE_API:
+         sourceStr = "api";
+         break;
+      case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+         sourceStr = "window system";
+         break;
+      case GL_DEBUG_SOURCE_SHADER_COMPILER:
+         sourceStr = "shader compiler";
+         break;
+      case GL_DEBUG_SOURCE_THIRD_PARTY:
+         sourceStr = "third party";
+         break;
+      case GL_DEBUG_SOURCE_APPLICATION:
+         sourceStr = "application";
+         break;
+      case GL_DEBUG_SOURCE_OTHER:
+         sourceStr = "other";
+         break;
+      default:
+         ASSERT(false);
+         sourceStr = "unknown";
+         break;
+      }
+
+      const char* typeStr = nullptr;
+      switch (type)
+      {
+      case GL_DEBUG_TYPE_ERROR:
+         typeStr = "error";
+         break;
+      case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+         typeStr = "deprecated behavior";
+         break;
+      case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+         typeStr = "undefined behavior";
+         break;
+      case GL_DEBUG_TYPE_PORTABILITY:
+         typeStr = "portability";
+         break;
+      case GL_DEBUG_TYPE_PERFORMANCE:
+         typeStr = "performance";
+         break;
+      case GL_DEBUG_TYPE_MARKER:
+         typeStr = "marker";
+         break;
+      case GL_DEBUG_TYPE_PUSH_GROUP:
+         typeStr = "push group";
+         break;
+      case GL_DEBUG_TYPE_POP_GROUP:
+         typeStr = "pop group";
+         break;
+      case GL_DEBUG_TYPE_OTHER:
+         typeStr = "other";
+         break;
+      default:
+         ASSERT(false);
+         typeStr = "unknown";
+         break;
+      }
+
+      std::stringstream ss;
+      ss << "OpenGL debug output: source = '" << sourceStr << "', type = '" << typeStr << "', id = '" << id << "'\n" << message;
+      std::string output = ss.str();
+
+      switch (severity)
+      {
+      case GL_DEBUG_SEVERITY_HIGH:
+         ASSERT(false, "%s", output.c_str());
+         break;
+      case GL_DEBUG_SEVERITY_MEDIUM:
+         LOG_ERROR(output);
+         break;
+      case GL_DEBUG_SEVERITY_LOW:
+         LOG_WARNING(output);
+         break;
+      case GL_DEBUG_SEVERITY_NOTIFICATION:
+         LOG_INFO(output);
+         break;
+      default:
+         ASSERT(false);
+         break;
+      }
+   }
+#endif // SWAP_GL_DEBUG_CONTEXT_SUPPORTED
 #endif // SWAP_DEBUG
 
    const int kNumSamples = 0;
@@ -70,6 +182,9 @@ namespace
       glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
       glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
       glfwWindowHint(GLFW_SAMPLES, kNumSamples);
+#if SWAP_DEBUG && SWAP_GL_DEBUG_CONTEXT_SUPPORTED
+      glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif // SWAP_DEBUG && SWAP_GL_DEBUG_CONTEXT_SUPPORTED
 
       UPtr<Window> window = Window::create(1280, 720, "Swap");
       if (!window)
@@ -86,6 +201,19 @@ namespace
          LOG_ERROR_MSG_BOX("Unable to initialize OpenGL");
          return nullptr;
       }
+
+#if SWAP_DEBUG && SWAP_GL_DEBUG_CONTEXT_SUPPORTED
+      GLint flags = 0;
+      glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+
+      if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+      {
+         glEnable(GL_DEBUG_OUTPUT);
+         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+         glDebugMessageCallback(glDebugOutput, nullptr);
+         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+      }
+#endif // SWAP_DEBUG && SWAP_GL_DEBUG_CONTEXT_SUPPORTED
 
       GraphicsContext::current().initialize();
 
