@@ -9,7 +9,9 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC SWAP_PLATFORM_MACOS=$<PLATFORM
 target_compile_definitions(${PROJECT_NAME} PUBLIC SWAP_PLATFORM_LINUX=$<PLATFORM_ID:Linux>)
 
 set(SRC_DIR "${PROJECT_SOURCE_DIR}/Source")
+set(RES_DIR "${PROJECT_SOURCE_DIR}/Resources")
 set(LIB_DIR "${PROJECT_SOURCE_DIR}/Libraries")
 
 include("${PROJECT_SOURCE_DIR}/Source.cmake")
+include("${PROJECT_SOURCE_DIR}/Resources.cmake")
 include("${PROJECT_SOURCE_DIR}/Libraries.cmake")
