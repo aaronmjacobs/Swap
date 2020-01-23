@@ -1,11 +1,6 @@
-set(MESH_DIR "${RES_DIR}/Meshes")
 set(SHADER_DIR "${RES_DIR}/Shaders")
 
 set(RESOURCE_FILES
-   "${MESH_DIR}/Bunny.obj"
-   "${MESH_DIR}/Cone.obj"
-   "${MESH_DIR}/Sphere.obj"
-
    "${SHADER_DIR}/Blur.frag"
    "${SHADER_DIR}/DeferredLighting.frag"
    "${SHADER_DIR}/DeferredLighting.vert"
