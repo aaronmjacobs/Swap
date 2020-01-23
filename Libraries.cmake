@@ -42,6 +42,8 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_CTOR_INIT)
 target_link_libraries(${PROJECT_NAME} PUBLIC glm)
 
 # GSL
+get_target_property(CXX_STANDARD ${PROJECT_NAME} CXX_STANDARD)
+set(GSL_CXX_STANDARD ${CXX_STANDARD} CACHE INTERNAL "Use c++ standard")
 add_subdirectory("${LIB_DIR}/GSL")
 target_link_libraries(${PROJECT_NAME} PUBLIC GSL)
 
@@ -58,12 +60,14 @@ target_sources(${PROJECT_NAME} PRIVATE
    "${STB_DIR}/stb_c_lexer.h"
    "${STB_DIR}/stb_connected_components.h"
    "${STB_DIR}/stb_divide.h"
+   "${STB_DIR}/stb_ds.h"
    "${STB_DIR}/stb_dxt.h"
    "${STB_DIR}/stb_easy_font.h"
    "${STB_DIR}/stb_herringbone_wang_tile.h"
    "${STB_DIR}/stb_image.h"
    "${STB_DIR}/stb_image_resize.h"
    "${STB_DIR}/stb_image_write.h"
+   "${STB_DIR}/stb_include.h"
    "${STB_DIR}/stb_leakcheck.h"
    "${STB_DIR}/stb_perlin.h"
    "${STB_DIR}/stb_rect_pack.h"
