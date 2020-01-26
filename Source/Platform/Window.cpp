@@ -11,6 +11,42 @@
 #include <glad/gl.h>
 #endif // SWAP_PLATFORM_MACOS
 
+namespace
+{
+   GLFWmonitor* selectFullScreenMonitor(const WindowBounds& windowBounds)
+   {
+      GLFWmonitor* fullScreenMonitor = glfwGetPrimaryMonitor();
+
+      int windowCenterX = windowBounds.x + (windowBounds.width / 2);
+      int windowCenterY = windowBounds.y + (windowBounds.height / 2);
+
+      int monitorCount = 0;
+      GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+
+      for (int i = 0; i < monitorCount; ++i)
+      {
+         GLFWmonitor* candidateMonitor = monitors[i];
+
+         if (const GLFWvidmode* vidMode = glfwGetVideoMode(candidateMonitor))
+         {
+            WindowBounds monitorBounds;
+            glfwGetMonitorPos(candidateMonitor, &monitorBounds.x, &monitorBounds.y);
+            monitorBounds.width = vidMode->width;
+            monitorBounds.height = vidMode->height;
+
+            if (windowCenterX >= monitorBounds.x && windowCenterX < monitorBounds.x + monitorBounds.width
+               && windowCenterY >= monitorBounds.y && windowCenterY < monitorBounds.y + monitorBounds.height)
+            {
+               fullScreenMonitor = candidateMonitor;
+               break;
+            }
+         }
+      }
+
+      return fullScreenMonitor;
+   }
+}
+
 class WindowCallbackHelper
 {
 public:
@@ -153,6 +189,35 @@ bool Window::shouldClose() const
 void Window::setTitle(const char* title)
 {
    glfwSetWindowTitle(glfwWindow, title);
+}
+
+void Window::toggleFullscreen()
+{
+   ASSERT(glfwWindow);
+
+   if (GLFWmonitor* currentMonitor = glfwGetWindowMonitor(glfwWindow))
+   {
+      // Currently in full screen mode, swap back to windowed (with last saved window location)
+      glfwSetWindowMonitor(glfwWindow, nullptr, savedWindowBounds.x, savedWindowBounds.y, savedWindowBounds.width, savedWindowBounds.height, 0);
+   }
+   else
+   {
+      // Currently in windowed mode, save the window location and swap to full screen
+      glfwGetWindowPos(glfwWindow, &savedWindowBounds.x, &savedWindowBounds.y);
+      glfwGetWindowSize(glfwWindow, &savedWindowBounds.width, &savedWindowBounds.height);
+
+      if (GLFWmonitor* newMonitor = selectFullScreenMonitor(savedWindowBounds))
+      {
+         if (const GLFWvidmode* vidMode = glfwGetVideoMode(newMonitor))
+         {
+            glfwSetWindowMonitor(glfwWindow, newMonitor, 0, 0, vidMode->width, vidMode->height, vidMode->refreshRate);
+
+            // Due to a bug, the previously set swap interval is ignored on Windows 10 when transitioning to full screen, so we set it again here
+            // See: https://github.com/glfw/glfw/issues/1072
+            glfwSwapInterval(1);
+         }
+      }
+   }
 }
 
 void Window::getFramebufferSize(int& width, int& height)

@@ -7,6 +7,14 @@
 class GraphicsContext;
 struct GLFWwindow;
 
+struct WindowBounds
+{
+   int x = 0;
+   int y = 0;
+   int width = 0;
+   int height = 0;
+};
+
 class Window
 {
 public:
@@ -28,6 +36,7 @@ public:
    bool shouldClose() const;
 
    void setTitle(const char* title);
+   void toggleFullscreen();
 
    InputManager& getInputManager()
    {
@@ -60,6 +69,8 @@ private:
    GLFWwindow* glfwWindow;
    InputManager inputManager;
    UPtr<GraphicsContext> graphicsContext;
+
+   WindowBounds savedWindowBounds;
 
    FramebufferSizeChangedDelegate framebufferSizeChangedDelegate;
    WindowRefreshRequestedDelegate windowRefreshRequestedDelegate;
