@@ -45,6 +45,7 @@ public:
 
    bool hasAlpha() const;
    bool isMultisample() const;
+   bool isCubemap() const;
 
 private:
    void assertBound() const;

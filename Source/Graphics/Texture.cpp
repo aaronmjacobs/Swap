@@ -513,6 +513,11 @@ bool Texture::isMultisample() const
    }
 }
 
+bool Texture::isCubemap() const
+{
+   return specification.target == Tex::Target::TextureCubeMap || specification.target == Tex::Target::ProxyTextureCubeMap;
+}
+
 void Texture::assertBound() const
 {
 #if SWAP_DEBUG

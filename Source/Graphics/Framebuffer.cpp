@@ -224,6 +224,11 @@ void Framebuffer::bind(Fb::Target target)
    }
 }
 
+bool Framebuffer::isBound(Fb::Target target) const
+{
+   return GraphicsContext::current().getBoundFramebuffer(target) == id;
+}
+
 const SPtr<Texture>& Framebuffer::getDepthStencilAttachment() const
 {
    return attachments.depthStencilAttachment;
@@ -241,9 +246,9 @@ SPtr<Texture> Framebuffer::getColorAttachment(int index) const
 
 void Framebuffer::setAttachments(Fb::Attachments newAttachments)
 {
-   bind();
-
    attachments = std::move(newAttachments);
+
+   bind();
 
    Tex::Target target = Tex::Target::Texture2D;
    if (const SPtr<Texture>* firstValidAttachment = getFirstValidAttachment())
@@ -305,8 +310,7 @@ bool Framebuffer::isCubeMap() const
 void Framebuffer::setActiveFace(Fb::CubeFace face)
 {
    ASSERT(isCubeMap());
-
-   bind();
+   ASSERT(isBound());
 
    Tex::Target target = Tex::Target::TextureCubeMapPositiveX;
    switch (face)
@@ -343,12 +347,10 @@ void Framebuffer::setActiveFace(Fb::CubeFace face)
    std::size_t attachmentIndex = 0;
    for (const SPtr<Texture>& colorAttachment : attachments.colorAttachments)
    {
-      GLenum attachment = GL_COLOR_ATTACHMENT0 + attachmentIndex;
+      GLenum attachment = static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + attachmentIndex);
       glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, attachmentTarget, colorAttachment->getId(), 0);
       ++attachmentIndex;
    }
-
-   bindDefault();
 }
 
 const SPtr<Texture>* Framebuffer::getFirstValidAttachment() const

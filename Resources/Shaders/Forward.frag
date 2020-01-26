@@ -8,17 +8,13 @@
 
 uniform Material uMaterial;
 
-const int kMaxDirectionalLights = 2;
-const int kMaxPointLights = 8;
-const int kMaxSpotLights = 8;
-
-uniform DirectionalLight uDirectionalLights[kMaxDirectionalLights];
+uniform DirectionalLight uDirectionalLights[MAX_DIRECTIONAL_LIGHTS];
 uniform int uNumDirectionalLights;
 
-uniform PointLight uPointLights[kMaxPointLights];
+uniform PointLight uPointLights[MAX_POINT_LIGHTS];
 uniform int uNumPointLights;
 
-uniform SpotLight uSpotLights[kMaxSpotLights];
+uniform SpotLight uSpotLights[MAX_SPOT_LIGHTS];
 uniform int uNumSpotLights;
 
 uniform sampler2D uAmbientOcclusion;

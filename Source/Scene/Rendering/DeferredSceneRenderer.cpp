@@ -36,7 +36,7 @@ DeferredSceneRenderer::DeferredSceneRenderer(const SPtr<ResourceManager>& inReso
          Tex::InternalFormat::RGBA8,
 
          // Emissive
-         Tex::InternalFormat::RGB8,
+         Tex::InternalFormat::RGB16F,
 
          // Color
          Tex::InternalFormat::RGB16F
@@ -161,6 +161,7 @@ void DeferredSceneRenderer::renderScene(const Scene& scene)
    renderPrePass(sceneRenderInfo);
    renderBasePass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
+   renderShadowMaps(scene, sceneRenderInfo);
    renderLightingPass(sceneRenderInfo);
    renderTranslucencyPass(sceneRenderInfo);
    renderPostProcessPasses(sceneRenderInfo);
@@ -233,13 +234,23 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
    baseRasterizerState.destinationBlendFactor = BlendFactor::One;
    RasterizerStateScope baseRasterierStateScope(baseRasterizerState);
 
-   for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
+   for (const DirectionalLightRenderInfo& directionalLightRenderInfo : sceneRenderInfo.directionalLights)
    {
-      directionalLightingProgram->setUniformValue("uDirectionalLight.color", directionalLightComponent->getColor());
-      directionalLightingProgram->setUniformValue("uDirectionalLight.direction",
-         directionalLightComponent->getAbsoluteTransform().rotateVector(MathUtils::kForwardVector));
-
       DrawingContext context(directionalLightingProgram.get());
+
+      DirectionalLightUniformData uniformData = directionalLightRenderInfo.getUniformData();
+
+      directionalLightingProgram->setUniformValue("uDirectionalLight.color", uniformData.color);
+      directionalLightingProgram->setUniformValue("uDirectionalLight.direction", uniformData.direction);
+
+      directionalLightingProgram->setUniformValue("uDirectionalLight.castShadows", uniformData.castShadows);
+      directionalLightingProgram->setUniformValue("uDirectionalLight.worldToShadow", uniformData.worldToShadow);
+      directionalLightingProgram->setUniformValue("uDirectionalLight.shadowBias", uniformData.shadowBias);
+
+      const SPtr<Texture>& shadowMap = uniformData.shadowMap ? uniformData.shadowMap : getDummyShadowMap();
+      GLint shadowMapTextureUnit = shadowMap->activateAndBind(context);
+      directionalLightingProgram->setUniformValue("uDirectionalLight.shadowMap", shadowMapTextureUnit);
+
       lightingMaterial.apply(context);
       getScreenMesh().draw(context);
    }
@@ -249,45 +260,61 @@ void DeferredSceneRenderer::renderLightingPass(const SceneRenderInfo& sceneRende
       pointAndSpotRasterizerState.faceCullMode = FaceCullMode::Front;
       RasterizerStateScope pointAndSpotRasterizerStateScope(pointAndSpotRasterizerState);
 
-      for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
+      for (const PointLightRenderInfo& pointLightRenderInfo : sceneRenderInfo.pointLights)
       {
-         Transform transform = pointLightComponent->getAbsoluteTransform();
+         DrawingContext context(pointLightingProgram.get());
 
-         float scaledRadius = pointLightComponent->getScaledRadius();
-         transform.scale = glm::vec3(scaledRadius);
+         PointLightUniformData uniformData = pointLightRenderInfo.getUniformData();
 
+         const PointLightComponent* component = pointLightRenderInfo.component;
+         ASSERT(component);
+         Transform transform = component->getAbsoluteTransform();
+         transform.scale = glm::vec3(uniformData.radius);
          pointLightingProgram->setUniformValue("uLocalToClip", sceneRenderInfo.viewInfo.getWorldToClip() * transform.toMatrix());
 
-         pointLightingProgram->setUniformValue("uPointLight.color", pointLightComponent->getColor());
-         pointLightingProgram->setUniformValue("uPointLight.position", transform.position);
-         pointLightingProgram->setUniformValue("uPointLight.radius", scaledRadius);
+         pointLightingProgram->setUniformValue("uPointLight.color", uniformData.color);
+         pointLightingProgram->setUniformValue("uPointLight.position", uniformData.position);
+         pointLightingProgram->setUniformValue("uPointLight.radius", uniformData.radius);
 
-         DrawingContext context(pointLightingProgram.get());
+         pointLightingProgram->setUniformValue("uPointLight.castShadows", uniformData.castShadows);
+         pointLightingProgram->setUniformValue("uPointLight.nearFar", uniformData.nearFar);
+         pointLightingProgram->setUniformValue("uPointLight.shadowBias", uniformData.shadowBias);
+
+         const SPtr<Texture>& shadowMap = uniformData.shadowMap ? uniformData.shadowMap : getDummyShadowCubeMap();
+         GLint shadowMapTextureUnit = shadowMap->activateAndBind(context);
+         pointLightingProgram->setUniformValue("uPointLight.shadowMap", shadowMapTextureUnit);
+
          lightingMaterial.apply(context);
          sphereMesh->draw(context);
       }
 
-      for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
+      for (const SpotLightRenderInfo& spotLightRenderInfo : sceneRenderInfo.spotLights)
       {
-         Transform transform = spotLightComponent->getAbsoluteTransform();
+         DrawingContext context(spotLightingProgram.get());
 
-         float beamAngle = glm::radians(spotLightComponent->getBeamAngle());
-         float cutoffAngle = glm::radians(spotLightComponent->getCutoffAngle());
+         SpotLightUniformData uniformData = spotLightRenderInfo.getUniformData();
 
-         float scaledRadius = spotLightComponent->getScaledRadius();
-         float widthScale = glm::tan(cutoffAngle) * scaledRadius * 2.0f;
-         transform.scale = glm::vec3(widthScale, widthScale, scaledRadius);
-
+         const SpotLightComponent* component = spotLightRenderInfo.component;
+         ASSERT(component);
+         Transform transform = component->getAbsoluteTransform();
+         float widthScale = glm::tan(uniformData.cutoffAngle) * uniformData.radius * 2.0f;
+         transform.scale = glm::vec3(widthScale, widthScale, uniformData.radius);
          spotLightingProgram->setUniformValue("uLocalToClip", sceneRenderInfo.viewInfo.getWorldToClip() * transform.toMatrix());
 
-         spotLightingProgram->setUniformValue("uSpotLight.color", spotLightComponent->getColor());
-         spotLightingProgram->setUniformValue("uSpotLight.direction", transform.rotateVector(MathUtils::kForwardVector));
-         spotLightingProgram->setUniformValue("uSpotLight.position", transform.position);
-         spotLightingProgram->setUniformValue("uSpotLight.radius", scaledRadius);
-         spotLightingProgram->setUniformValue("uSpotLight.beamAngle", beamAngle);
-         spotLightingProgram->setUniformValue("uSpotLight.cutoffAngle", cutoffAngle);
+         spotLightingProgram->setUniformValue("uSpotLight.color", uniformData.color);
+         spotLightingProgram->setUniformValue("uSpotLight.direction", uniformData.direction);
+         spotLightingProgram->setUniformValue("uSpotLight.position", uniformData.position);
+         spotLightingProgram->setUniformValue("uSpotLight.radius", uniformData.radius);
+         spotLightingProgram->setUniformValue("uSpotLight.beamAngle", uniformData.beamAngle);
+         spotLightingProgram->setUniformValue("uSpotLight.cutoffAngle", uniformData.cutoffAngle);
+         spotLightingProgram->setUniformValue("uSpotLight.castShadows", uniformData.castShadows);
+         spotLightingProgram->setUniformValue("uSpotLight.worldToShadow", uniformData.worldToShadow);
+         spotLightingProgram->setUniformValue("uSpotLight.shadowBias", uniformData.shadowBias);
 
-         DrawingContext context(spotLightingProgram.get());
+         const SPtr<Texture>& shadowMap = uniformData.shadowMap ? uniformData.shadowMap : getDummyShadowMap();
+         GLint shadowMapTextureUnit = shadowMap->activateAndBind(context);
+         spotLightingProgram->setUniformValue("uSpotLight.shadowMap", shadowMapTextureUnit);
+
          lightingMaterial.apply(context);
          coneMesh->draw(context);
       }

@@ -5,6 +5,7 @@
 #include "Graphics/Framebuffer.h"
 #include "Graphics/Material.h"
 #include "Graphics/Mesh.h"
+#include "Graphics/ResourcePool.h"
 #include "Graphics/UniformBufferObject.h"
 #include "Math/Transform.h"
 
@@ -71,13 +72,81 @@ struct ModelRenderInfo
    const Model* model = nullptr;
 };
 
+struct DirectionalLightUniformData
+{
+   glm::vec3 color = glm::vec3(0.0f);
+   glm::vec3 direction = glm::vec3(0.0f);
+
+   bool castShadows = false;
+   glm::mat4 worldToShadow = glm::mat4(0.0f);
+   float shadowBias = 0.0f;
+   SPtr<Texture> shadowMap = nullptr;
+};
+
+struct PointLightUniformData
+{
+   glm::vec3 color = glm::vec3(0.0f);
+   glm::vec3 position = glm::vec3(0.0f);
+   float radius = 0.0f;
+
+   bool castShadows = false;
+   glm::vec2 nearFar = glm::vec2(0.0f);
+   float shadowBias = 0.0f;
+   SPtr<Texture> shadowMap = nullptr;
+};
+
+struct SpotLightUniformData
+{
+   glm::vec3 color = glm::vec3(0.0f);
+   glm::vec3 direction = glm::vec3(0.0f);
+   glm::vec3 position = glm::vec3(0.0f);
+   float radius = 0.0f;
+   float beamAngle = 0.0f;
+   float cutoffAngle = 0.0f;
+
+   bool castShadows = false;
+   glm::mat4 worldToShadow = glm::mat4(0.0f);
+   float shadowBias = 0.0f;
+   SPtr<Texture> shadowMap = nullptr;
+};
+
+struct LightRenderInfo
+{
+   SPtr<Framebuffer> shadowMapFramebuffer;
+};
+
+struct DirectionalLightRenderInfo : public LightRenderInfo
+{
+   ViewInfo shadowViewInfo;
+   const DirectionalLightComponent* component = nullptr;
+
+   DirectionalLightUniformData getUniformData() const;
+};
+
+struct PointLightRenderInfo : public LightRenderInfo
+{
+   float nearPlane = 0.1f;
+   float farPlane = 1.0f;
+   const PointLightComponent* component = nullptr;
+
+   PointLightUniformData getUniformData() const;
+};
+
+struct SpotLightRenderInfo : public LightRenderInfo
+{
+   ViewInfo shadowViewInfo;
+   const SpotLightComponent* component = nullptr;
+
+   SpotLightUniformData getUniformData() const;
+};
+
 struct SceneRenderInfo
 {
    ViewInfo viewInfo;
    std::vector<ModelRenderInfo> modelRenderInfo;
-   std::vector<const DirectionalLightComponent*> directionalLights;
-   std::vector<const PointLightComponent*> pointLights;
-   std::vector<const SpotLightComponent*> spotLights;
+   std::vector<DirectionalLightRenderInfo> directionalLights;
+   std::vector<PointLightRenderInfo> pointLights;
+   std::vector<SpotLightRenderInfo> spotLights;
 };
 
 class SceneRenderer
@@ -101,16 +170,33 @@ protected:
       return *resourceManager;
    }
 
+   const SPtr<Texture>& getDummyShadowMap() const
+   {
+      return dummyShadowMap;
+   }
+
+   const SPtr<Texture>& getDummyShadowCubeMap() const
+   {
+      return dummyShadowCubeMap;
+   }
+
    bool getViewInfo(const Scene& scene, ViewInfo& viewInfo) const;
    SceneRenderInfo calcSceneRenderInfo(const Scene& scene, const ViewInfo& viewInfo, bool includeLights) const;
 
    void setView(const ViewInfo& viewInfo);
+
+   void renderDepthPass(const SceneRenderInfo& sceneRenderInfo, Framebuffer& framebuffer);
 
    void renderPrePass(const SceneRenderInfo& sceneRenderInfo);
    void setPrePassDepthAttachment(const SPtr<Texture>& depthAttachment);
 
    void renderSSAOPass(const SceneRenderInfo& sceneRenderInfo);
    void setSSAOTextures(const SPtr<Texture>& depthTexture, const SPtr<Texture>& positionTexture, const SPtr<Texture>& normalTexture);
+
+   SPtr<Framebuffer> renderShadowMap(const Scene& scene, const DirectionalLightComponent& directionalLight, ViewInfo& viewInfo);
+   SPtr<Framebuffer> renderShadowMap(const Scene& scene, const PointLightComponent& pointLight, float& nearPlane, float& farPlane);
+   SPtr<Framebuffer> renderShadowMap(const Scene& scene, const SpotLightComponent& spotLight, ViewInfo& viewInfo);
+   void renderShadowMaps(const Scene& scene, SceneRenderInfo& sceneRenderInfo);
 
    void renderTranslucencyPass(const SceneRenderInfo& sceneRenderInfo);
    void setTranslucencyPassAttachments(const SPtr<Texture>& depthAttachment, const SPtr<Texture>& colorAttachment);
@@ -148,8 +234,8 @@ protected:
    }
 
    void loadForwardProgramPermutations();
-   SPtr<ShaderProgram>& selectForwardPermutation(const Material& material);
-   void populateForwardUniforms(const SceneRenderInfo& sceneRenderInfo);
+   int selectForwardPermutation(const Material& material);
+   void populateForwardUniforms(const SceneRenderInfo& sceneRenderInfo, std::array<DrawingContext, 8>& contexts);
 
    Material& getForwardMaterial()
    {
@@ -166,15 +252,22 @@ protected:
       return bloomPassFramebuffer;
    }
 
+   SPtr<Framebuffer> obtainShadowMap(int width, int height);
+   SPtr<Framebuffer> obtainCubeShadowMap(int size);
+
 private:
    float nearPlaneDistance;
    float farPlaneDistance;
 
    SPtr<ResourceManager> resourceManager;
+   ResourcePool<Framebuffer> shadowMapPool;
 
    Mesh screenMesh;
 
    SPtr<UniformBufferObject> viewUniformBuffer;
+
+   SPtr<Texture> dummyShadowMap;
+   SPtr<Texture> dummyShadowCubeMap;
 
    Framebuffer prePassFramebuffer;
    SPtr<ShaderProgram> depthOnlyProgram;

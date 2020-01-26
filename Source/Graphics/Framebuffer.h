@@ -94,6 +94,7 @@ public:
    static void bindDefault(Fb::Target target = Fb::Target::Framebuffer);
 
    void bind(Fb::Target target = Fb::Target::Framebuffer);
+   bool isBound(Fb::Target target = Fb::Target::Framebuffer) const;
 
    const Fb::Attachments& getAttachments() const
    {

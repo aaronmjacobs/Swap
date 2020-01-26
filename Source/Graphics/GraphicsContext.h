@@ -72,6 +72,7 @@ public:
    void useProgram(GLuint program);
    void bindVertexArray(GLuint vao);
    void bindFramebuffer(Fb::Target target, GLuint framebuffer);
+   GLuint getBoundFramebuffer(Fb::Target target) const;
 
    void activeTexture(int textureUnit);
    void bindTexture(Tex::Target target, GLuint texture);

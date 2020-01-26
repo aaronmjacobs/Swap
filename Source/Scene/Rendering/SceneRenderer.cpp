@@ -176,69 +176,296 @@ namespace
       return false;
    }
 
-   void populateDirectionalLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   const float kLightNearPlane = 0.1f;
+   const int kMaxDirectionalLights = 2;
+   const int kMaxPointLights = 8;
+   const int kMaxSpotLights = 8;
+
+   void populateDirectionalLightUniforms(const SceneRenderInfo& sceneRenderInfo, DrawingContext& context, const SPtr<Texture>& dummyShadowMap)
    {
-      int directionalLightIndex = 0;
-      for (const DirectionalLightComponent* directionalLightComponent : sceneRenderInfo.directionalLights)
+      ASSERT(context.program);
+      ASSERT(dummyShadowMap);
+
+      ShaderProgram& program = *context.program;
+
+      for (int directionalLightIndex = 0; directionalLightIndex < kMaxDirectionalLights; ++directionalLightIndex)
       {
+         DirectionalLightUniformData uniformData;
+         if (directionalLightIndex < sceneRenderInfo.directionalLights.size())
+         {
+            uniformData = sceneRenderInfo.directionalLights[directionalLightIndex].getUniformData();
+         }
+
          std::string directionalLightStr = "uDirectionalLights[" + std::to_string(directionalLightIndex) + "]";
 
-         program.setUniformValue(directionalLightStr + ".color", directionalLightComponent->getColor());
-         program.setUniformValue(directionalLightStr + ".direction",
-            directionalLightComponent->getAbsoluteTransform().rotateVector(MathUtils::kForwardVector));
+         program.setUniformValue(directionalLightStr + ".color", uniformData.color);
+         program.setUniformValue(directionalLightStr + ".direction", uniformData.direction);
 
-         ++directionalLightIndex;
+         program.setUniformValue(directionalLightStr + ".castShadows", uniformData.castShadows);
+         program.setUniformValue(directionalLightStr + ".worldToShadow", uniformData.worldToShadow);
+         program.setUniformValue(directionalLightStr + ".shadowBias", uniformData.shadowBias);
+
+         const SPtr<Texture>& shadowMap = uniformData.shadowMap ? uniformData.shadowMap : dummyShadowMap;
+         GLint shadowMapTextureUnit = shadowMap->activateAndBind(context);
+         program.setUniformValue(directionalLightStr + ".shadowMap", shadowMapTextureUnit);
       }
+
       program.setUniformValue("uNumDirectionalLights", static_cast<int>(sceneRenderInfo.directionalLights.size()));
    }
 
-   void populatePointLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   void populatePointLightUniforms(const SceneRenderInfo& sceneRenderInfo, DrawingContext& context, const SPtr<Texture>& dummyShadowCubeMap)
    {
-      int pointLightIndex = 0;
-      for (const PointLightComponent* pointLightComponent : sceneRenderInfo.pointLights)
+      ASSERT(context.program);
+      ASSERT(dummyShadowCubeMap);
+
+      ShaderProgram& program = *context.program;
+
+      for (int pointLightIndex = 0; pointLightIndex < kMaxPointLights; ++pointLightIndex)
       {
+         PointLightUniformData uniformData;
+         if (pointLightIndex < sceneRenderInfo.pointLights.size())
+         {
+            uniformData = sceneRenderInfo.pointLights[pointLightIndex].getUniformData();
+         }
+
          std::string pointLightStr = "uPointLights[" + std::to_string(pointLightIndex) + "]";
 
-         Transform transform = pointLightComponent->getAbsoluteTransform();
-         float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
+         program.setUniformValue(pointLightStr + ".color", uniformData.color);
+         program.setUniformValue(pointLightStr + ".position", uniformData.position);
+         program.setUniformValue(pointLightStr + ".radius", uniformData.radius);
 
-         program.setUniformValue(pointLightStr + ".color", pointLightComponent->getColor());
-         program.setUniformValue(pointLightStr + ".position", transform.position);
-         program.setUniformValue(pointLightStr + ".radius", pointLightComponent->getRadius() * radiusScale);
+         program.setUniformValue(pointLightStr + ".castShadows", uniformData.castShadows);
+         program.setUniformValue(pointLightStr + ".nearFar", uniformData.nearFar);
+         program.setUniformValue(pointLightStr + ".shadowBias", uniformData.shadowBias);
 
-         ++pointLightIndex;
+         const SPtr<Texture>& shadowMap = uniformData.shadowMap ? uniformData.shadowMap : dummyShadowCubeMap;
+         GLint shadowMapTextureUnit = shadowMap->activateAndBind(context);
+         program.setUniformValue(pointLightStr + ".shadowMap", shadowMapTextureUnit);
       }
+
       program.setUniformValue("uNumPointLights", static_cast<int>(sceneRenderInfo.pointLights.size()));
    }
 
-   void populateSpotLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   void populateSpotLightUniforms(const SceneRenderInfo& sceneRenderInfo, DrawingContext& context, const SPtr<Texture>& dummyShadowMap)
    {
-      int spotLightIndex = 0;
-      for (const SpotLightComponent* spotLightComponent : sceneRenderInfo.spotLights)
+      ASSERT(context.program);
+      ASSERT(dummyShadowMap);
+
+      ShaderProgram& program = *context.program;
+
+      for (int spotLightIndex = 0; spotLightIndex < kMaxSpotLights; ++spotLightIndex)
       {
+         SpotLightUniformData uniformData;
+         if (spotLightIndex < sceneRenderInfo.spotLights.size())
+         {
+            uniformData = sceneRenderInfo.spotLights[spotLightIndex].getUniformData();
+         }
+
          std::string spotLightStr = "uSpotLights[" + std::to_string(spotLightIndex) + "]";
 
-         Transform transform = spotLightComponent->getAbsoluteTransform();
-         float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
+         program.setUniformValue(spotLightStr + ".color", uniformData.color);
+         program.setUniformValue(spotLightStr + ".direction", uniformData.direction);
+         program.setUniformValue(spotLightStr + ".position", uniformData.position);
+         program.setUniformValue(spotLightStr + ".radius", uniformData.radius);
+         program.setUniformValue(spotLightStr + ".beamAngle", uniformData.beamAngle);
+         program.setUniformValue(spotLightStr + ".cutoffAngle", uniformData.cutoffAngle);
 
-         program.setUniformValue(spotLightStr + ".color", spotLightComponent->getColor());
-         program.setUniformValue(spotLightStr + ".direction", transform.rotateVector(MathUtils::kForwardVector));
-         program.setUniformValue(spotLightStr + ".position", transform.position);
-         program.setUniformValue(spotLightStr + ".radius", spotLightComponent->getRadius() * radiusScale);
-         program.setUniformValue(spotLightStr + ".beamAngle", glm::radians(spotLightComponent->getBeamAngle()));
-         program.setUniformValue(spotLightStr + ".cutoffAngle", glm::radians(spotLightComponent->getCutoffAngle()));
+         program.setUniformValue(spotLightStr + ".castShadows", uniformData.castShadows);
+         program.setUniformValue(spotLightStr + ".worldToShadow", uniformData.worldToShadow);
+         program.setUniformValue(spotLightStr + ".shadowBias", uniformData.shadowBias);
 
-         ++spotLightIndex;
+         const SPtr<Texture>& shadowMap = uniformData.shadowMap ? uniformData.shadowMap : dummyShadowMap;
+         GLint shadowMapTextureUnit = shadowMap->activateAndBind(context);
+         program.setUniformValue(spotLightStr + ".shadowMap", shadowMapTextureUnit);
       }
+
       program.setUniformValue("uNumSpotLights", static_cast<int>(sceneRenderInfo.spotLights.size()));
    }
 
-   void populateLightUniforms(const SceneRenderInfo& sceneRenderInfo, ShaderProgram& program)
+   void populateLightUniforms(const SceneRenderInfo& sceneRenderInfo, DrawingContext& context, const SPtr<Texture>& dummyShadowMap, const SPtr<Texture>& dummyShadowCubeMap)
    {
-      populateDirectionalLightUniforms(sceneRenderInfo, program);
-      populatePointLightUniforms(sceneRenderInfo, program);
-      populateSpotLightUniforms(sceneRenderInfo, program);
+      populateDirectionalLightUniforms(sceneRenderInfo, context, dummyShadowMap);
+      populatePointLightUniforms(sceneRenderInfo, context, dummyShadowCubeMap);
+      populateSpotLightUniforms(sceneRenderInfo, context, dummyShadowMap);
    }
+
+   ViewInfo getShadowViewInfo(const DirectionalLightComponent& directionalLight, const CameraComponent& camera)
+   {
+      const Bounds& clipBounds = directionalLight.getShadowClipBounds();
+      glm::vec3 clipBoundsMin = clipBounds.getMin();
+      glm::vec3 clipBoundsMax = clipBounds.getMax();
+      glm::mat4 viewToClip = glm::ortho(clipBoundsMin.x, clipBoundsMax.x, clipBoundsMin.y, clipBoundsMax.y, clipBoundsMin.z, clipBoundsMax.z);
+
+      Transform lightTransform = directionalLight.getAbsoluteTransform();
+      glm::vec3 lightDirection = lightTransform.transformVector(MathUtils::kForwardVector);
+      glm::mat4 worldToView = glm::lookAt(lightTransform.position, lightTransform.position + lightDirection, MathUtils::kUpVector);
+
+      ViewInfo viewInfo;
+      viewInfo.init(worldToView, viewToClip);
+      return viewInfo;
+   }
+
+   glm::mat4 getCubeShadowViewToClip(float nearPlane, float farPlane)
+   {
+      float fovY = glm::radians(90.0f);
+      float aspectRatio = 1.0f;
+
+      return glm::perspective(fovY, aspectRatio, nearPlane, farPlane);
+   }
+
+   glm::mat4 getCubeShadowWorldToView(const glm::vec3& lightPosition, Fb::CubeFace cubeFace)
+   {
+      glm::vec3 forward = MathUtils::kForwardVector;
+      glm::vec3 up = MathUtils::kUpVector;
+
+      /*
+       * major axis
+       * direction     target                                sc    tc   ma
+       * ----------    ----------------------------------   ---   ---   --
+       *  +rx          GL_TEXTURE_CUBE_MAP_POSITIVE_X_EXT   -rz   -ry   rx
+       *  -rx          GL_TEXTURE_CUBE_MAP_NEGATIVE_X_EXT   +rz   -ry   rx
+       *  +ry          GL_TEXTURE_CUBE_MAP_POSITIVE_Y_EXT   +rx   +rz   ry
+       *  -ry          GL_TEXTURE_CUBE_MAP_NEGATIVE_Y_EXT   +rx   -rz   ry
+       *  +rz          GL_TEXTURE_CUBE_MAP_POSITIVE_Z_EXT   +rx   -ry   rz
+       *  -rz          GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_EXT   -rx   -ry   rz
+       */
+      switch (cubeFace)
+      {
+      case Fb::CubeFace::Front:
+         forward = MathUtils::kForwardVector;
+         up = -MathUtils::kUpVector;
+         break;
+      case Fb::CubeFace::Back:
+         forward = -MathUtils::kForwardVector;
+         up = -MathUtils::kUpVector;
+         break;
+      case Fb::CubeFace::Top:
+         forward = MathUtils::kUpVector;
+         up = -MathUtils::kForwardVector;
+         break;
+      case Fb::CubeFace::Bottom:
+         forward = -MathUtils::kUpVector;
+         up = MathUtils::kForwardVector;
+         break;
+      case Fb::CubeFace::Left:
+         forward = -MathUtils::kRightVector;
+         up = -MathUtils::kUpVector;
+         break;
+      case Fb::CubeFace::Right:
+         forward = MathUtils::kRightVector;
+         up = -MathUtils::kUpVector;
+         break;
+      default:
+         ASSERT(false);
+         break;
+      }
+
+      return glm::lookAt(lightPosition, lightPosition + forward, up);
+   }
+
+   ViewInfo getShadowViewInfo(const SpotLightComponent& spotLight)
+   {
+      float fovY = glm::radians(spotLight.getCutoffAngle() * 2.0f);
+      float aspectRatio = 1.0f;
+      float zNear = kLightNearPlane;
+      float zFar = spotLight.getScaledRadius();
+      glm::mat4 viewToClip = glm::perspective(fovY, aspectRatio, zNear, zFar);
+
+      Transform lightTransform = spotLight.getAbsoluteTransform();
+      glm::vec3 viewTarget = lightTransform.transformPosition(MathUtils::kForwardVector);
+      glm::mat4 worldToView = glm::lookAt(lightTransform.position, viewTarget, MathUtils::kUpVector);
+
+      ViewInfo viewInfo;
+      viewInfo.init(worldToView, viewToClip);
+      return viewInfo;
+   }
+
+   void prepareShadowMap(Texture& shadowMap)
+   {
+      shadowMap.bind();
+
+      shadowMap.setParam(Tex::IntParam::TextureCompareFunc, GL_LEQUAL);
+      shadowMap.setParam(Tex::IntParam::TextureCompareMode, GL_COMPARE_REF_TO_TEXTURE);
+      shadowMap.setParam(Tex::IntParam::TextureMinFilter, static_cast<GLint>(Tex::MinFilter::Linear));
+      shadowMap.setParam(Tex::IntParam::TextureMagFilter, static_cast<GLint>(Tex::MagFilter::Linear));
+
+      if (shadowMap.isCubemap())
+      {
+         shadowMap.setParam(Tex::IntParam::TextureWrapS, static_cast<GLint>(Tex::Wrap::ClampToEdge));
+         shadowMap.setParam(Tex::IntParam::TextureWrapT, static_cast<GLint>(Tex::Wrap::ClampToEdge));
+         shadowMap.setParam(Tex::IntParam::TextureWrapR, static_cast<GLint>(Tex::Wrap::ClampToEdge));
+      }
+      else
+      {
+         shadowMap.setParam(Tex::IntParam::TextureWrapS, static_cast<GLint>(Tex::Wrap::ClampToBorder));
+         shadowMap.setParam(Tex::IntParam::TextureWrapT, static_cast<GLint>(Tex::Wrap::ClampToBorder));
+         shadowMap.setParam(Tex::FloatArrayParam::TextureBorderColor, glm::vec4(1.0f));
+      }
+   }
+}
+
+DirectionalLightUniformData DirectionalLightRenderInfo::getUniformData() const
+{
+   ASSERT(component);
+
+   DirectionalLightUniformData uniformData;
+
+   Transform transform = component->getAbsoluteTransform();
+
+   uniformData.color = component->getColor();
+   uniformData.direction = transform.rotateVector(MathUtils::kForwardVector);
+
+   uniformData.shadowMap = shadowMapFramebuffer ? shadowMapFramebuffer->getDepthStencilAttachment() : nullptr;
+   uniformData.castShadows = uniformData.shadowMap != nullptr;
+   uniformData.worldToShadow = shadowViewInfo.getWorldToClip();
+   uniformData.shadowBias = component->getShadowBias();
+
+   return uniformData;
+}
+
+PointLightUniformData PointLightRenderInfo::getUniformData() const
+{
+   ASSERT(component);
+
+   PointLightUniformData uniformData;
+
+   Transform transform = component->getAbsoluteTransform();
+   float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
+
+   uniformData.color = component->getColor();
+   uniformData.position = transform.position;
+   uniformData.radius = component->getRadius() * radiusScale;
+
+   uniformData.shadowMap = shadowMapFramebuffer ? shadowMapFramebuffer->getDepthStencilAttachment() : nullptr;
+   uniformData.castShadows = uniformData.shadowMap != nullptr;
+   uniformData.nearFar = glm::vec2(nearPlane, farPlane);
+   uniformData.shadowBias = component->getShadowBias();
+
+   return uniformData;
+}
+
+SpotLightUniformData SpotLightRenderInfo::getUniformData() const
+{
+   ASSERT(component);
+
+   SpotLightUniformData uniformData;
+
+   Transform transform = component->getAbsoluteTransform();
+   float radiusScale = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
+
+   uniformData.color = component->getColor();
+   uniformData.direction = transform.rotateVector(MathUtils::kForwardVector);
+   uniformData.position = transform.position;
+   uniformData.radius = component->getRadius() * radiusScale;
+   uniformData.beamAngle = glm::radians(component->getBeamAngle());
+   uniformData.cutoffAngle = glm::radians(component->getCutoffAngle());
+
+   uniformData.shadowMap = shadowMapFramebuffer ? shadowMapFramebuffer->getDepthStencilAttachment() : nullptr;
+   uniformData.castShadows = uniformData.shadowMap != nullptr;
+   uniformData.worldToShadow = shadowViewInfo.getWorldToClip();
+   uniformData.shadowBias = component->getShadowBias();
+
+   return uniformData;
 }
 
 SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, bool hasPositionBuffer)
@@ -250,12 +477,62 @@ SceneRenderer::SceneRenderer(const SPtr<ResourceManager>& inResourceManager, boo
    ASSERT(resourceManager);
 
    {
+      shadowMapPool.bindOnResourceCreated([](Framebuffer& shadowMapFramebuffer)
+      {
+         ASSERT(shadowMapFramebuffer.getAttachments().colorAttachments.size() == 0 && shadowMapFramebuffer.getDepthStencilAttachment() != nullptr);
+
+         const SPtr<Texture>& shadowMap = shadowMapFramebuffer.getDepthStencilAttachment();
+         prepareShadowMap(*shadowMap);
+
+         shadowMap->setLabel(shadowMapFramebuffer.getLabel() + " | Depth");
+      });
+   }
+
+   {
       viewUniformBuffer = std::make_shared<UniformBufferObject>("View");
 
       ViewUniforms viewUniforms;
       viewUniformBuffer->setData(viewUniforms);
       viewUniformBuffer->bindTo(UniformBufferObjectIndex::View);
       viewUniformBuffer->setLabel("View Uniform Buffer");
+   }
+
+   {
+      Tex::Specification dummyShadowMapSpec;
+      dummyShadowMapSpec.internalFormat = Tex::InternalFormat::Depth24Stencil8;
+      dummyShadowMapSpec.width = 1;
+      dummyShadowMapSpec.height = 1;
+      dummyShadowMapSpec.providedDataFormat = Tex::ProvidedDataFormat::DepthStencil;
+      dummyShadowMapSpec.providedDataType = Tex::ProvidedDataType::UnsignedInt_24_8;
+      uint32_t data = 0;
+      dummyShadowMapSpec.providedData = &data;
+
+      dummyShadowMap = std::make_shared<Texture>(dummyShadowMapSpec);
+      dummyShadowMap->setLabel("Dummy Shadow Map");
+
+      prepareShadowMap(*dummyShadowMap);
+   }
+
+   {
+      Tex::Specification dummyShadowCubeMapSpec;
+      dummyShadowCubeMapSpec.target = Tex::Target::TextureCubeMap;
+      dummyShadowCubeMapSpec.internalFormat = Tex::InternalFormat::Depth24Stencil8;
+      dummyShadowCubeMapSpec.width = 1;
+      dummyShadowCubeMapSpec.height = 1;
+      dummyShadowCubeMapSpec.providedDataFormat = Tex::ProvidedDataFormat::DepthStencil;
+      dummyShadowCubeMapSpec.providedDataType = Tex::ProvidedDataType::UnsignedInt_24_8;
+      uint32_t data = 0;
+      dummyShadowCubeMapSpec.positiveXData = &data;
+      dummyShadowCubeMapSpec.negativeXData = &data;
+      dummyShadowCubeMapSpec.positiveYData = &data;
+      dummyShadowCubeMapSpec.negativeYData = &data;
+      dummyShadowCubeMapSpec.positiveZData = &data;
+      dummyShadowCubeMapSpec.negativeZData = &data;
+
+      dummyShadowCubeMap = std::make_shared<Texture>(dummyShadowCubeMapSpec);
+      dummyShadowCubeMap->setLabel("Dummy Shadow Cube Map");
+
+      prepareShadowMap(*dummyShadowCubeMap);
    }
 
    Viewport viewport = GraphicsContext::current().getDefaultViewport();
@@ -552,7 +829,9 @@ SceneRenderInfo SceneRenderer::calcSceneRenderInfo(const Scene& scene, const Vie
       {
          ASSERT(directionalLight);
 
-         sceneRenderInfo.directionalLights.push_back(directionalLight);
+         DirectionalLightRenderInfo directionalLightRenderInfo;
+         directionalLightRenderInfo.component = directionalLight;
+         sceneRenderInfo.directionalLights.push_back(directionalLightRenderInfo);
       }
 
       for (PointLightComponent* pointLight : scene.getPointLightComponents())
@@ -569,7 +848,9 @@ SceneRenderInfo SceneRenderer::calcSceneRenderInfo(const Scene& scene, const Vie
          bool visible = !frustumCull(worldBounds, frustumPlanes);
          if (visible)
          {
-            sceneRenderInfo.pointLights.push_back(pointLight);
+            PointLightRenderInfo pointLightRenderInfo;
+            pointLightRenderInfo.component = pointLight;
+            sceneRenderInfo.pointLights.push_back(pointLightRenderInfo);
          }
       }
 
@@ -589,7 +870,9 @@ SceneRenderInfo SceneRenderer::calcSceneRenderInfo(const Scene& scene, const Vie
          bool visible = !frustumCull(worldBounds, frustumPlanes);
          if (visible)
          {
-            sceneRenderInfo.spotLights.push_back(spotLight);
+            SpotLightRenderInfo spotLightRenderInfo;
+            spotLightRenderInfo.component = spotLight;
+            sceneRenderInfo.spotLights.push_back(spotLightRenderInfo);
          }
       }
    }
@@ -602,9 +885,9 @@ void SceneRenderer::setView(const ViewInfo& viewInfo)
    viewUniformBuffer->updateData(calcViewUniforms(viewInfo));
 }
 
-void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
+void SceneRenderer::renderDepthPass(const SceneRenderInfo& sceneRenderInfo, Framebuffer& framebuffer)
 {
-   prePassFramebuffer.bind();
+   framebuffer.bind();
 
    RasterizerState rasterizerState;
    RasterizerStateScope rasterizerStateScope(rasterizerState);
@@ -631,6 +914,11 @@ void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
          }
       }
    }
+}
+
+void SceneRenderer::renderPrePass(const SceneRenderInfo& sceneRenderInfo)
+{
+   renderDepthPass(sceneRenderInfo, prePassFramebuffer);
 }
 
 void SceneRenderer::setPrePassDepthAttachment(const SPtr<Texture>& depthAttachment)
@@ -668,6 +956,128 @@ void SceneRenderer::setSSAOTextures(const SPtr<Texture>& depthTexture, const SPt
    ssaoMaterial.setParameter("uNormal", normalTexture);
 }
 
+SPtr<Framebuffer> SceneRenderer::renderShadowMap(const Scene& scene, const DirectionalLightComponent& directionalLight, ViewInfo& viewInfo)
+{
+   static const int kShadowMapRes = 2048;
+
+   ASSERT(directionalLight.getCastShadows());
+
+   const CameraComponent* camera = scene.getActiveCameraComponent();
+   if (!camera)
+   {
+      return nullptr;
+   }
+
+   viewInfo = getShadowViewInfo(directionalLight, *camera);
+
+   SceneRenderInfo shadowSceneRenderInfo = calcSceneRenderInfo(scene, viewInfo, false);
+   setView(viewInfo);
+
+   SPtr<Framebuffer> shadowFramebuffer = obtainShadowMap(kShadowMapRes, kShadowMapRes);
+   renderDepthPass(shadowSceneRenderInfo, *shadowFramebuffer);
+
+   return shadowFramebuffer;
+}
+
+SPtr<Framebuffer> SceneRenderer::renderShadowMap(const Scene& scene, const PointLightComponent& pointLight, float& nearPlane, float& farPlane)
+{
+   static const int kCubeShadowMapRes = 1024;
+
+   ASSERT(pointLight.getCastShadows());
+
+   nearPlane = kLightNearPlane;
+   farPlane = pointLight.getScaledRadius();
+
+   glm::vec3 lightPosition = pointLight.getAbsolutePosition();
+   glm::mat4 viewToClip = getCubeShadowViewToClip(nearPlane, farPlane);
+
+   SPtr<Framebuffer> cubeShadowFramebuffer = obtainCubeShadowMap(kCubeShadowMapRes);
+
+   auto renderFaceDepthPass = [&](Fb::CubeFace face)
+   {
+      glm::mat4 worldToView = getCubeShadowWorldToView(lightPosition, face);
+
+      ViewInfo viewInfo;
+      viewInfo.init(worldToView, viewToClip);
+
+      SceneRenderInfo sceneRenderInfo = calcSceneRenderInfo(scene, viewInfo, false);
+      setView(viewInfo);
+
+      cubeShadowFramebuffer->bind();
+      cubeShadowFramebuffer->setActiveFace(face);
+      renderDepthPass(sceneRenderInfo, *cubeShadowFramebuffer);
+   };
+
+   renderFaceDepthPass(Fb::CubeFace::Front);
+   renderFaceDepthPass(Fb::CubeFace::Back);
+   renderFaceDepthPass(Fb::CubeFace::Top);
+   renderFaceDepthPass(Fb::CubeFace::Bottom);
+   renderFaceDepthPass(Fb::CubeFace::Left);
+   renderFaceDepthPass(Fb::CubeFace::Right);
+
+   return cubeShadowFramebuffer;
+}
+
+SPtr<Framebuffer> SceneRenderer::renderShadowMap(const Scene& scene, const SpotLightComponent& spotLight, ViewInfo& viewInfo)
+{
+   static const int kShadowMapRes = 1024;
+
+   ASSERT(spotLight.getCastShadows());
+
+   viewInfo = getShadowViewInfo(spotLight);
+
+   SceneRenderInfo shadowSceneRenderInfo = calcSceneRenderInfo(scene, viewInfo, false);
+   setView(viewInfo);
+
+   SPtr<Framebuffer> shadowFramebuffer = obtainShadowMap(kShadowMapRes, kShadowMapRes);
+   renderDepthPass(shadowSceneRenderInfo, *shadowFramebuffer);
+
+   return shadowFramebuffer;
+}
+
+void SceneRenderer::renderShadowMaps(const Scene& scene, SceneRenderInfo& sceneRenderInfo)
+{
+   bool anyShadowMapsRendered = false;
+
+   for (DirectionalLightRenderInfo& directionalLightRenderInfo : sceneRenderInfo.directionalLights)
+   {
+      const DirectionalLightComponent* component = directionalLightRenderInfo.component;
+
+      if (component->getCastShadows())
+      {
+         directionalLightRenderInfo.shadowMapFramebuffer = renderShadowMap(scene, *component, directionalLightRenderInfo.shadowViewInfo);
+         anyShadowMapsRendered = true;
+      }
+   }
+
+   for (PointLightRenderInfo& pointLightRenderInfo : sceneRenderInfo.pointLights)
+   {
+      const PointLightComponent* component = pointLightRenderInfo.component;
+
+      if (component->getCastShadows())
+      {
+         pointLightRenderInfo.shadowMapFramebuffer = renderShadowMap(scene, *component, pointLightRenderInfo.nearPlane, pointLightRenderInfo.farPlane);
+         anyShadowMapsRendered = true;
+      }
+   }
+
+   for (SpotLightRenderInfo& spotLightRenderInfo : sceneRenderInfo.spotLights)
+   {
+      const SpotLightComponent* component = spotLightRenderInfo.component;
+
+      if (component->getCastShadows())
+      {
+         spotLightRenderInfo.shadowMapFramebuffer = renderShadowMap(scene, *component, spotLightRenderInfo.shadowViewInfo);
+         anyShadowMapsRendered = true;
+      }
+   }
+
+   if (anyShadowMapsRendered)
+   {
+      setView(sceneRenderInfo.viewInfo);
+   }
+}
+
 void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInfo)
 {
    translucencyPassFramebuffer.bind();
@@ -679,7 +1089,8 @@ void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInf
    rasterizerState.destinationBlendFactor = BlendFactor::OneMinusSourceAlpha;
    RasterizerStateScope rasterizerStateScope(rasterizerState);
 
-   populateForwardUniforms(sceneRenderInfo);
+   std::array<DrawingContext, 8> contexts;
+   populateForwardUniforms(sceneRenderInfo, contexts);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
@@ -696,15 +1107,16 @@ void SceneRenderer::renderTranslucencyPass(const SceneRenderInfo& sceneRenderInf
          bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
          if (visible && material.getBlendMode() == BlendMode::Translucent)
          {
-            SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
+            int permutationIndex = selectForwardPermutation(material);
+            DrawingContext& permutationContext = contexts[permutationIndex];
 
-            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
-            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
+            permutationContext.program->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
+            permutationContext.program->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
 
-            DrawingContext context(forwardProgramPermutation.get());
-            forwardMaterial.apply(context);
-            material.apply(context);
-            section.draw(context);
+            DrawingContext localContext = permutationContext;
+            forwardMaterial.apply(localContext);
+            material.apply(localContext);
+            section.draw(localContext);
          }
       }
    }
@@ -796,6 +1208,10 @@ void SceneRenderer::loadForwardProgramPermutations()
          shaderSpecification.definitions["WITH_DIFFUSE_TEXTURE"] = i & 0b001 ? "1" : "0";
          shaderSpecification.definitions["WITH_SPECULAR_TEXTURE"] = i & 0b010 ? "1" : "0";
          shaderSpecification.definitions["WITH_NORMAL_TEXTURE"] = i & 0b100 ? "1" : "0";
+
+         shaderSpecification.definitions["MAX_DIRECTIONAL_LIGHTS"] = std::to_string(kMaxDirectionalLights);
+         shaderSpecification.definitions["MAX_POINT_LIGHTS"] = std::to_string(kMaxPointLights);
+         shaderSpecification.definitions["MAX_SPOT_LIGHTS"] = std::to_string(kMaxSpotLights);
       }
 
       forwardProgramPermutations[i] = getResourceManager().loadShaderProgram(shaderSpecifications);
@@ -804,19 +1220,46 @@ void SceneRenderer::loadForwardProgramPermutations()
    }
 }
 
-SPtr<ShaderProgram>& SceneRenderer::selectForwardPermutation(const Material& material)
+int SceneRenderer::selectForwardPermutation(const Material& material)
 {
    int index = material.hasCommonParameter(CommonMaterialParameter::DiffuseTexture) * 0b001
       + material.hasCommonParameter(CommonMaterialParameter::SpecularTexture) * 0b010
       + material.hasCommonParameter(CommonMaterialParameter::NormalTexture) * 0b100;
 
-   return forwardProgramPermutations[index];
+   return index;
 }
 
-void SceneRenderer::populateForwardUniforms(const SceneRenderInfo& sceneRenderInfo)
+void SceneRenderer::populateForwardUniforms(const SceneRenderInfo& sceneRenderInfo, std::array<DrawingContext, 8>& contexts)
 {
+   ASSERT(contexts.size() == forwardProgramPermutations.size());
+
+   int index = 0;
    for (SPtr<ShaderProgram>& forwardProgramPermutation : forwardProgramPermutations)
    {
-      populateLightUniforms(sceneRenderInfo, *forwardProgramPermutation);
+      contexts[index].program = forwardProgramPermutation.get();
+      populateLightUniforms(sceneRenderInfo, contexts[index], dummyShadowMap, dummyShadowCubeMap);
+
+      ++index;
    }
+}
+
+SPtr<Framebuffer> SceneRenderer::obtainShadowMap(int width, int height)
+{
+   Fb::Specification shadowMapSpecification;
+   shadowMapSpecification.width = width;
+   shadowMapSpecification.height = height;
+   shadowMapSpecification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
+
+   return shadowMapPool.obtain(shadowMapSpecification);
+}
+
+SPtr<Framebuffer> SceneRenderer::obtainCubeShadowMap(int size)
+{
+   Fb::Specification cubeShadowMapSpecification;
+   cubeShadowMapSpecification.width = size;
+   cubeShadowMapSpecification.height = size;
+   cubeShadowMapSpecification.cubeMap = true;
+   cubeShadowMapSpecification.depthStencilType = Fb::DepthStencilType::Depth24Stencil8;
+
+   return shadowMapPool.obtain(cubeShadowMapSpecification);
 }

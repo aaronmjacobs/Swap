@@ -355,6 +355,22 @@ void GraphicsContext::bindFramebuffer(Fb::Target target, GLuint framebuffer)
    }
 }
 
+GLuint GraphicsContext::getBoundFramebuffer(Fb::Target target) const
+{
+   switch (target)
+   {
+   case Fb::Target::Framebuffer:
+      return boundDrawFramebuffer;
+   case Fb::Target::ReadFramebuffer:
+      return boundReadFramebuffer;
+   case Fb::Target::DrawFramebuffer:
+      return boundDrawFramebuffer;
+   default:
+      ASSERT(false);
+      return 0;
+   }
+}
+
 void GraphicsContext::activeTexture(int textureUnit)
 {
    ASSERT(textureUnit < 32);

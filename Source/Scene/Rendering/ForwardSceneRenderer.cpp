@@ -84,6 +84,7 @@ void ForwardSceneRenderer::renderScene(const Scene& scene)
    renderPrePass(sceneRenderInfo);
    renderNormalPass(sceneRenderInfo);
    renderSSAOPass(sceneRenderInfo);
+   renderShadowMaps(scene, sceneRenderInfo);
    renderMainPass(sceneRenderInfo);
    renderTranslucencyPass(sceneRenderInfo);
    renderPostProcessPasses(sceneRenderInfo);
@@ -148,7 +149,8 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
 
    glClear(GL_COLOR_BUFFER_BIT);
 
-   populateForwardUniforms(sceneRenderInfo);
+   std::array<DrawingContext, 8> contexts;
+   populateForwardUniforms(sceneRenderInfo, contexts);
 
    for (const ModelRenderInfo& modelRenderInfo : sceneRenderInfo.modelRenderInfo)
    {
@@ -165,15 +167,16 @@ void ForwardSceneRenderer::renderMainPass(const SceneRenderInfo& sceneRenderInfo
          bool visible = i >= modelRenderInfo.visibilityMask.size() || modelRenderInfo.visibilityMask[i];
          if (visible && material.getBlendMode() == BlendMode::Opaque)
          {
-            SPtr<ShaderProgram>& forwardProgramPermutation = selectForwardPermutation(material);
+            int permutationIndex = selectForwardPermutation(material);
+            DrawingContext& permutationContext = contexts[permutationIndex];
 
-            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
-            forwardProgramPermutation->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
+            permutationContext.program->setUniformValue(UniformNames::kLocalToWorld, localToWorld);
+            permutationContext.program->setUniformValue(UniformNames::kLocalToNormal, localToNormal, false);
 
-            DrawingContext context(forwardProgramPermutation.get());
-            getForwardMaterial().apply(context);
-            material.apply(context);
-            section.draw(context);
+            DrawingContext localContext = permutationContext;
+            getForwardMaterial().apply(localContext);
+            material.apply(localContext);
+            section.draw(localContext);
          }
       }
    }

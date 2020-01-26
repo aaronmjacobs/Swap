@@ -57,7 +57,7 @@ public:
 
    DelegateHandle bindOnResourceCreated(typename ResourceCreatedDelegate::FuncType&& func)
    {
-      return resourceCreatedDelegate.bind(std::move(func)));
+      return resourceCreatedDelegate.bind(std::move(func));
    }
 
    void unbindOnResourceCreated()
